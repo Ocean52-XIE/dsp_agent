@@ -1,0 +1,676 @@
+:root {
+  --bg: #f2eadc;
+  --bg-deep: #e3d3ba;
+  --panel: rgba(255, 250, 241, 0.86);
+  --panel-strong: rgba(255, 248, 236, 0.98);
+  --line: rgba(123, 104, 76, 0.18);
+  --text: #142129;
+  --muted: #5f625c;
+  --accent: #0c7c78;
+  --accent-soft: rgba(12, 124, 120, 0.12);
+  --accent-warm: #c47c2a;
+  --accent-warm-soft: rgba(196, 124, 42, 0.12);
+  --danger: #b74836;
+  --shadow: 0 22px 48px rgba(74, 57, 33, 0.14);
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+}
+
+/* 全局基础：颜色变量、背景和字体。 */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(12, 124, 120, 0.14), transparent 30%),
+    radial-gradient(circle at right 15%, rgba(196, 124, 42, 0.16), transparent 28%),
+    linear-gradient(160deg, #f8f3ea 0%, #efe4d2 48%, #e5d6bf 100%);
+  font-family: "Trebuchet MS", "Microsoft YaHei", sans-serif;
+}
+
+body {
+  position: relative;
+  overflow-x: hidden;
+}
+
+.background-orbit {
+  position: fixed;
+  width: 32rem;
+  height: 32rem;
+  border-radius: 999px;
+  filter: blur(16px);
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.orbit-a {
+  top: -12rem;
+  right: -10rem;
+  background: radial-gradient(circle, rgba(12, 124, 120, 0.28), transparent 65%);
+  animation: drift 18s ease-in-out infinite;
+}
+
+.orbit-b {
+  bottom: -12rem;
+  left: -8rem;
+  background: radial-gradient(circle, rgba(196, 124, 42, 0.3), transparent 65%);
+  animation: drift 22s ease-in-out infinite reverse;
+}
+
+.noise-mask {
+  position: fixed;
+  inset: 0;
+  opacity: 0.08;
+  background-image:
+    linear-gradient(rgba(21, 33, 41, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(21, 33, 41, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
+  pointer-events: none;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 1.5rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+/* 左侧栏与顶部品牌区。 */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.brand-card,
+.sidebar-section,
+.workspace-header,
+.chat-panel,
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.brand-card {
+  padding: 1.4rem;
+  border-radius: var(--radius-xl);
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--accent);
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  line-height: 1.1;
+}
+
+.brand-card h1 {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.brand-copy,
+.workspace-subtitle,
+.helper-text,
+.empty-state {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.sidebar-section {
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.9rem;
+}
+
+.counter-tag,
+.panel-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 0.78rem;
+}
+
+.primary-button,
+.secondary-button,
+.prompt-chip {
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease,
+    opacity 140ms ease;
+}
+
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.82rem 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent) 0%, #0f585d 100%);
+  color: #fffdf8;
+  font-weight: 700;
+  box-shadow: 0 12px 26px rgba(12, 124, 120, 0.26);
+}
+
+.primary-button:hover,
+.secondary-button:hover,
+.prompt-chip:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.56;
+  cursor: wait;
+}
+
+.secondary-button {
+  padding: 0.72rem 1rem;
+  border-radius: 999px;
+  background: var(--accent-warm-soft);
+  color: #6f4615;
+  font-weight: 700;
+}
+
+.prompt-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.prompt-chip {
+  padding: 0.8rem 0.95rem;
+  border-radius: var(--radius-md);
+  text-align: left;
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(255, 249, 241, 0.98), rgba(255, 243, 222, 0.9));
+  border: 1px solid rgba(196, 124, 42, 0.16);
+}
+
+.prompt-chip::before {
+  content: "→";
+  margin-right: 0.55rem;
+  color: var(--accent-warm);
+}
+
+.session-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.session-item {
+  width: 100%;
+  padding: 0.9rem 0.95rem;
+  text-align: left;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.session-item.active {
+  border-color: rgba(12, 124, 120, 0.22);
+  background: linear-gradient(180deg, rgba(226, 247, 244, 0.9), rgba(255, 250, 241, 0.95));
+}
+
+.session-title {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+}
+
+.session-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* 主工作区和头部状态栏。 */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.workspace-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.2rem 1.3rem;
+  border-radius: var(--radius-xl);
+}
+
+.header-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.badge.neutral {
+  color: #4d555a;
+  background: rgba(90, 98, 102, 0.12);
+}
+
+.badge.success {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.badge.warn {
+  color: #87541a;
+  background: var(--accent-warm-soft);
+}
+
+.badge.danger {
+  color: var(--danger);
+  background: rgba(183, 72, 54, 0.1);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.95fr);
+  gap: 1rem;
+  min-height: calc(100vh - 11rem);
+}
+
+/* 聊天区：消息列表、消息卡片和输入区。 */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.message-list {
+  flex: 1;
+  min-height: 16rem;
+  padding: 1.1rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.message-card {
+  padding: 1rem 1rem 0.95rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.message-card.selectable {
+  cursor: pointer;
+}
+
+.message-card.selected {
+  border-color: rgba(12, 124, 120, 0.34);
+  box-shadow: 0 14px 28px rgba(12, 124, 120, 0.12);
+}
+
+.message-card.user {
+  background: linear-gradient(180deg, rgba(226, 247, 244, 0.8), rgba(251, 252, 250, 0.96));
+}
+
+.message-card.out-of-scope {
+  background: linear-gradient(180deg, rgba(255, 239, 232, 0.9), rgba(255, 250, 247, 0.98));
+}
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.7rem;
+}
+
+.message-role {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 700;
+}
+
+.role-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+}
+
+.role-dot.user {
+  background: var(--accent);
+}
+
+.role-dot.assistant {
+  background: var(--accent-warm);
+}
+
+.message-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.message-content {
+  line-height: 1.72;
+  white-space: pre-wrap;
+}
+
+.message-tags,
+.inline-grid,
+.debug-grid,
+.analysis-list,
+.citation-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.message-tags {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  margin-top: 0.95rem;
+}
+
+.tag-block {
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: rgba(12, 124, 120, 0.06);
+  border: 1px solid rgba(12, 124, 120, 0.1);
+}
+
+.tag-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.tag-value {
+  font-weight: 700;
+}
+
+.message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.95rem;
+}
+
+.composer {
+  border-top: 1px solid var(--line);
+  padding: 1rem 1.1rem 1.2rem;
+  background: linear-gradient(180deg, rgba(250, 245, 235, 0.96), rgba(255, 252, 246, 0.98));
+}
+
+.composer-label {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.composer textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(28, 47, 55, 0.16);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1rem;
+  font: inherit;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.84);
+  min-height: 7rem;
+}
+
+.composer textarea:focus {
+  outline: 2px solid rgba(12, 124, 120, 0.14);
+  border-color: rgba(12, 124, 120, 0.32);
+}
+
+.composer-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.9rem;
+}
+
+/* 右侧详情区：摘要、引用和 debug 面板。 */
+.inspector {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.panel {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.7rem;
+}
+
+.panel-body {
+  padding: 0 1rem 1rem;
+}
+
+.inline-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.metric-card,
+.citation-card,
+.debug-card,
+.list-card,
+.snippet-card {
+  padding: 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.metric-label,
+.citation-meta,
+.debug-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.metric-value,
+.debug-value {
+  margin-top: 0.35rem;
+  font-weight: 700;
+}
+
+.analysis-list,
+.citation-list {
+  margin-top: 0.8rem;
+}
+
+.analysis-list ul,
+.citation-card p,
+.snippet-card pre {
+  margin: 0;
+}
+
+.analysis-list ul {
+  padding-left: 1.05rem;
+  line-height: 1.65;
+}
+
+.citation-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.source-chip.code {
+  color: #87541a;
+  background: var(--accent-warm-soft);
+}
+
+.source-chip.case {
+  color: #7a3f36;
+  background: rgba(183, 72, 54, 0.08);
+}
+
+.citation-title {
+  font-weight: 700;
+}
+
+.snippet-card {
+  background: linear-gradient(180deg, rgba(18, 32, 40, 0.96), rgba(26, 44, 50, 0.98));
+  color: #eef7f5;
+  border-color: rgba(12, 124, 120, 0.22);
+}
+
+.snippet-card pre {
+  overflow: auto;
+  font-family: Consolas, "Liberation Mono", Menlo, monospace;
+  line-height: 1.6;
+}
+
+.debug-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+/* 空态、加载态与基础动效。 */
+.empty-chat {
+  display: grid;
+  gap: 1rem;
+  align-content: center;
+  min-height: 24rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-chat h3 {
+  font-size: 2rem;
+}
+
+.loading-shell {
+  display: grid;
+  place-items: center;
+  min-height: 16rem;
+  color: var(--muted);
+}
+
+.reveal {
+  animation: rise-in 500ms ease both;
+}
+
+/* 响应式布局：平板和手机端降为单列。 */
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(1.6rem, -1.2rem, 0) scale(1.06);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1180px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 1rem;
+  }
+
+  .workspace-header,
+  .composer-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .message-tags,
+  .inline-grid,
+  .debug-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-chat h3 {
+    font-size: 1.6rem;
+  }
+}
