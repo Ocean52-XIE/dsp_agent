@@ -1,0 +1,352 @@
+{
+  "generated_at": "2026-03-10T14:49:01",
+  "config_path": "workflow/eval/config.answer.code.template.json",
+  "dataset_path": "workflow/eval/datasets/ad_engine_answer_eval_code.jsonl",
+  "output_path": "workflow/eval/results/latest_answer_eval_code_report.json",
+  "total_cases": 4,
+  "min_required_coverage_for_pass": 0.8,
+  "require_citation_for_exact": true,
+  "enable_llm_judge": true,
+  "llm_judge_available": true,
+  "qa_llm_enabled": true,
+  "qa_llm_available": true,
+  "qa_llm_model": "glm-4.7",
+  "llm_judge_required_for_exact": false,
+  "llm_judge_pass_threshold": 0.6,
+  "weights": {
+    "required_fact_coverage": 0.2,
+    "forbidden_claim_pass": 0.1,
+    "expected_mode_accuracy": 0.1,
+    "citation_hit": 0.2,
+    "code_citation_hit": 0.35,
+    "expected_source_hit": 0.05,
+    "llm_judge_score": 0.1
+  },
+  "metric_denominators": {
+    "total_cases": 4,
+    "wiki_citation_cases": 0,
+    "code_citation_cases": 4,
+    "expected_source_cases": 4
+  },
+  "metrics": {
+    "required_fact_coverage": 1.0,
+    "forbidden_claim_pass_rate": 1.0,
+    "expected_mode_accuracy": 1.0,
+    "citation_hit_rate": 1.0,
+    "overall_score": 0.938636,
+    "exact_correct_rate": 1.0,
+    "code_citation_hit_rate": 1.0,
+    "expected_source_hit_rate": 1.0,
+    "llm_judge_score_avg": 0.325
+  },
+  "per_case": [
+    {
+      "id": "ans_code_001",
+      "query": "compute_ocpc_bid 这个函数在代码里哪里实现",
+      "intent": "knowledge_qa",
+      "note": "代码引用命中 - 出价公式实现位置",
+      "expected_mode": "either",
+      "gold_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [],
+      "gold_code_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "code"
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“公式说明”，优先给出公式本身及变量含义。\n\n**结论**：当前证据不足，无法确定 `compute_ocpc_bid` 函数在代码中的具体实现位置。\n\n**依据**：\n- 证据1中显示了出价策略的一个公式：`bid = target_cpa * pCVR * alpha`，这可能 ocpc 出价策略的计算方式，但没有提到函数实现位置。\n- 证据2列出了实时出价的核心要素，包括预估效果(pCTR、pCVR)、目标参数(target_cpa、target_roas)等，但同样没有涉及代码实现位置。\n\n需要补充的信息：\n- 请询问 `compute_ocpc_bid` 函数可能所在的代码文件路径或目录结构\n- 请询问该函数所属的类或模块名称\n- 请询问是否有单元测试文件可以间接指示函数位置\n- 请询问是否有类似函数名的变体或相关函数名称\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py",
+        "workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py",
+        "workflow/nodes/query_rewriter/__init__.py",
+        "workflow/engine.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md",
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py",
+          "workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py",
+          "workflow/nodes/query_rewriter/__init__.py",
+          "workflow/engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": null,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.2
+      },
+      "overall_score": 0.927273,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.2,
+        "pass": false,
+        "hallucination_risk": 0.3,
+        "reason": "模型错误地认为证据不足，而引用路径中已经包含了正确的答案位置：'workflow/eval/mock_data/code_corpus/ad_engine/bid/bid_optimizer.py'"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_code_002",
+      "query": "compute_rank_score 在哪个文件定义",
+      "intent": "knowledge_qa",
+      "note": "代码引用命中 - 精排得分函数位置",
+      "expected_mode": "either",
+      "gold_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [],
+      "gold_code_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "code"
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。结论：当前证据不足\n\n依据：提供的两份证据（广告引擎总体架构和在线召回）中均未提及\"compute_rank_score\"的定义或所在文件。证据1列出了广告引擎的关键指标（pCTR、pCVR、eCPM等），证据2列出了召回质量指标（Recall@N、CandidateCount等），但都没有包含关于compute_rank_score的信息。\n\n建议补充的问题：\n1. compute_rank_score 是广告排序系统的哪个环节的函数？\n2. 在广告引擎的哪个模块文档中可以找到compute_rank_score的定义？\n3. compute_rank_score 在代码仓库中的实际位置是哪里？如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/rerank/rerank_engine.py",
+        "workflow/nodes/load_code_context/__init__.py",
+        "workflow/nodes/load_code_context/__init__.py",
+        "workflow/eval/mock_data/code_corpus/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "workflow/eval/mock_data/code_corpus/ad_engine/rerank/rerank_engine.py",
+          "workflow/nodes/load_code_context/__init__.py",
+          "workflow/nodes/load_code_context/__init__.py",
+          "workflow/eval/mock_data/code_corpus/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": null,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.0
+      },
+      "overall_score": 0.909091,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.0,
+        "pass": false,
+        "hallucination_risk": 0.8,
+        "reason": "模型在证据充足的情况下错误地判定证据不足，没有识别出黄金路径中提供的答案"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_code_003",
+      "query": "代码里哪个函数负责选择召回候选",
+      "intent": "knowledge_qa",
+      "note": "代码引用命中 - 召回入口函数位置",
+      "expected_mode": "either",
+      "gold_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [],
+      "gold_code_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "code"
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。当前证据不足。\n\n提供的检索证据仅描述了在线召回的常见策略（人群包召回、语义召回、规则召回、重定向召回）和可能导致候选量骤降的问题，但没有具体指出负责选择召回候选的函数名称或实现位置。\n\n建议补充的问题：\n1. \"ad-recall模块中实现召回策略的具体函数有哪些\"\n2. \"哪个函数负责执行召回策略的候选选择\"\n3. \"ad-recall模块中代码结构\"如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/recall/recall_service.py",
+        "workflow/eval/mock_data/code_corpus/ad_engine/recall/recall_service.py",
+        "workflow/engine.py",
+        "workflow/engine.py",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/01-在线召回.md",
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "workflow/eval/mock_data/code_corpus/ad_engine/recall/recall_service.py",
+          "workflow/eval/mock_data/code_corpus/ad_engine/recall/recall_service.py",
+          "workflow/engine.py",
+          "workflow/engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": null,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.981818,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "模型正确识别证据不足，未强行给出结论，而是提出合理建议"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_code_004",
+      "query": "calibrate_probability 函数在哪里定义",
+      "intent": "knowledge_qa",
+      "note": "代码引用命中 - 两率校准函数位置",
+      "expected_mode": "either",
+      "gold_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [],
+      "gold_code_paths": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "code"
+      ],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。当前证据不足，无法确定calibrate_probability函数的定义位置。\n\n建议补充的问题：\n- calibrate_probability函数属于哪个具体模块或服务\n- 函数的功能描述或业务含义\n- 可能包含该函数的文档路径或代码库位置如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "workflow/eval/mock_data/code_corpus/ad_engine/rate/rate_predictor.py",
+        "workflow/eval/mock_data/code_corpus/ad_engine/rate/rate_predictor.py",
+        "workflow/nodes/load_code_context/__init__.py",
+        "workflow/nodes/load_code_context/__init__.py",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "workflow/eval/mock_data/code_corpus/ad_engine/rate/rate_predictor.py",
+          "workflow/eval/mock_data/code_corpus/ad_engine/rate/rate_predictor.py",
+          "workflow/nodes/load_code_context/__init__.py",
+          "workflow/nodes/load_code_context/__init__.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": null,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.3
+      },
+      "overall_score": 0.936364,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.3,
+        "pass": false,
+        "hallucination_risk": 0.1,
+        "reason": "模型错误地判断证据不足，实际上引用路径中已包含正确答案"
+      },
+      "llm_judge_error": null
+    }
+  ]
+}

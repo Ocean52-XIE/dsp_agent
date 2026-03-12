@@ -381,3 +381,65 @@ flowchart LR
 
 ## 15. 结论
 该系统的核心不是“做一个能聊天的 Agent”，而是建立一套围绕企业代码与知识资产的 `检索 + 编排 + 分析 + 可追溯` 的智能工作流。整体设计上应优先保证路由准确、证据充分、状态可控和运维可观测，再逐步扩展到更强的问题分析与代码实现能力。
+
+## 16. 广告引擎 Wiki 检索落地说明
+
+当前仓库已打通“真实 Wiki 检索”链路，面向广告引擎业务（召回、两率预估、出价、精排）：
+
+- Wiki 语料目录：`docs/wiki/ad_engine/`
+- 检索实现：`workflow/nodes/retrieve_wiki/wiki_retriever.py`
+- 工作流接入点：`workflow/engine.py` 的 `retrieve_wiki` 节点
+
+### 16.1 已接入能力
+
+- 启动时加载本地 Markdown wiki 并构建轻量索引
+- 对用户问题执行“第一阶段召回 + 第二阶段重排”，返回 TopK 文档片段
+- 二阶段重排按 query 意图（指标/流程/排障/公式）进行加权，减少“命中但排序不准”
+- 检索结果携带 `title/path/score/excerpt`，并附带 `stage1_score/rerank_features` 便于诊断
+- `knowledge_answer` 节点会使用命中的 wiki 片段生成带依据回答
+
+### 16.2 快速验证
+
+可直接在本地运行 API 后发送如下问题进行验证：
+
+- “召回候选量骤降一般先看哪些指标？”
+- “pCTR 和 pCVR 偏高时先排查什么？”
+- “出价里的 pacing 是怎么做的？”
+- “精排里高 eCPM 广告为什么可能没进最终位？”
+
+### 16.3 LLM 问答接入（knowledge_answer）
+
+当前 `knowledge_answer` 节点已支持“LLM 优先 + 规则降级”：
+
+- LLM 实现：`workflow/nodes/knowledge_answer/llm_qa.py`
+- 节点实现：`workflow/nodes/knowledge_answer/__init__.py`
+- 详细配置：`workflow/QA_LLM.md`
+- 启动脚本：`start_agent.ps1`（可在脚本中直接设置 LLM 参数并启动服务）
+
+若未配置 `WORKFLOW_QA_LLM_API_KEY` 或调用失败，系统会自动回退到规则模板回答，不影响主链路可用性。
+
+### 16.4 检索评测工具
+
+仓库已提供检索评测包（Recall@K、MRR、引用命中率）：
+
+- 配置模板：`workflow/eval/config.template.json`
+- 评测脚本：`workflow/eval/run_retrieval_eval.py`
+- 启动脚本：`workflow/eval/run_retrieval_eval.ps1`
+- 用例数据：`workflow/eval/datasets/ad_engine_retrieval_eval.jsonl`
+- 使用说明：`workflow/eval/README.md`
+
+### 16.5 代码检索（retrieve_code v1）
+
+当前 `retrieve_code` 节点已接入第一版真实代码检索：
+
+- 检索器实现：`workflow/nodes/retrieve_code/code_retriever.py`
+- 节点接入：`workflow/nodes/retrieve_code/__init__.py`
+- 设计说明：`workflow/retrieve_code_v1.md`
+
+代码检索评测脚本与数据：
+
+- 配置模板：`workflow/eval/config.code.template.json`
+- 评测脚本：`workflow/eval/run_code_retrieval_eval.py`
+- 启动脚本：`workflow/eval/run_code_retrieval_eval.ps1`
+- 评测数据：`workflow/eval/datasets/ad_engine_code_retrieval_eval.jsonl`
+- Mock 语料：`codes/`

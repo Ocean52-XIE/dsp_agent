@@ -12,9 +12,9 @@ from __future__ import annotations
 """
 
 from datetime import datetime
-from itertools import count
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -22,12 +22,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from workflow.engine import WorkflowService
+from workflow.observability import PostgresObservabilityStore
+from workflow.runtime_logging import get_file_logger
+from workflow.session import PostgresSessionStore
 
 
 # 统一计算静态资源目录，方便 FastAPI 既提供页面，又提供 API。
 BASE_DIR = Path(__file__).resolve().parent.parent
 WEB_DIR = BASE_DIR / "web"
 ASSETS_DIR = WEB_DIR / "assets"
+APP_LOGGER = get_file_logger(project_root=BASE_DIR)
 
 app = FastAPI(
     title="Engine Smart Agent Workflow API",
@@ -38,12 +42,19 @@ app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
 
 # WorkflowService 持有 LangGraph 编译后的图，API 层只调用它，不直接参与节点细节。
 WORKFLOW = WorkflowService()
+OBS_STORE = PostgresObservabilityStore.from_env()
+SESSION_STORE = PostgresSessionStore.from_env()
 # 这里仍然使用内存态存储会话，便于快速演示；后续可替换为数据库。
 SESSIONS: dict[str, dict[str, Any]] = {}
 TRACE_REFERENCES: dict[str, list[dict[str, Any]]] = {}
-SESSION_SEQ = count(1)
-MESSAGE_SEQ = count(1)
-TRACE_SEQ = count(1)
+
+APP_LOGGER.info(
+    "api.service.initialized",
+    workflow_backend=WORKFLOW.backend_name,
+    session_store=SESSION_STORE.status(),
+    observability=OBS_STORE.status(),
+    runtime_logging=APP_LOGGER.status(),
+)
 
 
 class SessionCreateRequest(BaseModel):
@@ -65,27 +76,51 @@ class CodeConfirmRequest(BaseModel):
     approved: bool = True
 
 
+class MessageFeedbackRequest(BaseModel):
+    """问答反馈请求。
+
+    字段说明：
+    - helpful: 是否有帮助（必填）。
+    - reason_tag: 反馈标签（可选），例如“事实错误/证据不足/回答不完整”。
+    - rating: 1~5 分主观评分（可选）。
+    - comment: 自由文本说明（可选）。
+    """
+
+    helpful: bool
+    reason_tag: str = Field(default="", max_length=64)
+    rating: int | None = Field(default=None, ge=1, le=5)
+    comment: str = Field(default="", max_length=2000)
+
+
 def now_iso() -> str:
     """统一生成秒级时间戳字符串，便于前端直接展示。"""
     return datetime.now().isoformat(timespec="seconds")
 
 
-def next_id(prefix: str, seq: count) -> str:
-    """生成带前缀的递增 ID。"""
-    return f"{prefix}_{next(seq):04d}"
+def text_preview(value: Any, *, max_chars: int = 120) -> str:
+    text = str(value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars]}..."
+
+
+def next_id(prefix: str) -> str:
+    """生成全局唯一 ID，避免服务重启后出现主键冲突。"""
+    return f"{prefix}_{uuid4().hex}"
 
 
 def build_welcome_message() -> dict[str, Any]:
-    """新会话默认插入一条欢迎消息，说明当前系统已经切到工作流模式。"""
+    """新会话默认插入一条欢迎消息，说明当前版本能力范围。"""
     return {
-        "id": next_id("msg", MESSAGE_SEQ),
+        "id": next_id("msg"),
         "role": "assistant",
         "kind": "welcome",
         "intent": "system",
         "status": "completed",
         "content": (
-            "这里已经切换成 LangGraph 工作流入口。你现在发起的每条消息都会经过领域判定、"
-            "意图路由和后续节点编排；检索、分析和代码生成节点目前仍然是 mock 实现。"
+            "这里已经切换成 LangGraph 工作流入口。当前版本聚焦广告引擎知识问答主链路，"
+            "并已接入本地 Wiki 实时检索（召回、两率预估、出价、精排）；"
+            "问题分析和代码实现节点已保留，可继续逐步增强。"
         ),
         "created_at": now_iso(),
         "trace_id": None,
@@ -104,8 +139,13 @@ def build_welcome_message() -> dict[str, Any]:
 
 
 def create_session_record(title: str | None = None) -> dict[str, Any]:
-    """创建内存态会话对象。"""
-    session_id = next_id("sess", SESSION_SEQ)
+    """创建会话对象并写入存储层。
+
+    存储策略：
+    - PostgreSQL 会话存储可用时：写库，支持重启后恢复。
+    - PostgreSQL 不可用时：回退到内存，保障本地开发可用性。
+    """
+    session_id = next_id("sess")
     created_at = now_iso()
     session = {
         "id": session_id,
@@ -115,16 +155,45 @@ def create_session_record(title: str | None = None) -> dict[str, Any]:
         "status": "idle",
         "messages": [build_welcome_message()],
     }
-    SESSIONS[session_id] = session
+    persist_session_record(session)
+    APP_LOGGER.info(
+        "api.session.created",
+        session_id=session_id,
+        title=text_preview(session["title"], max_chars=80),
+    )
     return session
 
 
 def ensure_session(session_id: str) -> dict[str, Any]:
     """按 ID 读取会话，不存在时直接返回 404。"""
-    session = SESSIONS.get(session_id)
+    session: dict[str, Any] | None = None
+    if SESSION_STORE.is_active:
+        session = SESSION_STORE.get_session(session_id)
+    else:
+        session = SESSIONS.get(session_id)
     if session is None:
+        APP_LOGGER.warning("api.session.not_found", session_id=session_id)
         raise HTTPException(status_code=404, detail="Session not found")
     return session
+
+
+def list_session_records(limit: int = 20) -> list[dict[str, Any]]:
+    """列出会话记录。
+
+    返回完整会话结构，便于上层复用同一套 summarize 逻辑。
+    """
+    safe_limit = max(1, min(int(limit), 200))
+    if SESSION_STORE.is_active:
+        return SESSION_STORE.list_sessions(limit=safe_limit)
+    return list(SESSIONS.values())
+
+
+def persist_session_record(session: dict[str, Any]) -> None:
+    """持久化会话对象。"""
+    if SESSION_STORE.is_active:
+        SESSION_STORE.save_session(session)
+        return
+    SESSIONS[str(session["id"])] = session
 
 
 def summarize_session(session: dict[str, Any]) -> dict[str, Any]:
@@ -159,7 +228,7 @@ def serialize_session(session: dict[str, Any]) -> dict[str, Any]:
 def build_user_message(content: str) -> dict[str, Any]:
     """把前端输入包装成统一的用户消息结构。"""
     return {
-        "id": next_id("msg", MESSAGE_SEQ),
+        "id": next_id("msg"),
         "role": "user",
         "kind": "user_input",
         "intent": None,
@@ -177,9 +246,40 @@ def build_user_message(content: str) -> dict[str, Any]:
 def materialize_assistant_message(payload: dict[str, Any]) -> dict[str, Any]:
     """给工作流产物补齐消息 ID 和时间戳。"""
     message = dict(payload)
-    message["id"] = next_id("msg", MESSAGE_SEQ)
+    message["id"] = next_id("msg")
     message["created_at"] = now_iso()
     return message
+
+
+def persist_observability_turn(
+    *,
+    turn_type: str,
+    session: dict[str, Any],
+    user_query: str,
+    assistant_message: dict[str, Any],
+) -> None:
+    """将一轮请求/响应写入可观测数据库。
+
+    这个函数只负责“尽力落库”，不向上抛错，避免数据库问题影响主链路。
+    """
+    try:
+        OBS_STORE.record_turn(
+            turn_type=turn_type,
+            session_id=session["id"],
+            trace_id=str(assistant_message.get("trace_id", "") or ""),
+            message_id=str(assistant_message.get("id", "") or ""),
+            user_query=user_query,
+            assistant_message=assistant_message,
+        )
+    except Exception as exc:
+        APP_LOGGER.warning(
+            "api.observability.record_turn_failed",
+            turn_type=turn_type,
+            session_id=session.get("id", ""),
+            trace_id=str(assistant_message.get("trace_id", "") or ""),
+            error_type=type(exc).__name__,
+        )
+        return
 
 
 def close_open_code_confirmation(session: dict[str, Any]) -> None:
@@ -203,10 +303,15 @@ def close_open_code_confirmation(session: dict[str, Any]) -> None:
 
 def find_message(message_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     """在所有会话中查找指定消息，同时返回所属会话。"""
-    for session in SESSIONS.values():
-        for message in session["messages"]:
-            if message["id"] == message_id:
-                return session, message
+    if SESSION_STORE.is_active:
+        result = SESSION_STORE.find_message(message_id)
+        if result is not None:
+            return result
+    else:
+        for session in SESSIONS.values():
+            for message in session["messages"]:
+                if message["id"] == message_id:
+                    return session, message
     raise HTTPException(status_code=404, detail="Message not found")
 
 
@@ -219,23 +324,34 @@ def root() -> FileResponse:
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     """健康检查，同时暴露当前工作流后端类型。"""
-    return {"status": "ok", "workflow_backend": WORKFLOW.backend_name}
+    APP_LOGGER.debug("api.health.checked")
+    return {
+        "status": "ok",
+        "workflow_backend": WORKFLOW.backend_name,
+        "debug_verbose_enabled": bool(getattr(WORKFLOW, "debug_verbose_enabled", False)),
+        "runtime_logging": WORKFLOW.runtime_log_status(),
+        "observability": OBS_STORE.status(),
+        "session_store": SESSION_STORE.status(),
+    }
 
 
 @app.get("/api/sessions")
-def list_sessions() -> dict[str, list[dict[str, Any]]]:
+def list_sessions(limit: int = 20) -> dict[str, list[dict[str, Any]]]:
     """返回会话列表，供左侧会话区渲染。"""
+    safe_limit = max(1, min(int(limit), 200))
     items = sorted(
-        (summarize_session(session) for session in SESSIONS.values()),
+        (summarize_session(session) for session in list_session_records(limit=safe_limit)),
         key=lambda item: item["updated_at"],
         reverse=True,
-    )
+    )[:safe_limit]
+    APP_LOGGER.debug("api.session.list", limit=safe_limit, returned=len(items))
     return {"items": items}
 
 
 @app.post("/api/sessions")
 def create_session(request: SessionCreateRequest) -> dict[str, Any]:
     """创建新会话。"""
+    APP_LOGGER.info("api.session.create.requested", title=text_preview(request.title or "", max_chars=80))
     session = create_session_record(request.title)
     return {"session": serialize_session(session), "summary": summarize_session(session)}
 
@@ -243,6 +359,7 @@ def create_session(request: SessionCreateRequest) -> dict[str, Any]:
 @app.get("/api/sessions/{session_id}")
 def get_session(session_id: str) -> dict[str, Any]:
     """获取指定会话的完整消息列表。"""
+    APP_LOGGER.debug("api.session.get", session_id=session_id)
     session = ensure_session(session_id)
     return {"session": serialize_session(session)}
 
@@ -257,6 +374,11 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     3. 调用 WorkflowService；
     4. 把工作流结果落回会话。
     """
+    APP_LOGGER.info(
+        "api.message.create.requested",
+        session_id=request.session_id,
+        content_preview=text_preview(request.content, max_chars=120),
+    )
     session = ensure_session(request.session_id)
     if len([msg for msg in session["messages"] if msg["role"] == "user"]) == 0:
         # 首轮用户消息默认作为会话标题，方便左侧列表识别。
@@ -266,13 +388,22 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     session["messages"].append(user_message)
 
     # 一次前端发送对应一次工作流执行，因此 trace_id 在这里生成。
-    trace_id = next_id("trace", TRACE_SEQ)
-    workflow_payload = WORKFLOW.run_user_message(
-        session_id=session["id"],
-        trace_id=trace_id,
-        user_query=request.content,
-        history=session["messages"],
-    )
+    trace_id = next_id("trace")
+    try:
+        workflow_payload = WORKFLOW.run_user_message(
+            session_id=session["id"],
+            trace_id=trace_id,
+            user_query=request.content,
+            history=session["messages"],
+        )
+    except Exception as exc:
+        APP_LOGGER.exception(
+            "api.message.create.failed",
+            session_id=session.get("id", ""),
+            trace_id=trace_id,
+            error_type=type(exc).__name__,
+        )
+        raise
     assistant_message = materialize_assistant_message(workflow_payload)
     # 引用证据按 trace_id 索引，方便右侧详情或单独接口查询。
     TRACE_REFERENCES[trace_id] = assistant_message["citations"]
@@ -283,6 +414,22 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     session["messages"].append(assistant_message)
     session["status"] = assistant_message["status"]
     session["updated_at"] = now_iso()
+    persist_session_record(session)
+    persist_observability_turn(
+        turn_type="message",
+        session=session,
+        user_query=request.content,
+        assistant_message=assistant_message,
+    )
+    APP_LOGGER.info(
+        "api.message.create.completed",
+        session_id=session["id"],
+        trace_id=trace_id,
+        assistant_kind=assistant_message.get("kind", "unknown"),
+        assistant_status=assistant_message.get("status", "unknown"),
+        citation_count=len(assistant_message.get("citations", []) or []),
+        session_message_count=len(session.get("messages", []) or []),
+    )
 
     return {
         "session": serialize_session(session),
@@ -294,8 +441,18 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
 @app.post("/api/messages/{message_id}/confirm-code")
 def confirm_code_generation(message_id: str, request: CodeConfirmRequest) -> dict[str, Any]:
     """处理“是否需要代码实现”的确认动作。"""
+    APP_LOGGER.info(
+        "api.confirm_code.requested",
+        message_id=message_id,
+        approved=bool(request.approved),
+    )
     session, source_message = find_message(message_id)
     if source_message["status"] != "confirm_code":
+        APP_LOGGER.warning(
+            "api.confirm_code.invalid_state",
+            message_id=message_id,
+            current_status=source_message.get("status", ""),
+        )
         raise HTTPException(status_code=400, detail="Message is not waiting for code confirmation")
 
     # 一旦点击过确认按钮，就先把原消息的按钮撤掉，避免前端重复提交。
@@ -306,22 +463,54 @@ def confirm_code_generation(message_id: str, request: CodeConfirmRequest) -> dic
         # 用户选择不继续时，直接结束本轮链路。
         session["status"] = "completed"
         session["updated_at"] = now_iso()
+        persist_session_record(session)
+        APP_LOGGER.info(
+            "api.confirm_code.declined",
+            session_id=session.get("id", ""),
+            message_id=message_id,
+        )
         return {"session": serialize_session(session), "summary": summarize_session(session)}
 
     # 用户确认继续后，进入工作流的代码生成路径。
-    trace_id = next_id("trace", TRACE_SEQ)
-    workflow_payload = WORKFLOW.run_code_generation(
-        session_id=session["id"],
-        trace_id=trace_id,
-        source_message=source_message,
-        history=session["messages"],
-    )
+    trace_id = next_id("trace")
+    try:
+        workflow_payload = WORKFLOW.run_code_generation(
+            session_id=session["id"],
+            trace_id=trace_id,
+            source_message=source_message,
+            history=session["messages"],
+        )
+    except Exception as exc:
+        APP_LOGGER.exception(
+            "api.confirm_code.failed",
+            session_id=session.get("id", ""),
+            trace_id=trace_id,
+            message_id=message_id,
+            error_type=type(exc).__name__,
+        )
+        raise
     assistant_message = materialize_assistant_message(workflow_payload)
     TRACE_REFERENCES[trace_id] = assistant_message["citations"]
 
     session["messages"].append(assistant_message)
     session["status"] = assistant_message["status"]
     session["updated_at"] = now_iso()
+    persist_session_record(session)
+    persist_observability_turn(
+        turn_type="confirm_code",
+        session=session,
+        user_query=str(source_message.get("content", "") or ""),
+        assistant_message=assistant_message,
+    )
+    APP_LOGGER.info(
+        "api.confirm_code.completed",
+        session_id=session.get("id", ""),
+        trace_id=trace_id,
+        message_id=message_id,
+        assistant_kind=assistant_message.get("kind", "unknown"),
+        assistant_status=assistant_message.get("status", "unknown"),
+        citation_count=len(assistant_message.get("citations", []) or []),
+    )
 
     return {
         "session": serialize_session(session),
@@ -335,5 +524,75 @@ def get_references(trace_id: str) -> dict[str, Any]:
     """根据 trace_id 查询本轮工作流实际返回的引用证据。"""
     references = TRACE_REFERENCES.get(trace_id)
     if references is None:
+        APP_LOGGER.warning("api.references.not_found", trace_id=trace_id)
         raise HTTPException(status_code=404, detail="Trace not found")
+    APP_LOGGER.debug("api.references.fetched", trace_id=trace_id, count=len(references))
     return {"trace_id": trace_id, "items": references}
+
+
+@app.post("/api/messages/{message_id}/feedback")
+def create_message_feedback(message_id: str, request: MessageFeedbackRequest) -> dict[str, Any]:
+    """记录用户对单条 assistant 消息的反馈。"""
+    APP_LOGGER.info(
+        "api.feedback.requested",
+        message_id=message_id,
+        helpful=bool(request.helpful),
+        reason_tag=text_preview(request.reason_tag, max_chars=48),
+        rating=request.rating,
+    )
+    session, message = find_message(message_id)
+    if message.get("role") != "assistant":
+        APP_LOGGER.warning("api.feedback.invalid_role", message_id=message_id, role=message.get("role", ""))
+        raise HTTPException(status_code=400, detail="Only assistant message can receive feedback")
+
+    trace_id = str(message.get("trace_id", "") or "")
+    OBS_STORE.record_feedback(
+        session_id=session["id"],
+        trace_id=trace_id,
+        message_id=message_id,
+        helpful=bool(request.helpful),
+        reason_tag=request.reason_tag.strip(),
+        rating=request.rating,
+        comment=request.comment.strip(),
+        payload={
+            "kind": message.get("kind"),
+            "intent": message.get("intent"),
+            "status": message.get("status"),
+        },
+    )
+    message["feedback"] = {
+        "helpful": bool(request.helpful),
+        "reason_tag": request.reason_tag.strip(),
+        "rating": request.rating,
+        "comment": request.comment.strip(),
+        "updated_at": now_iso(),
+    }
+    session["updated_at"] = now_iso()
+    persist_session_record(session)
+    APP_LOGGER.info(
+        "api.feedback.completed",
+        message_id=message_id,
+        session_id=session.get("id", ""),
+    )
+    return {"ok": True, "message_id": message_id}
+
+
+@app.get("/api/observability/summary")
+def get_observability_summary(window_minutes: int = 60) -> dict[str, Any]:
+    """查询窗口级质量指标摘要。"""
+    APP_LOGGER.debug("api.observability.summary.requested", window_minutes=max(1, int(window_minutes)))
+    summary = OBS_STORE.get_summary(window_minutes=max(1, int(window_minutes)))
+    return {
+        "observability": OBS_STORE.status(),
+        "summary": summary,
+    }
+
+
+@app.get("/api/observability/alerts")
+def get_observability_alerts(limit: int = 50) -> dict[str, Any]:
+    """查询最近告警事件列表。"""
+    APP_LOGGER.debug("api.observability.alerts.requested", limit=max(1, min(int(limit), 200)))
+    return {
+        "observability": OBS_STORE.status(),
+        "items": OBS_STORE.list_alerts(limit=max(1, min(int(limit), 200))),
+    }

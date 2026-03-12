@@ -1,0 +1,588 @@
+{
+  "generated_at": "2026-03-11T11:50:03",
+  "config_path": "workflow/eval/config.answer.hybrid.smoke5.template.json",
+  "dataset_path": "workflow/eval/datasets/ad_engine_answer_eval_hybrid_smoke5.jsonl",
+  "output_path": "workflow/eval/results/latest_answer_eval_hybrid_smoke5_report.json",
+  "total_cases": 5,
+  "min_required_coverage_for_pass": 0.8,
+  "require_citation_for_exact": true,
+  "enable_llm_judge": true,
+  "llm_judge_available": true,
+  "qa_llm_enabled": true,
+  "qa_llm_available": true,
+  "qa_llm_model": "deepseek-chat",
+  "llm_judge_required_for_exact": false,
+  "llm_judge_pass_threshold": 0.6,
+  "weights": {
+    "required_fact_coverage": 0.15,
+    "forbidden_claim_pass": 0.1,
+    "expected_mode_accuracy": 0.1,
+    "citation_hit": 0.15,
+    "code_citation_hit": 0.25,
+    "expected_source_hit": 0.15,
+    "llm_judge_score": 0.1
+  },
+  "metric_denominators": {
+    "total_cases": 5,
+    "wiki_citation_cases": 5,
+    "code_citation_cases": 5,
+    "expected_source_cases": 5,
+    "formula_cases": 2,
+    "reason_cases": 1,
+    "function_location_cases": 1,
+    "mixed_followup_cases": 1
+  },
+  "metrics": {
+    "required_fact_coverage": 1.0,
+    "forbidden_claim_pass_rate": 1.0,
+    "expected_mode_accuracy": 1.0,
+    "citation_hit_rate": 1.0,
+    "overall_score": 0.994,
+    "exact_correct_rate": 1.0,
+    "wiki_citation_hit_rate": 0.8,
+    "code_citation_hit_rate": 1.0,
+    "expected_source_hit_rate": 1.0,
+    "llm_judge_score_avg": 0.94,
+    "formula_structure_hit_rate": 1.0,
+    "reason_structure_hit_rate": 1.0,
+    "location_anchor_hit_rate": 1.0,
+    "mixed_dual_source_hit_rate": 1.0
+  },
+  "hybrid_type_metrics": {
+    "formula": {
+      "cases": 2,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    },
+    "function_location": {
+      "cases": 1,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    },
+    "mixed_followup": {
+      "cases": 1,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    },
+    "reason": {
+      "cases": 1,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    }
+  },
+  "per_case": [
+    {
+      "id": "ans_hybrid_001",
+      "query": "target_cpa 和 pCVR 的出价公式是什么，代码里哪个函数实现",
+      "intent": "knowledge_qa",
+      "note": "公式问答-出价公式+函数定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_ocpc_bid",
+        "compute_bid_for_request"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "target_cpa * pcvr * alpha",
+          "bid = target_cpa * pCVR * alpha"
+        ],
+        [
+          "compute_ocpc_bid"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。\n\n**结论**\n当前问题属于“公式说明”，优先给出公式与变量含义。\n\n1. 结论  \ntarget_cpa 和 pCVR 的出价公式为：  \n**bid = target_cpa × pcvr × alpha**  \n其中：  \n- **target_cpa**：目标单次转化成本  \n- **pcvr**：预估转化率  \n- **alpha**：根据预算进度与竞争强度计算的调节因子  \n\n该公式在代码中由函数 **compute_ocpc_bid** 实现。\n\n2. 依据  \n- 出价公式定义：证据2显示 `compute_ocpc_bid` 函数的文档字符串明确说明 “bid = target_cpa * pcvr * alpha”（第32行），并在第34行实现该计算。  \n- 函数实现位置：证据2指出该函数位于 `codes/ad_engine/bid/bid_optimizer.py` 文件的第29-37行。  \n- 参数含义：证据1中 `BidContext` 类包含 `target_cpa` 字段（第10行）；证据3和证据4显示 `pcvr` 是经过校准的预估转化率；证据2中 `alpha` 是调节因子。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文可直接复用。\n\n**代码锚点补充**\n- 入口函数优先参考：`compute_bid_for_request`（如证据命中）。\n- 当前可定位锚点：`codes/ad_engine/bid/bid_optimizer.py` -> `compute_ocpc_bid`（line: 29-37）。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "target_cpa * pcvr * alpha / bid = target_cpa * pCVR * alpha",
+        "compute_ocpc_bid",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "回答准确覆盖了所有预期要点，公式、函数和代码位置均正确，且未出现禁忌结论或幻觉。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_004",
+      "query": "请求级出价是如何串联计算的，请给公式和函数链路",
+      "intent": "knowledge_qa",
+      "note": "公式问答-入口函数链路",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_bid_for_request",
+        "compute_alpha",
+        "compute_ocpc_bid"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "compute_bid_for_request"
+        ],
+        [
+          "compute_alpha"
+        ],
+        [
+          "compute_ocpc_bid"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。\n\n**结论**\n当前问题属于“公式说明”，优先给出公式与变量含义。\n\n1. 结论\n请求级出价串联计算的核心公式为：`bid = target_cpa * pCVR * alpha`。其中，`target_cpa`为目标转化成本，`pCVR`为预估转化率，`alpha`为根据预算进度和竞争强度计算的调节因子。在线链路为：请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传。出价模块的函数链路为：`compute_alpha` -> `compute_ocpc_bid`。\n\n2. 依据\n- 出价核心公式为 `bid = target_cpa * pCVR * alpha`（证据2、证据3）。\n- 公式变量含义：`target_cpa` 为目标转化成本，`pCVR` 为预估转化率，`alpha` 为调节因子（证据1、证据2）。\n- 调节因子 `alpha` 由函数 `compute_alpha` 根据 `budget_ratio`（预算进度）和 `competition_level`（竞争强度）计算（证据1）。\n- 最终出价由函数 `compute_ocpc_bid` 计算，其实现即公式 `bid = target_cpa * pcvr * alpha`（证据2）。\n- 在线投放链路包含“出价”环节（证据5）。\n- 代码锚点：\n    - 调节因子计算函数：`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_alpha` 函数（证据1）。\n    - 出价计算函数：`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid` 函数（第29-37行）（证据2）。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文可直接复用。\n\n**代码锚点补充**\n- 入口函数优先参考：`compute_bid_for_request`（如证据命中）。\n- 当前可定位锚点：`codes/ad_engine/bid/bid_optimizer.py` -> `compute_ocpc_bid`（line: 29-37）。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md",
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "compute_bid_for_request",
+        "compute_alpha",
+        "compute_ocpc_bid"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答准确覆盖了核心公式、变量含义和函数链路，并正确引用了证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_012",
+      "query": "pCTR/pCVR 集体偏高或偏低常见原因是什么，代码里校准函数在哪",
+      "intent": "knowledge_qa",
+      "note": "原因解释-两率偏差",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "calibrate_probability",
+        "predict_ctr_cvr"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "特征分布漂移",
+          "模型版本误切换",
+          "校准参数同步"
+        ],
+        [
+          "calibrate_probability"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。\n\n**结论**\n当前问题属于“原因解释”，优先给出原因与对应依据。\n\n1. 结论\n   pCTR/pCVR 集体偏高或偏低的常见原因包括：\n   a. 模型版本与校准参数版本不一致，导致偏差放大。\n   b. 校准参数（slope, bias）设置不当，直接影响校准后概率值。\n   c. 特征分布发生漂移，影响模型原始预测（raw pCTR/pCVR）的准确性。\n\n2. 依据\n   a. 模型版本与校准参数不一致：证据2指出“校准版本应与模型版本一致，避免偏差放大”。（代码锚点：`codes/ad_engine/rate/rate_predictor.py` 第21-22行，函数 `predict_ctr_cvr`）\n   b. 校准参数设置：证据2显示校准函数 `calibrate_probability` 使用了具体的 `slope` 和 `bias` 参数（如 pCTR: slope=0.96, bias=0.01），这些参数直接影响最终输出值。（代码锚点：`codes/ad_engine/rate/rate_predictor.py` 第31-32行，函数 `predict_ctr_cvr`）\n   c. 特征分布漂移：证据1和证据2表明，模型推理依赖 `user_vector`、`ad_vector`、`context_vector` 等特征，这些特征的分布变化会影响原始预测值 `raw.get(\"pctr\", 0.0)` 和 `raw.get(\"pcvr\", 0.0)`。（代码锚点：`codes/ad_engine/rate/rate_predictor.py` 第24-30行，函数 `predict_ctr_cvr`）\n   d. 校准函数位置：代码中的校准操作在 `predict_ctr_cvr` 函数内通过 `calibrate_probability` 函数实现。（代码锚点：`codes/ad_engine/rate/rate_predictor.py` 第31-32行，函数 `predict_ctr_cvr`）\n\n3. 监控指标关键词\n   在评估pCTR/pCVR集体偏差时，应关注的指标包括：**Calibration Error**（校准误差）、**线上CTR/CVR偏差**（即预测值与实际值的偏差）、**AUC**（模型排序能力）、**LogLoss**（模型预测精度）。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "特征分布漂移 / 模型版本误切换 / 校准参数同步",
+        "calibrate_probability",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答全面覆盖了预期要点，并正确指出了校准函数位置，但部分引用路径与回答不完全匹配。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_021",
+      "query": "多样性惩罚项对应哪个函数，在哪个文件",
+      "intent": "knowledge_qa",
+      "note": "函数定位-多样性惩罚",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "apply_diversity_penalty"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "apply_diversity_penalty"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。\n\n1. 结论  \n多样性惩罚项对应的函数是 `apply_diversity_penalty`，位于文件 `codes/ad_engine/rerank/rerank_engine.py` 中。\n\n2. 依据  \n根据证据1和证据2，在 `codes/ad_engine/rerank/rerank_engine.py` 文件的第18行定义了函数 `apply_diversity_penalty`，其功能为“多样性惩罚项”。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "apply_diversity_penalty",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 0.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答准确覆盖了所有预期要点，但引用了部分无关路径。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_026",
+      "query": "召回阶段常见质量指标有哪些，同时告诉我候选选择函数在哪",
+      "intent": "knowledge_qa",
+      "note": "混合追问-指标+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "select_recall_candidates"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "Recall@N",
+          "CandidateCount",
+          "RecallLatencyP99",
+          "FilterDropRate"
+        ],
+        [
+          "select_recall_candidates"
+        ],
+        [
+          "codes/ad_engine/recall/recall_service.py",
+          "recall_service.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。\n\n**结论**\n当前问题属于“要点枚举”，建议按清单阅读。\n\n1. 结论\n- 召回阶段常见质量指标包括：Recall@N、CandidateCount、RecallLatencyP99、FilterDropRate。\n- 候选选择函数是 `select_recall_candidates`，位于 `codes/ad_engine/recall/recall_service.py` 文件中。\n\n2. 依据\n- 召回质量指标依据：证据6（在线召回 / 3. 召回质量指标）列出了 Recall@N、CandidateCount、RecallLatencyP99、FilterDropRate。\n- 候选选择函数依据：证据2（function:select_recall_candidates）显示函数 `select_recall_candidates` 定义在 `codes/ad_engine/recall/recall_service.py` 文件的第21行。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "Recall@N / CandidateCount / RecallLatencyP99 / FilterDropRate",
+        "select_recall_candidates",
+        "codes/ad_engine/recall/recall_service.py / recall_service.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "回答准确覆盖了所有预期要点，并正确引用了证据路径。"
+      },
+      "llm_judge_error": null
+    }
+  ]
+}

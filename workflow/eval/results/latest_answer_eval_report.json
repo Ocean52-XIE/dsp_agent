@@ -1,0 +1,1006 @@
+{
+  "generated_at": "2026-03-10T17:27:07",
+  "config_path": "workflow/eval/config.answer.template.json",
+  "dataset_path": "workflow/eval/datasets/ad_engine_answer_eval.jsonl",
+  "output_path": "workflow/eval/results/latest_answer_eval_report.json",
+  "total_cases": 10,
+  "min_required_coverage_for_pass": 0.8,
+  "require_citation_for_exact": true,
+  "enable_llm_judge": true,
+  "llm_judge_available": true,
+  "qa_llm_enabled": true,
+  "qa_llm_available": true,
+  "qa_llm_model": "glm-4.7",
+  "llm_judge_required_for_exact": false,
+  "llm_judge_pass_threshold": 0.6,
+  "weights": {
+    "required_fact_coverage": 0.45,
+    "forbidden_claim_pass": 0.2,
+    "expected_mode_accuracy": 0.15,
+    "citation_hit": 0.2,
+    "code_citation_hit": 0.15,
+    "expected_source_hit": 0.05,
+    "llm_judge_score": 0.2
+  },
+  "metric_denominators": {
+    "total_cases": 10,
+    "wiki_citation_cases": 9,
+    "code_citation_cases": 0,
+    "expected_source_cases": 9
+  },
+  "metrics": {
+    "required_fact_coverage": 0.933333,
+    "forbidden_claim_pass_rate": 1.0,
+    "expected_mode_accuracy": 1.0,
+    "citation_hit_rate": 1.0,
+    "overall_score": 0.961533,
+    "exact_correct_rate": 0.9,
+    "wiki_citation_hit_rate": 1.0,
+    "expected_source_hit_rate": 1.0,
+    "llm_judge_score_avg": 0.91
+  },
+  "per_case": [
+    {
+      "id": "ans_arch_001",
+      "query": "广告在线投放的核心链路有哪些阶段",
+      "intent": "knowledge_qa",
+      "note": "核心链路完整性",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "请求接入"
+        ],
+        [
+          "召回"
+        ],
+        [
+          "两率预估"
+        ],
+        [
+          "出价"
+        ],
+        [
+          "精排"
+        ],
+        [
+          "计费/日志回传",
+          "计费",
+          "日志回传"
+        ]
+      ],
+      "forbidden_claims": [
+        "仅有两个阶段"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“要点枚举”，优先列出与问题直接相关的清单。\n\n### 结论\n广告在线投放的核心链路包括以下阶段：\n1. 请求接入\n2. 召回\n3. 两率预估\n4. 出价\n5. 精排\n6. 计费/日志回传\n\n### 依据\n根据证据1显示：\"典型在线投放链路如下：请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传\"。\n\n证据2提到：\"用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节\"，进一步印证了核心链路中的关键环节。\n\n证据3指出广告在线投放场景覆盖以下核心链路：在线召回、两率预估（pCTR/pCVR）、出价策略、精排策略、联调与排障。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md",
+        "docs/wiki/ad_engine/README.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md",
+        "docs/wiki/ad_engine/README.md",
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/05-联调排障手册.md",
+          "docs/wiki/ad_engine/README.md",
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "请求接入",
+        "召回",
+        "两率预估",
+        "出价",
+        "精排",
+        "计费/日志回传 / 计费 / 日志回传"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "完全覆盖所有预期要点，未包含禁忌结论，所有结论都有文档支持"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_arch_002",
+      "query": "广告引擎常见关键指标有哪些",
+      "intent": "knowledge_qa",
+      "note": "关键指标覆盖",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "pctr",
+          "ctr"
+        ],
+        [
+          "pcvr",
+          "cvr"
+        ],
+        [
+          "ecpm"
+        ],
+        [
+          "roi"
+        ],
+        [
+          "winrate"
+        ],
+        [
+          "fillrate"
+        ]
+      ],
+      "forbidden_claims": [
+        "只有ctr"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“要点枚举”，优先列出与问题直接相关的清单。\n\n## 结论\n广告引擎常见关键指标包括预测指标、竞价指标、填充指标、预估模型指标和链路监控指标。\n\n## 依据\n1. **预测指标**：pCTR（预测点击率）、pCVR（预测转化率）【证据1】\n2. **竞价指标**：eCPM（千次展示预期收益）、ROI（投入产出比）、WinRate（竞价胜出率）【证据1】\n3. **填充指标**：FillRate（请求填充率）【证据1】\n4. **预估模型指标**：AUC（区分能力）、LogLoss（概率预测质量）、Calibration Error（概率校准误差）、线上CTR/CVR偏差【证据2】\n5. **链路监控指标**：candidate_count_before_filter（过滤前候选数）、candidate_count_after_filter（过滤后候选数）、rank_score（排序分）、drop_reason（淘汰原因）【证据4】\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/README.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "citation_paths_all": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/README.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/README.md",
+          "docs/wiki/ad_engine/05-联调排障手册.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "pctr / ctr",
+        "pcvr / cvr",
+        "ecpm",
+        "roi",
+        "winrate",
+        "fillrate"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "模型完全覆盖了所有必需的广告引擎关键指标，没有包含禁用结论，且没有明显的虚构内容"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_recall_001",
+      "query": "召回阶段常见质量指标有哪些",
+      "intent": "knowledge_qa",
+      "note": "召回质量指标",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "recall@n",
+          "recall"
+        ],
+        [
+          "candidatecount"
+        ],
+        [
+          "recalllatencyp99",
+          "p99"
+        ],
+        [
+          "filterdroprate"
+        ]
+      ],
+      "forbidden_claims": [
+        "不需要监控时延"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“要点枚举”，优先列出与问题直接相关的清单。\n\n结论：\n召回阶段常见的质量指标包括Recall@N、CandidateCount、RecallLatencyP99和FilterDropRate。\n\n依据：\n根据证据3\"在线召回\"中的\"召回质量指标\"部分，召回阶段常见质量指标包括：\n- Recall@N：目标广告是否出现在前 N 个候选中。\n- CandidateCount：每次请求候选广告数量。\n- RecallLatencyP99：召回阶段 P99 时延。\n- FilterDropRate：过滤器导致的候选丢弃比例。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/01-在线召回.md",
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "recall@n / recall",
+        "candidatecount",
+        "recalllatencyp99 / p99",
+        "filterdroprate"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "回答完整覆盖了预期要点，没有禁忌结论，且所有内容都有依据支持"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_rate_001",
+      "query": "pCTR/pCVR整体偏高偏低时先排查什么",
+      "intent": "knowledge_qa",
+      "note": "两率偏差排查",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "特征分布",
+          "漂移"
+        ],
+        [
+          "模型版本"
+        ],
+        [
+          "校准参数"
+        ]
+      ],
+      "forbidden_claims": [
+        "只看预算即可"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。结论：当pCTR/pCVR整体偏高偏低时，应先排查两率预估是否异常漂移，并与历史数据对比。\n\n依据：联调排障手册中的标准排查顺序明确指出：\"2. 看两率预估是否异常漂移（pCTR/pCVR 与历史对比）。\"如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/05-联调排障手册.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "特征分布 / 漂移"
+      ],
+      "missing_fact_groups": [
+        "模型版本",
+        "校准参数"
+      ],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 0.333333,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 0.333333,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.35
+      },
+      "overall_score": 0.656,
+      "exact_correct": false,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.35,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "模型只覆盖了部分预期要点，但没有出现禁忌结论，引用了相关文档"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_bid_001",
+      "query": "target_cpa 和 pCVR 的出价公式是什么",
+      "intent": "knowledge_qa",
+      "note": "出价公式关键项",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "bid"
+        ],
+        [
+          "target_cpa"
+        ],
+        [
+          "pcvr",
+          "pcvr"
+        ],
+        [
+          "alpha"
+        ]
+      ],
+      "forbidden_claims": [
+        "与pCVR无关"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“公式说明”，优先给出公式本身及变量含义。\n\n### 结论\ntarget_cpa和pCVR的出价公式为：`bid = target_cpa * pCVR * alpha`\n\n### 依据\n根据证据2中的\"出价策略\"文档，在\"常见公式示意\"部分明确提到：\n`bid = target_cpa * pCVR * alpha`\n\n其中：\n- bid：出价金额\n- target_cpa：目标单次转化成本\n- pCVR：预测转化率\n- alpha：调整系数\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "bid",
+        "target_cpa",
+        "pcvr / pcvr",
+        "alpha"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "完整准确的出价公式及变量解释，完全覆盖预期要点且无禁忌结论"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_bid_002",
+      "query": "预算超前消耗时 pacing 应该怎么调",
+      "intent": "knowledge_qa",
+      "note": "pacing 调整方向",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "预算超前"
+        ],
+        [
+          "下调",
+          "调低"
+        ],
+        [
+          "调节因子",
+          "alpha"
+        ]
+      ],
+      "forbidden_claims": [
+        "应该上调出价"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。结论：\n预算超前消耗时，应下调调节因子，限制高价竞拍。同时建议按小时维度做动态pacing，而不是静态日均分配。\n\n依据：\n证据1中明确指出：\"预算超前消耗：下调调节因子，限制高价竞拍。预算落后消耗：上调调节因子，增加拿量能力。强烈建议按小时维度做动态 pacing，而不是静态日均分配。\"如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md",
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "预算超前",
+        "下调 / 调低",
+        "调节因子 / alpha"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "回答完整覆盖所有预期要点，包含预算超前、下调调节因子等关键信息，没有禁忌结论，且有明确的证据支持。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_rerank_001",
+      "query": "为什么高 eCPM 广告可能没进最终位",
+      "intent": "knowledge_qa",
+      "note": "高分未进位原因",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "频控",
+          "风控"
+        ],
+        [
+          "多样性"
+        ],
+        [
+          "特征缺失",
+          "降级"
+        ]
+      ],
+      "forbidden_claims": [
+        "高eCPM一定进入最终位"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“原因解释”，优先给出主要原因并配套依据。\n\n## 结论\n高eCPM广告可能没进最终位主要受到频控/风控限制、多样性策略惩罚或特征缺失导致的保守降级影响。\n\n## 依据\n1. 被频控或风控约束过滤（证据3精排策略/6.2节）\n2. 触发多样性惩罚项（证据3精排策略/6.2节）\n3. 排序特征缺失触发保守降级（证据3精排策略/6.2节）\n4. eCPM虽为排序核心指标（证据1广告引擎总体架构/3节），但可能受其他因素影响最终结果\n5. 可通过监控rank_score和drop_reason等日志字段排查具体原因（证据4联调排障手册/5节）\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/04-精排策略.md",
+          "docs/wiki/ad_engine/05-联调排障手册.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "频控 / 风控",
+        "多样性",
+        "特征缺失 / 降级"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.95
+      },
+      "overall_score": 0.992,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.95,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "模型回答全面覆盖了预期要点（频控/风控、多样性、特征缺失/降级），并提供了证据支持，没有出现禁忌结论，且引用路径与回答内容相符。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_trouble_001",
+      "query": "联调排障时一次完整排障最小信息包括哪些",
+      "intent": "knowledge_qa",
+      "note": "排障最小信息集",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "trace_id",
+          "request_id"
+        ],
+        [
+          "广告位"
+        ],
+        [
+          "计划id",
+          "创意id"
+        ],
+        [
+          "曝光",
+          "点击",
+          "转化"
+        ]
+      ],
+      "forbidden_claims": [
+        "无需请求标识"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。**结论**\n当前问题属于“要点枚举”，优先列出与问题直接相关的清单。\n\n结论：\n联调排障时一次完整排障最小信息包括：\n- 请求时间窗口（精确到分钟）\n- trace_id / request_id\n- 广告位与终端信息\n- 计划 ID / 创意 ID\n- 实际曝光、点击、转化回传数据\n\n依据：\n根据证据1（联调排障手册 / 2. 一次完整排障最小信息）中明确列出的最小信息要求。\n\n如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/05-联调排障手册.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/05-联调排障手册.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/05-联调排障手册.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "trace_id / request_id",
+        "广告位",
+        "计划id / 创意id",
+        "曝光 / 点击 / 转化"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.984,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答覆盖所有预期要点，包含必要的信息标识，引用了正确的排障手册文档，没有违反禁忌结论"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_trouble_002",
+      "query": "广告链路标准排查顺序是什么",
+      "intent": "knowledge_qa",
+      "note": "标准排查顺序",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/05-联调排障手册.md"
+      ],
+      "gold_code_paths": [],
+      "expected_sources": [
+        "wiki"
+      ],
+      "required_facts": [
+        [
+          "召回"
+        ],
+        [
+          "两率预估"
+        ],
+        [
+          "出价"
+        ],
+        [
+          "精排"
+        ]
+      ],
+      "forbidden_claims": [
+        "先改代码再看日志"
+      ],
+      "answer": "这轮输入被判定为业务知识问答。结论：广告链路标准排查顺序为：召回→两率预估→出价策略→精排策略。\n\n依据：\n1. 证据1明确给出了标准排查顺序：看召回是否拿到足够候选(CandidateCount)→看两率预估是否异常漂移(pCTR/pCVR与历史对比)→看出价是否被预算或风控压制→看精排是否因约束导致高分广告出局。\n\n2. 证据2提供了详细排查方向：召回不足(候选量、过滤器命中率、索引延迟)→两率波动(特征新鲜度、模型版本、校准参数)→出价异常(CPA/ROI配置、预算节奏、竞价日志)→精排抖动(特征缺失、重排约束冲突、探索权重)。\n\n3. 证据4提到广告引擎核心链路包括在线召回、两率预估(pCTR/pCVR)、出价策略和精排策略，与排查顺序对应。如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/05-联调排障手册.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/05-联调排障手册.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/05-联调排障手册.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "召回",
+        "两率预估",
+        "出价",
+        "精排"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": null,
+      "expected_source_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答完全覆盖预期要点，顺序正确，引用证据恰当，没有禁忌结论或明显错误。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_ood_001",
+      "query": "广告引擎离线训练任务的调度依赖是什么",
+      "intent": "knowledge_qa",
+      "note": "文档无覆盖时应给出证据不足",
+      "expected_mode": "insufficient_evidence",
+      "gold_paths": [],
+      "gold_wiki_paths": [],
+      "gold_code_paths": [],
+      "expected_sources": [],
+      "required_facts": [],
+      "forbidden_claims": [],
+      "answer": "这轮输入被判定为业务知识问答。当前证据不足。\n\n建议补充的问题：\n1. 离线训练任务与在线服务模块之间的数据依赖关系\n2. 离线训练任务执行的触发条件\n3. 广告引擎离线任务的调度系统或工具\n4. 离线训练任务与模型更新流程的关联如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/README.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/README.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/README.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": null,
+      "code_citation_hit": null,
+      "expected_source_hit": null,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.983333,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "模型正确识别了证据不足，没有提供错误结论，并给出了有价值的后续问题建议。"
+      },
+      "llm_judge_error": null
+    }
+  ]
+}

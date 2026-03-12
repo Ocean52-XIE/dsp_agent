@@ -1,0 +1,11 @@
+{
+  "dataset_path": "workflow/eval/datasets/ad_engine_retrieval_eval.jsonl",
+  "top_ks": [1, 3, 5],
+  "max_candidates": 8,
+  "enable_agent_citation_eval": true,
+  "session_id_prefix": "eval_sess",
+  "trace_id_prefix": "eval_trace",
+  "output_path": "workflow/eval/results/latest_eval_report.json",
+  "save_per_case": true
+}
+

@@ -13,13 +13,58 @@ from __future__ import annotations
 都已经按照真实可扩展的工作流方式组织，后续只需要逐步替换节点内部能力即可。
 """
 
+import os
 from time import perf_counter
-from typing import Any, TypedDict
+from pathlib import Path
+from typing import Any, Callable, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from workflow.nodes.code_generation import run as code_generation_node
+from workflow.nodes.conversation_transition import run as conversation_transition_node
+from workflow.nodes.decline_code_generation_response import run as decline_code_generation_response_node
+from workflow.nodes.domain_gate import run as domain_gate_node
+from workflow.nodes.entry_router import run as entry_router_node
+from workflow.nodes.finalize_response import run as finalize_response_node
+from workflow.nodes.fix_plan import run as fix_plan_node
+from workflow.nodes.intent_classifier import run as intent_classifier_node
+from workflow.nodes.issue_localizer import run as issue_localizer_node
+from workflow.nodes.knowledge_answer import run as knowledge_answer_node
+from workflow.nodes.knowledge_answer.llm_qa import KnowledgeQALLMClient
+from workflow.nodes.load_code_context import run as load_code_context_node
+from workflow.nodes.load_context import run as load_context_node
+from workflow.nodes.merge_evidence import run as merge_evidence_node
+from workflow.nodes.out_of_scope_response import run as out_of_scope_response_node
+from workflow.nodes.query_rewriter import run as query_rewriter_node
+from workflow.nodes.retrieve_cases import run as retrieve_cases_node
+from workflow.nodes.retrieve_code import run as retrieve_code_node
+from workflow.nodes.retrieve_code.code_retriever import LocalCodeRetriever, parse_code_dirs_from_env
+from workflow.nodes.retrieve_code_context import run as retrieve_code_context_node
+from workflow.nodes.retrieve_wiki import run as retrieve_wiki_node
+from workflow.nodes.retrieve_wiki.wiki_retriever import MarkdownWikiRetriever
+from workflow.nodes.root_cause_analysis import run as root_cause_analysis_node
+from workflow.runtime_logging import get_file_logger
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    """读取 bool 环境变量并做兜底。"""
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "n", "off"}:
+        return False
+    return default
+
+# 当前工程已经切换成真实 LangGraph，这里统一标识后端类型。
+BACKEND_NAME = "langgraph"
 
 # 当前工程已经切换成真实 langgraph，因此这里明确标识后端类型，
 # 前端调试面板也会直接展示这个值。
+BACKEND_NAME = "langgraph"
+
+
 BACKEND_NAME = "langgraph"
 
 
@@ -85,10 +130,18 @@ class WorkflowState(TypedDict, total=False):
     # 历史摘要与检索中间结果。
     history_summary: str
     retrieval_queries: list[str]
+    retrieval_plan: dict[str, Any]
     wiki_hits: list[dict[str, Any]]
+    wiki_retrieval_grade: str
+    wiki_retrieval_profile: dict[str, Any]
     case_hits: list[dict[str, Any]]
+    case_retrieval_grade: str
+    case_retrieval_profile: dict[str, Any]
     code_hits: list[dict[str, Any]]
+    code_retrieval_grade: str
+    code_retrieval_profile: dict[str, Any]
     citations: list[dict[str, Any]]
+    evidence_fusion_profile: dict[str, Any]
 
     # 统一分析对象与最终输出。
     analysis: dict[str, Any] | None
@@ -109,7 +162,44 @@ class WorkflowService:
 
     def __init__(self) -> None:
         self.backend_name = BACKEND_NAME
+        # 系统调试开关（默认关闭）：
+        # - false：保持当前精简 debug 输出；
+        # - true：在最终响应中附加 debug.verbose 扩展调试信息。
+        self.debug_verbose_enabled = _env_bool("WORKFLOW_DEBUG_VERBOSE", default=False)
+        project_root = Path(__file__).resolve().parent.parent
+        self._file_logger = get_file_logger(project_root=project_root)
+
+        # 真实 Wiki 检索器：直接读取仓库内的 Markdown 文档作为语料。
+        # 这里在服务初始化时构建轻量索引，后续每次请求直接检索，避免重复扫盘。
+        self._wiki_retriever = MarkdownWikiRetriever(
+            wiki_dir=project_root / "docs" / "wiki" / "ad_engine",
+            project_root=project_root,
+            default_top_k=4,
+        )
+
+        # 真实代码检索器：
+        # - 默认索引仓库根目录 `codes/`（可通过环境变量 WORKFLOW_CODE_RETRIEVER_DIRS 覆盖）；
+        # - 不再默认扫描整个仓库，避免把工具工程文件误纳入检索范围；
+        # - 采用 Parent/Child 混合召回，返回可定位的代码证据。
+        code_dirs = parse_code_dirs_from_env(project_root=project_root)
+        self._code_retriever = LocalCodeRetriever(
+            project_root=project_root,
+            code_dirs=code_dirs,
+            default_top_k=4,
+        )
+
+        # knowledge_answer 节点使用的 LLM 客户端：
+        # - 未配置 API Key 时不会中断流程；
+        # - 节点内部会自动降级到规则回答。
+        self._knowledge_qa_llm = KnowledgeQALLMClient.from_env()
         self._graph = self._build_graph()
+        self._file_logger.info(
+            "workflow.service.initialized",
+            backend=self.backend_name,
+            debug_verbose_enabled=self.debug_verbose_enabled,
+            logger_status=self._file_logger.status(),
+            code_dirs=[str(path) for path in getattr(self._code_retriever, "code_dirs", [])],
+        )
 
     def run_user_message(
         self,
@@ -166,9 +256,47 @@ class WorkflowService:
     def _invoke(self, state: WorkflowState) -> dict[str, Any]:
         """执行图并补齐统一调试信息。"""
         started_at = perf_counter()
-        result = self._graph.invoke(state)
+        self._file_logger.info(
+            "workflow.invoke.start",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            mode=state.get("mode", "message"),
+            history_size=len(state.get("history", []) or []),
+            user_query_preview=self._preview_text(state.get("user_query", ""), max_chars=120),
+        )
+        try:
+            result = self._graph.invoke(state)
+        except Exception as exc:
+            latency_ms = int((perf_counter() - started_at) * 1000)
+            self._file_logger.exception(
+                "workflow.invoke.exception",
+                trace_id=state.get("trace_id", ""),
+                session_id=state.get("session_id", ""),
+                mode=state.get("mode", "message"),
+                latency_ms=latency_ms,
+                error_type=type(exc).__name__,
+            )
+            raise
         assistant_message = dict(result["assistant_message"])
-        assistant_message["debug"]["latency_ms"] = int((perf_counter() - started_at) * 1000)
+        latency_ms = int((perf_counter() - started_at) * 1000)
+
+        # 注意：debug 字段现在由“系统调试开关”控制，默认可能不存在。
+        # 因此这里只在 debug 已存在且是 dict 的情况下补 latency，避免 KeyError。
+        debug_payload = assistant_message.get("debug")
+        if isinstance(debug_payload, dict):
+            debug_payload["latency_ms"] = latency_ms
+        self._file_logger.info(
+            "workflow.invoke.complete",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            mode=state.get("mode", "message"),
+            latency_ms=latency_ms,
+            response_kind=assistant_message.get("kind", "unknown"),
+            response_status=assistant_message.get("status", "unknown"),
+            next_action=(assistant_message.get("actions") or []),
+            citation_count=len(assistant_message.get("citations", []) or []),
+            node_trace_count=len(result.get("node_trace", []) or []),
+        )
         return assistant_message
 
     def _build_graph(self) -> Any:
@@ -277,698 +405,208 @@ class WorkflowService:
         return graph.compile()
 
     def _entry_router(self, state: WorkflowState) -> dict[str, Any]:
-        """记录入口模式，便于前端调试看出当前是普通消息还是恢复执行。"""
-        return {
-            "node_trace": self._trace(state, "entry_router", f"mode={state.get('mode', 'message')}"),
-        }
+        return self._run_node("entry_router", entry_router_node, state)
 
     def _load_context(self, state: WorkflowState) -> dict[str, Any]:
-        """恢复多轮会话上下文。
-
-        这个节点负责从历史消息中恢复“当前会话已经走到哪里了”，包括：
-
-        - 当前活动阶段：刚做完 QA、刚做完分析，还是正在等待代码确认；
-        - 当前活动模块：让“它、这个、这块”之类代词追问能复用上一轮主题；
-        - 最近一次分析结果：用于文本形式“给我代码”时安全地升级到代码生成；
-        - 历史摘要：为未来接真实记忆系统预留稳定接口。
-        """
-        history = state.get("history", [])
-        user_query = state["user_query"]
-
-        latest_assistant = self._latest_message_by(history, lambda message: message.get("role") == "assistant")
-        latest_qa_message = self._latest_message_by(
-            history,
-            lambda message: message.get("role") == "assistant" and message.get("intent") == "knowledge_qa",
-        )
-        latest_issue_message = self._latest_message_by(
-            history,
-            lambda message: message.get("role") == "assistant"
-            and message.get("kind") == "issue_analysis"
-            and message.get("analysis") is not None,
-        )
-        latest_pending_confirmation = self._latest_message_by(
-            history,
-            lambda message: message.get("role") == "assistant" and message.get("status") == "confirm_code",
-        )
-
-        active_task_stage = self._derive_task_stage(latest_assistant)
-        active_module_name, active_module_hint = self._extract_module_from_message(
-            latest_issue_message or latest_qa_message
-        )
-
-        if self._is_pronoun_followup(user_query) and active_module_name:
-            module_name = active_module_name
-            module_hint = active_module_hint
-            topic_source = "history_memory"
-        else:
-            module_name, module_hint = self._infer_module(user_query)
-            topic_source = "current_query"
-
-        return {
-            "module_name": module_name,
-            "module_hint": module_hint,
-            "active_topic": active_module_name or module_name,
-            "active_topic_source": topic_source,
-            "active_task_stage": active_task_stage,
-            "active_module_name": active_module_name or module_name,
-            "active_module_hint": active_module_hint or module_hint,
-            "active_qa_context": (latest_qa_message or {}).get("analysis"),
-            "active_issue_context": (latest_issue_message or {}).get("analysis"),
-            "last_analysis_result": (latest_issue_message or {}).get("analysis"),
-            "last_analysis_citations": (latest_issue_message or {}).get("citations", []),
-            "pending_action": "confirm_code" if latest_pending_confirmation else "completed",
-            "history_summary": self._build_history_summary(history),
-            "node_trace": self._trace(
-                state,
-                "load_context",
-                f"active_stage={active_task_stage}, module={module_name}",
-            ),
-        }
+        return self._run_node("load_context", load_context_node, state)
 
     def _domain_gate(self, state: WorkflowState) -> dict[str, Any]:
-        """判断输入是否属于当前系统的业务领域。"""
-        text = state["user_query"]
-        domain_terms = (
-            "业务",
-            "系统",
-            "模块",
-            "接口",
-            "配置",
-            "代码",
-            "日志",
-            "订单",
-            "库存",
-            "结算",
-            "支付",
-            "任务",
-            "案例",
-            "wiki",
-            "规则",
-            "修复",
-            "补丁",
-        )
-        out_terms = ("天气", "股票", "旅游", "电影", "菜谱", "翻译", "写诗", "足球", "nba")
-        domain_hits = sum(term in text for term in domain_terms)
-        out_hits = sum(term in text for term in out_terms)
-        relevance = 0.24 + domain_hits * 0.1
-        if "报错" in text or "异常" in text or "失败" in text:
-            relevance += 0.18
-        if "是什么" in text or "规则" in text or "流程" in text:
-            relevance += 0.12
-        if state.get("active_task_stage") in {"knowledge_qa", "issue_analysis", "confirm_code", "code_generation"}:
-            # 多轮场景下，像“那它报错 500 怎么排查”这种追问虽然当前句子里的业务词较少，
-            # 但如果会话已经有明确主题，就应该让领域门控参考历史上下文而不是只看单句。
-            relevance += 0.10
-            if self._is_pronoun_followup(text):
-                relevance += 0.16
-        if state.get("pending_action") == "confirm_code" and self._looks_like_decline_code_request(text):
-            # “先不用代码”属于会话控制语句，本身业务词很少，但它显然是在回复当前分析链路。
-            relevance += 0.22
-        if self._looks_like_code_generation_request(text):
-            # “给我代码”这类请求虽然不一定带完整业务词，但在当前系统里仍属于领域内任务。
-            relevance += 0.16
-        if out_hits and domain_hits == 0:
-            relevance = 0.14
-
-        relevance = max(0.0, min(0.98, relevance))
-        is_domain_related = relevance >= 0.45
-        return {
-            "domain_relevance": relevance,
-            "is_domain_related": is_domain_related,
-            "node_trace": self._trace(
-                state,
-                "domain_gate",
-                f"relevance={relevance:.2f}, in_scope={is_domain_related}",
-            ),
-        }
+        return self._run_node("domain_gate", domain_gate_node, state)
 
     def _intent_classifier(self, state: WorkflowState) -> dict[str, Any]:
-        """在领域内输入上重新判断本轮意图。
-
-        这里判断的是“本轮 intent”，而不是整场会话 intent。
-        即使上一轮是知识问答，本轮也完全可以被识别成问题分析或代码相关请求。
-        """
-        text = state["user_query"]
-        lowered = text.lower()
-        issue_terms = (
-            "报错",
-            "异常",
-            "失败",
-            "问题",
-            "修复",
-            "根因",
-            "定位",
-            "排查",
-            "traceback",
-            "error",
-            "500",
-            "超时",
-            "补丁",
-            "改代码",
-            "代码实现",
-        )
-        route = "issue_analysis" if any(term in lowered for term in issue_terms) else "knowledge_qa"
-        return {
-            "route": route,
-            "node_trace": self._trace(state, "intent_classifier", f"route={route}"),
-        }
+        return self._run_node("intent_classifier", intent_classifier_node, state)
 
     def _conversation_transition(self, state: WorkflowState) -> dict[str, Any]:
-        """判断当前会话是延续、升级还是切换主题。
-
-        这是多轮阶段升级版工作流的核心节点。它负责回答两个问题：
-
-        1. 本轮 intent 和上一轮阶段之间是什么关系？
-        2. 这轮应该继续走检索/分析，还是直接升级到代码生成？
-
-        设计原则如下：
-
-        - `intent` 永远重新判断；
-        - `task_stage` 依赖历史恢复；
-        - 代码生成必须依赖已有分析结果；
-        - 若检测到切换主题，则允许从当前轮重新开始一条新链路。
-        """
-        user_query = state["user_query"]
-        active_stage = state.get("active_task_stage", "idle")
-        current_route = state["route"]
-        same_topic = self._is_same_topic(
-            current_module=state["module_name"],
-            active_module=state.get("active_module_name"),
-            user_query=user_query,
-        )
-        wants_code = self._looks_like_code_generation_request(user_query)
-        declines_code = self._looks_like_decline_code_request(user_query)
-        has_prior_analysis = bool(state.get("last_analysis_result"))
-
-        execution_path = "retrieval_flow"
-        transition_type = f"start_{current_route}"
-        next_stage = current_route
-
-        if state.get("pending_action") == "confirm_code" and declines_code:
-            execution_path = "decline_code_flow"
-            transition_type = "decline_code_generation"
-            next_stage = "issue_analysis"
-        elif wants_code and has_prior_analysis:
-            execution_path = "code_generation_flow"
-            transition_type = "upgrade_to_code_generation"
-            current_route = "issue_analysis"
-            next_stage = "code_generation"
-        elif wants_code and not has_prior_analysis:
-            execution_path = "retrieval_flow"
-            transition_type = "code_request_without_analysis"
-            current_route = "issue_analysis"
-            next_stage = "issue_analysis"
-        else:
-            if active_stage == "knowledge_qa" and current_route == "issue_analysis":
-                transition_type = "upgrade_from_qa_to_issue_analysis"
-                next_stage = "issue_analysis"
-            elif active_stage in {"issue_analysis", "confirm_code", "code_generation"} and current_route == "knowledge_qa":
-                transition_type = "fallback_to_contextual_qa" if same_topic else "switch_topic"
-                next_stage = "knowledge_qa"
-            elif active_stage in {"issue_analysis", "confirm_code", "code_generation"} and current_route == "issue_analysis":
-                transition_type = "continue_issue_analysis" if same_topic else "switch_topic"
-                next_stage = "issue_analysis"
-            elif active_stage == "knowledge_qa" and current_route == "knowledge_qa":
-                transition_type = "continue_knowledge_qa" if same_topic else "switch_topic"
-                next_stage = "knowledge_qa"
-
-        return {
-            "route": current_route,
-            "execution_path": execution_path,
-            "transition_type": transition_type,
-            "task_stage": next_stage,
-            "node_trace": self._trace(
-                state,
-                "conversation_transition",
-                f"transition={transition_type}, path={execution_path}",
-            ),
-        }
+        return self._run_node("conversation_transition", conversation_transition_node, state)
 
     def _query_rewriter(self, state: WorkflowState) -> dict[str, Any]:
-        """根据本轮 intent 与当前阶段生成检索语句。"""
-        module_name = state["module_name"]
-        if state["route"] == "issue_analysis":
-            queries = [
-                state["user_query"],
-                f"{module_name} 异常日志",
-                f"{module_name} 历史案例",
-                f"{module_name} handler 幂等",
-            ]
-            if state.get("transition_type") == "upgrade_from_qa_to_issue_analysis":
-                # 从 QA 升级到分析时，补一条“从规则到故障”的桥接检索语句。
-                queries.append(f"{module_name} 规则偏差 故障定位")
-            if state.get("transition_type") == "code_request_without_analysis":
-                # 用户直接要代码但没有前置分析时，先补问题分析证据。
-                queries.append(f"{module_name} 修复方案 关键边界")
-        else:
-            queries = [
-                state["user_query"],
-                f"{module_name} 业务规则",
-                f"{module_name} service 流程",
-            ]
-            if state.get("active_task_stage") in {"issue_analysis", "confirm_code", "code_generation"}:
-                # 分析阶段回退到 QA 时，补一条“解释当前模块背景”的语句。
-                queries.append(f"{module_name} 设计背景 业务口径")
-        return {
-            "retrieval_queries": queries,
-            "node_trace": self._trace(state, "query_rewriter", f"queries={len(queries)}"),
-        }
+        return self._run_node("query_rewriter", query_rewriter_node, state)
 
     def _retrieve_wiki(self, state: WorkflowState) -> dict[str, Any]:
-        """模拟业务文档检索节点。"""
-        module_name = state["module_name"]
-        module_hint = state["module_hint"]
-        if state["route"] == "issue_analysis":
-            items = [
-                {
-                    "source_type": "wiki",
-                    "title": "异常处理与回滚规范",
-                    "path": "wiki/engineering/error-handling.md",
-                    "score": 0.86,
-                    "excerpt": "规范要求状态流转前做幂等判断，并记录关键日志字段。",
-                },
-                {
-                    "source_type": "wiki",
-                    "title": f"{module_name} 运行说明",
-                    "path": f"wiki/modules/{module_name}.md",
-                    "score": 0.82,
-                    "excerpt": f"{module_hint} 是该模块的核心流程，涉及多处状态推进与回滚。",
-                },
-            ]
-        else:
-            items = [
-                {
-                    "source_type": "wiki",
-                    "title": "业务规则与口径总览",
-                    "path": "wiki/business-rules/overview.md",
-                    "score": 0.94,
-                    "excerpt": "业务规则通过状态流转、字段口径和边界条件定义对外行为。",
-                },
-                {
-                    "source_type": "wiki",
-                    "title": f"{module_name} 模块说明",
-                    "path": f"wiki/modules/{module_name}.md",
-                    "score": 0.87,
-                    "excerpt": f"{module_hint} 是回答该问题时最相关的业务入口。",
-                },
-            ]
-        return {
-            "wiki_hits": items,
-            "node_trace": self._trace(state, "retrieve_wiki", f"hits={len(items)}"),
-        }
+        return self._run_node("retrieve_wiki", retrieve_wiki_node, state)
 
     def _retrieve_cases(self, state: WorkflowState) -> dict[str, Any]:
-        """模拟历史案例检索节点。"""
-        module_name = state["module_name"]
-        if state["route"] == "issue_analysis":
-            items = [
-                {
-                    "source_type": "case",
-                    "title": f"{module_name} 历史案例复盘",
-                    "path": f"cases/{module_name}/incident-retrospective.md",
-                    "score": 0.92,
-                    "excerpt": "同类问题曾由重复回调与边界值保护不足触发。",
-                }
-            ]
-        else:
-            items = [
-                {
-                    "source_type": "case",
-                    "title": f"{module_name} 设计案例",
-                    "path": f"cases/{module_name}/design-notes.md",
-                    "score": 0.72,
-                    "excerpt": "历史设计说明可用于补充模块职责和关键边界条件。",
-                }
-            ]
-        return {
-            "case_hits": items,
-            "node_trace": self._trace(state, "retrieve_cases", f"hits={len(items)}"),
-        }
+        return self._run_node("retrieve_cases", retrieve_cases_node, state)
 
     def _retrieve_code(self, state: WorkflowState) -> dict[str, Any]:
-        """模拟代码与测试文件检索节点。"""
-        module_name = state["module_name"]
-        if state["route"] == "issue_analysis":
-            items = [
-                {
-                    "source_type": "code",
-                    "title": f"{module_name} 关键实现",
-                    "path": f"services/{module_name}/handler.py",
-                    "score": 0.89,
-                    "excerpt": "入口函数对异常分支和重复调用缺少防御。",
-                },
-                {
-                    "source_type": "code",
-                    "title": f"{module_name} 单测",
-                    "path": f"tests/{module_name}/test_handler.py",
-                    "score": 0.8,
-                    "excerpt": "现有单测未覆盖重复回调与空值边界场景。",
-                },
-            ]
-        else:
-            items = [
-                {
-                    "source_type": "code",
-                    "title": f"{module_name} 模块入口",
-                    "path": f"services/{module_name}/service.py",
-                    "score": 0.87,
-                    "excerpt": "模块职责主要集中在 service、validator 和 assembler 三段逻辑。",
-                }
-            ]
-        return {
-            "code_hits": items,
-            "node_trace": self._trace(state, "retrieve_code", f"hits={len(items)}"),
-        }
+        return self._run_node("retrieve_code", retrieve_code_node, state)
 
     def _merge_evidence(self, state: WorkflowState) -> dict[str, Any]:
-        """把多源证据按分数排序后裁剪为前端可展示的 TopN。"""
-        citations = sorted(
-            [
-                *state.get("wiki_hits", []),
-                *state.get("case_hits", []),
-                *state.get("code_hits", []),
-            ],
-            key=lambda item: item["score"],
-            reverse=True,
-        )[:5]
-        return {
-            "citations": citations,
-            "node_trace": self._trace(state, "merge_evidence", f"citations={len(citations)}"),
-        }
+        return self._run_node("merge_evidence", merge_evidence_node, state)
 
     def _knowledge_answer(self, state: WorkflowState) -> dict[str, Any]:
-        """生成知识问答结果。"""
-        module_name = state["module_name"]
-        module_hint = state["module_hint"]
-        transition_type = state.get("transition_type", "start_knowledge_qa")
-
-        if transition_type == "fallback_to_contextual_qa":
-            opening = "这轮输入被识别为围绕当前分析主题的补充问答。"
-        elif transition_type == "continue_knowledge_qa":
-            opening = "这轮输入延续了前面的知识问答主题。"
-        elif transition_type == "switch_topic":
-            opening = "这轮输入被判定为新的知识问答主题，因此已重新开始一条问答链路。"
-        else:
-            opening = "这轮输入被判定为业务知识问答。"
-
-        return {
-            "response_kind": "knowledge_qa",
-            "task_stage": "knowledge_qa",
-            "status": "completed",
-            "next_action": "completed",
-            "answer": (
-                f"{opening}"
-                f"结合文档和代码，当前主题主要落在 `{module_name}`，核心关注点是 {module_hint}。"
-                "如果你继续追问规则、字段口径、流程或状态流转，当前上下文仍可直接复用。"
-            ),
-            "analysis": {
-                "summary": "知识问答已完成",
-                "module": module_name,
-                "confidence": "medium",
-                "transition_type": transition_type,
-                "task_stage": "knowledge_qa",
-                "highlights": [
-                    "已完成领域判定、意图识别、上下文转场和统一检索",
-                    "当前回答已绑定业务文档和代码入口作为依据",
-                ],
-            },
-            "node_trace": self._trace(state, "knowledge_answer", f"module={module_name}"),
-        }
+        return self._run_node("knowledge_answer", knowledge_answer_node, state)
 
     def _issue_localizer(self, state: WorkflowState) -> dict[str, Any]:
-        """问题分析第一步：定位候选模块。"""
-        module_name = state["module_name"]
-        analysis = dict(state.get("analysis") or {})
-        analysis.update(
-            {
-                "module": module_name,
-                "confidence": "high" if state["domain_relevance"] >= 0.75 else "medium",
-                "transition_type": state.get("transition_type"),
-            }
-        )
-        return {
-            "analysis": analysis,
-            "node_trace": self._trace(state, "issue_localizer", f"module={module_name}"),
-        }
+        return self._run_node("issue_localizer", issue_localizer_node, state)
 
     def _root_cause_analysis(self, state: WorkflowState) -> dict[str, Any]:
-        """问题分析第二步：补充根因、风险和上下文。"""
-        analysis = dict(state.get("analysis") or {})
-        analysis.update(
-            {
-                "root_cause": "高概率是边界输入或重复回调场景未做保护，导致状态被错误覆盖。",
-                "risks": [
-                    "可能影响已有重试任务或补偿逻辑",
-                    "需要确认上游调用方是否依赖旧的异常行为",
-                ],
-            }
-        )
-        return {
-            "analysis": analysis,
-            "node_trace": self._trace(state, "root_cause_analysis", "root_cause=state_protection_gap"),
-        }
+        return self._run_node("root_cause_analysis", root_cause_analysis_node, state)
 
     def _fix_plan(self, state: WorkflowState) -> dict[str, Any]:
-        """问题分析第三步：给出修复方案，并停在等待代码确认的阶段。"""
-        analysis = dict(state.get("analysis") or {})
-        transition_type = state.get("transition_type", "start_issue_analysis")
-        analysis.update(
-            {
-                "fix_plan": [
-                    "在入口层增加空值/非法值校验",
-                    "为状态变更逻辑增加幂等保护",
-                    "补充与历史案例一致的回归测试",
-                ],
-                "verification_steps": [
-                    "复现原始问题路径并验证错误不再出现",
-                    "检查关键日志字段、状态转换和重试行为",
-                ],
-                "need_user_confirmation": True,
-                "task_stage": "confirm_code",
-            }
-        )
-
-        if transition_type == "upgrade_from_qa_to_issue_analysis":
-            opening = "这轮输入已从前面的知识问答升级为问题分析。"
-        elif transition_type == "continue_issue_analysis":
-            opening = "这轮输入延续了当前问题分析任务。"
-        elif transition_type == "code_request_without_analysis":
-            opening = "你这轮直接提出了代码实现诉求，但当前会话还缺少前置分析，因此我先补齐了问题分析。"
-        elif transition_type == "switch_topic":
-            opening = "这轮输入被视为新的问题分析主题，因此重新开始定位和分析。"
-        else:
-            opening = "这轮输入已进入问题分析链路。"
-
-        return {
-            "response_kind": "issue_analysis",
-            "task_stage": "confirm_code",
-            "status": "confirm_code",
-            "next_action": "confirm_code",
-            "answer": (
-                f"{opening}"
-                f"当前更可能定位在 `{state['module_name']}`。"
-                "初步根因、修复方案和验证建议已经整理完成；"
-                "如果需要，我可以继续生成代码实现建议。"
-            ),
-            "analysis": analysis,
-            "node_trace": self._trace(state, "fix_plan", "next_action=confirm_code"),
-        }
+        return self._run_node("fix_plan", fix_plan_node, state)
 
     def _decline_code_generation_response(self, state: WorkflowState) -> dict[str, Any]:
-        """处理“暂不需要代码实现”的多轮控制响应。"""
-        module_name = state.get("active_module_name") or state["module_name"]
-        analysis = dict(state.get("last_analysis_result") or state.get("active_issue_context") or {})
-        if analysis:
-            analysis["task_stage"] = "issue_analysis"
-
-        return {
-            "route": "issue_analysis",
-            "response_kind": "conversation_control",
-            "task_stage": "issue_analysis",
-            "status": "completed",
-            "next_action": "completed",
-            "citations": state.get("last_analysis_citations", []),
-            "analysis": analysis or None,
-            "answer": (
-                f"已记录当前 `{module_name}` 只保留问题分析结论，不进入代码生成阶段。"
-                "如果你后面改变主意，可以继续追问实现思路或再次明确提出需要代码实现。"
-            ),
-            "node_trace": self._trace(
-                state,
-                "decline_code_generation_response",
-                "transition=decline_code_generation",
-            ),
-        }
+        return self._run_node("decline_code_generation_response", decline_code_generation_response_node, state)
 
     def _out_of_scope_response(self, state: WorkflowState) -> dict[str, Any]:
-        """直接产出与当前系统无关的拒答结果。"""
-        return {
-            "route": "out_of_scope",
-            "response_kind": "out_of_scope",
-            "task_stage": "out_of_scope",
-            "status": "out_of_scope",
-            "next_action": "completed",
-            "citations": [],
-            "analysis": None,
-            "answer": (
-                "这轮输入在领域判定阶段被识别为与当前系统无关，因此没有进入后续的知识问答、问题分析或代码生成链路。"
-                "你可以继续提业务规则、模块设计、接口流程、报错排查或修复方案相关的问题。"
-            ),
-            "node_trace": self._trace(state, "out_of_scope_response", "route=out_of_scope"),
-        }
+        return self._run_node("out_of_scope_response", out_of_scope_response_node, state)
 
     def _load_code_context(self, state: WorkflowState) -> dict[str, Any]:
-        """恢复代码生成所需的前置分析上下文。"""
-        source_message = state.get("source_message") or {}
-        analysis = source_message.get("analysis") or state.get("last_analysis_result") or {}
-        citations = source_message.get("citations") or state.get("last_analysis_citations", [])
-
-        module_name = analysis.get("module") or state.get("active_module_name") or state.get("module_name")
-        if not module_name:
-            module_name = "workflow-orchestrator"
-        module_hint = self._infer_module(module_name)[1]
-        return {
-            "route": "issue_analysis",
-            "execution_path": "code_generation_flow",
-            "transition_type": state.get("transition_type", "resume_code_generation"),
-            "task_stage": "code_generation",
-            "module_name": module_name,
-            "module_hint": module_hint,
-            "analysis": analysis or None,
-            "citations": citations,
-            "node_trace": self._trace(state, "load_code_context", f"module={module_name}"),
-        }
+        return self._run_node("load_code_context", load_code_context_node, state)
 
     def _retrieve_code_context(self, state: WorkflowState) -> dict[str, Any]:
-        """模拟代码生成前的额外代码上下文检索。"""
-        module_name = state["module_name"]
-        items = [
-            {
-                "source_type": "code",
-                "title": f"{module_name} 目标文件",
-                "path": f"services/{module_name}/handler.py",
-                "score": 0.91,
-                "excerpt": "建议在入口函数前半段增加参数保护和幂等判断。",
-            },
-            {
-                "source_type": "code",
-                "title": f"{module_name} 测试文件",
-                "path": f"tests/{module_name}/test_handler.py",
-                "score": 0.84,
-                "excerpt": "建议新增空值输入、重复回调和回滚路径三类测试。",
-            },
-        ]
-        return {
-            "code_hits": items,
-            "citations": items,
-            "node_trace": self._trace(state, "retrieve_code_context", f"hits={len(items)}"),
-        }
+        return self._run_node("retrieve_code_context", retrieve_code_context_node, state)
 
     def _code_generation(self, state: WorkflowState) -> dict[str, Any]:
-        """生成代码实现建议。
-
-        当前仍是 mock 结果，但输出结构已经和前端的补丁摘要、文件列表、测试建议
-        面板完全对齐。
-        """
-        module_name = state["module_name"]
-        transition_type = state.get("transition_type", "resume_code_generation")
-
-        if transition_type == "upgrade_to_code_generation":
-            opening = "这轮输入触发了从分析结果到代码实现的阶段升级。"
-        else:
-            opening = "当前是从确认节点恢复的代码生成链路。"
-
-        return {
-            "response_kind": "code_generation",
-            "task_stage": "code_generation",
-            "status": "completed",
-            "next_action": "completed",
-            "answer": (
-                f"{opening} 已继续生成 `{module_name}` 的实现建议。"
-                "当前输出仍是 LangGraph 工作流中代码生成节点的 mock 结果，"
-                "你可以先评审补丁摘要、涉及文件和测试建议，再接入真实代码生成器。"
-            ),
-            "analysis": {
-                "summary": "代码实现建议已生成",
-                "module": module_name,
-                "task_stage": "code_generation",
-                "transition_type": transition_type,
-                "files": [
-                    f"services/{module_name}/handler.py",
-                    f"tests/{module_name}/test_handler.py",
-                ],
-                "patch_summary": [
-                    "在入口逻辑补充参数兜底与重复回调保护",
-                    "在状态流转前增加幂等判断",
-                    "补充回归测试覆盖异常和重试路径",
-                ],
-                "test_plan": [
-                    "新增空值输入的单元测试",
-                    "新增重复回调幂等测试",
-                    "验证异常路径下状态不被污染",
-                ],
-                "snippet": (
-                    "def process_event(payload):\n"
-                    "    if payload is None:\n"
-                    "        raise ValueError('payload is required')\n\n"
-                    "    if is_duplicate(payload.event_id):\n"
-                    "        return build_idempotent_response()\n\n"
-                    "    return apply_state_transition(payload)\n"
-                ),
-            },
-            "node_trace": self._trace(state, "code_generation", f"module={module_name}"),
-        }
+        return self._run_node("code_generation", code_generation_node, state)
 
     def _finalize_response(self, state: WorkflowState) -> dict[str, Any]:
-        """把图中的结构化状态收敛成前端可直接消费的一条助手消息。"""
-        graph_path = [item["node"] for item in state.get("node_trace", [])]
-        assistant_message = {
-            "role": "assistant",
-            "kind": state.get("response_kind", state.get("route", "unknown")),
-            "intent": state.get("route", "unknown"),
-            "status": state.get("status", "completed"),
-            "content": state["answer"],
-            "trace_id": state["trace_id"],
-            "citations": state.get("citations", []),
-            "analysis": state.get("analysis"),
-            "actions": (
-                [{"type": "confirm_code_generation", "label": "需要代码实现"}]
-                if state.get("next_action") == "confirm_code"
-                else []
-            ),
-            "debug": {
-                "domain_relevance": state.get("domain_relevance", 0.0),
-                "latency_ms": 0,
-                "route": state.get("route", "unknown"),
-                "task_stage": state.get("task_stage", "unknown"),
-                "active_task_stage": state.get("active_task_stage", "idle"),
-                "transition_type": state.get("transition_type", "unknown"),
-                "execution_path": state.get("execution_path", "unknown"),
-                "next_action": state.get("next_action", "completed"),
-                "graph_backend": self.backend_name,
-                "graph_path": graph_path,
-            },
-        }
-        return {
-            "assistant_message": assistant_message,
-            "node_trace": self._trace(state, "finalize_response", f"kind={assistant_message['kind']}"),
-        }
+        return self._run_node("finalize_response", finalize_response_node, state)
 
     def _route_by_mode(self, state: WorkflowState) -> str:
         """entry_router 的条件分支函数。"""
-        return state.get("mode", "message")
+        route = state.get("mode", "message")
+        self._file_logger.debug(
+            "workflow.route.mode",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            route=route,
+        )
+        return route
 
     def _route_by_domain_gate(self, state: WorkflowState) -> str:
         """domain_gate 的条件分支函数。"""
-        return "in_scope" if state.get("is_domain_related") else "out_of_scope"
+        route = "in_scope" if state.get("is_domain_related") else "out_of_scope"
+        self._file_logger.debug(
+            "workflow.route.domain_gate",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            route=route,
+            domain_relevance=state.get("domain_relevance", 0.0),
+        )
+        return route
 
     def _route_by_execution_path(self, state: WorkflowState) -> str:
         """根据转场节点的决定，进入检索、代码生成或控制响应路径。"""
-        return state.get("execution_path", "retrieval_flow")
+        route = state.get("execution_path", "retrieval_flow")
+        self._file_logger.debug(
+            "workflow.route.execution_path",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            route=route,
+            transition_type=state.get("transition_type", "unknown"),
+        )
+        return route
 
     def _route_by_intent(self, state: WorkflowState) -> str:
         """merge_evidence 之后按意图选择最终分支。"""
-        return state["route"]
+        route = state["route"]
+        self._file_logger.debug(
+            "workflow.route.intent",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            route=route,
+            citation_count=len(state.get("citations", []) or []),
+        )
+        return route
+
+    def _preview_text(self, value: Any, *, max_chars: int = 80) -> str:
+        text = str(value or "").strip()
+        if len(text) <= max_chars:
+            return text
+        return f"{text[:max_chars]}..."
+
+    def _summarize_node_updates(self, updates: dict[str, Any]) -> dict[str, Any]:
+        summary: dict[str, Any] = {}
+        scalar_keys = (
+            "route",
+            "execution_path",
+            "transition_type",
+            "task_stage",
+            "status",
+            "next_action",
+            "response_kind",
+            "module_name",
+            "module_hint",
+            "active_task_stage",
+            "active_topic_source",
+            "is_domain_related",
+            "domain_relevance",
+            "wiki_retrieval_grade",
+            "case_retrieval_grade",
+            "code_retrieval_grade",
+        )
+        for key in scalar_keys:
+            if key not in updates:
+                continue
+            value = updates.get(key)
+            if isinstance(value, str):
+                summary[key] = self._preview_text(value, max_chars=120)
+            else:
+                summary[key] = value
+
+        if "retrieval_queries" in updates:
+            summary["retrieval_query_count"] = len(updates.get("retrieval_queries", []) or [])
+        if "wiki_hits" in updates:
+            summary["wiki_hit_count"] = len(updates.get("wiki_hits", []) or [])
+        if "case_hits" in updates:
+            summary["case_hit_count"] = len(updates.get("case_hits", []) or [])
+        if "code_hits" in updates:
+            summary["code_hit_count"] = len(updates.get("code_hits", []) or [])
+        if "citations" in updates:
+            summary["citation_count"] = len(updates.get("citations", []) or [])
+        if "node_trace" in updates:
+            summary["node_trace_count"] = len(updates.get("node_trace", []) or [])
+        if "assistant_message" in updates:
+            assistant_message = dict(updates.get("assistant_message") or {})
+            summary["assistant_kind"] = assistant_message.get("kind", "unknown")
+            summary["assistant_status"] = assistant_message.get("status", "unknown")
+            summary["assistant_action_count"] = len(assistant_message.get("actions", []) or [])
+            summary["assistant_citation_count"] = len(assistant_message.get("citations", []) or [])
+        return summary
+
+    def _run_node(
+        self,
+        node_name: str,
+        node_runner: Callable[[Any, dict[str, Any]], dict[str, Any]],
+        state: WorkflowState,
+    ) -> dict[str, Any]:
+        started_at = perf_counter()
+        self._file_logger.debug(
+            "workflow.node.start",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            node=node_name,
+            route=state.get("route", ""),
+            task_stage=state.get("task_stage", ""),
+        )
+        try:
+            updates = node_runner(self, state)
+        except Exception as exc:
+            latency_ms = int((perf_counter() - started_at) * 1000)
+            self._file_logger.exception(
+                "workflow.node.exception",
+                trace_id=state.get("trace_id", ""),
+                session_id=state.get("session_id", ""),
+                node=node_name,
+                latency_ms=latency_ms,
+                error_type=type(exc).__name__,
+            )
+            raise
+        latency_ms = int((perf_counter() - started_at) * 1000)
+        self._file_logger.info(
+            "workflow.node.complete",
+            trace_id=state.get("trace_id", ""),
+            session_id=state.get("session_id", ""),
+            node=node_name,
+            latency_ms=latency_ms,
+            updates=self._summarize_node_updates(updates),
+        )
+        return updates
+
+    def runtime_log_status(self) -> dict[str, Any]:
+        return self._file_logger.status()
 
     def _trace(self, state: WorkflowState, node: str, summary: str) -> list[dict[str, str]]:
         """在状态中追加节点轨迹，供前端 debug 面板渲染。"""
@@ -1059,13 +697,131 @@ class WorkflowService:
         当前仍然是轻量规则版，后续可替换成真实代码索引或路由模型。
         """
         if not text:
-            return "workflow-orchestrator", "业务流程编排与状态推进链路"
-        if "inventory" in text or "库存" in text:
-            return "inventory-lock", "锁库存与解锁回调链路"
-        if "settlement" in text or "结算" in text or "订单" in text or "支付" in text:
-            return "settlement-engine", "订单结算与折扣计算链路"
-        if "权限" in text or "登录" in text or "鉴权" in text:
-            return "auth-gateway", "登录态校验与权限判定链路"
-        if "任务" in text or "调度" in text:
-            return "job-scheduler", "调度任务与重试执行链路"
-        return "workflow-orchestrator", "业务流程编排与状态推进链路"
+            return "ad-serving-orchestrator", "广告在线投放编排与请求链路推进"
+
+        lowered = text.lower()
+        # P0：模块路由词典补强（函数级强绑定）。
+        # 目标：
+        # 1. 避免“apply_diversity_penalty / apply_safety_penalty / rank_topn”被误路由到 bid/rate；
+        # 2. 对函数定位问法优先按符号名直达模块，再走通用语义匹配。
+        rerank_symbol_tokens = (
+            "apply_diversity_penalty",
+            "apply_safety_penalty",
+            "rank_topn",
+            "compute_rank_score",
+            "rerank_engine.py",
+            # 中文函数语义词，避免路由被落到 orchestrator/rate。
+            "多样性惩罚",
+            "安全惩罚",
+            "频控惩罚",
+            "最终排序分",
+        )
+        bid_symbol_tokens = (
+            "compute_bid_for_request",
+            "compute_ocpc_bid",
+            "compute_alpha",
+            "bid_optimizer.py",
+        )
+        rate_symbol_tokens = (
+            "predict_ctr_cvr",
+            "calibrate_probability",
+            "rate_predictor.py",
+        )
+        recall_symbol_tokens = (
+            "select_recall_candidates",
+            "recall_service.py",
+        )
+
+        if any(token in lowered for token in rerank_symbol_tokens):
+            return "rerank-engine", "多目标排序与约束重排链路"
+        if any(token in lowered for token in bid_symbol_tokens):
+            return "bid-optimizer", "实时出价、预算节奏与竞争策略链路"
+        if any(token in lowered for token in rate_symbol_tokens):
+            return "rate-prediction", "点击率/转化率预估与校准链路"
+        if any(token in lowered for token in recall_symbol_tokens):
+            return "ad-recall", "广告候选召回与过滤链路"
+
+        # 全局约束类问题优先回到总体架构模块：
+        # 例如“预算和风控约束一般包括哪些内容”，更偏全链路约束口径而非单一出价实现。
+        if (
+            any(token in lowered for token in ("约束", "全局", "总体", "架构"))
+            and any(token in lowered for token in ("预算", "风控"))
+            and all(token not in lowered for token in ("出价", "公式", "target_cpa", "target_roas"))
+        ):
+            return "ad-serving-orchestrator", "广告在线投放编排与请求链路推进"
+
+        # 排障语义优先路由：
+        # 1. 先识别“成本/胜率/冷启动/无量/掉量”等排障高频词；
+        # 2. 再按更细粒度关键词映射到模块，避免大量问题都落到 orchestrator。
+        is_troubleshoot_intent = any(
+            token in lowered
+            for token in (
+                "排障",
+                "排查",
+                "故障",
+                "异常",
+                "定位",
+                "冷启动",
+                "无量",
+                "掉量",
+                "没量",
+                "不稳定",
+                "超标",
+                "成本",
+                "胜率",
+                "联调",
+                "实践建议",
+                "手册",
+            )
+        )
+        if is_troubleshoot_intent:
+            # “联调实践/快速判断/手册”属于流程化排障引导，更贴近 orchestrator/手册语义。
+            if any(token in lowered for token in ("联调", "实践建议", "快速判断", "排障手册")):
+                return "ad-serving-orchestrator", "广告在线投放编排与请求链路推进"
+            if any(token in lowered for token in ("高ecpm", "ecpm", "最终位", "精排", "排序", "重排", "rerank")):
+                return "rerank-engine", "多目标排序与约束重排链路"
+            if any(token in lowered for token in ("冷启动", "无量", "ctr", "cvr", "pctr", "pcvr", "预估", "校准")):
+                return "rate-prediction", "点击率/转化率预估与校准链路"
+            if any(token in lowered for token in ("成本", "超标", "胜率", "出价", "预算", "pacing", "竞价", "cpa", "roas")):
+                return "bid-optimizer", "实时出价、预算节奏与竞争策略链路"
+            if any(token in lowered for token in ("召回", "recall", "候选", "人群包")):
+                return "ad-recall", "广告候选召回与过滤链路"
+
+        # “高eCPM未进最终位”这类是典型精排问题，放在通用匹配前先行路由。
+        if "ecpm" in lowered and any(token in lowered for token in ("最终位", "进入最终位", "没进", "未进")):
+            return "rerank-engine", "多目标排序与约束重排链路"
+
+        # 先匹配“出价”相关关键词：
+        # 这是为了避免像 “target_cpa + pCVR 出价公式” 这种 query 被“两率关键词”提前截走。
+        # 即便 query 同时包含 pCVR，也应优先归入出价模块（bid-optimizer）。
+        if any(
+            token in lowered
+            for token in (
+                "出价",
+                "bid",
+                "ocpc",
+                "tcpa",
+                "troas",
+                "target_cpa",
+                "target_roas",
+                "cpa",
+                "roas",
+                "预算",
+                "pacing",
+                "公式",
+                "出价公式",
+            )
+        ):
+            return "bid-optimizer", "实时出价、预算节奏与竞争策略链路"
+
+        # 再匹配两率预估相关关键词。
+        if any(token in lowered for token in ("召回", "recall", "候选", "人群包")):
+            return "ad-recall", "广告候选召回与过滤链路"
+        if any(token in lowered for token in ("两率", "ctr", "cvr", "pctr", "pcvr", "预估", "校准")):
+            return "rate-prediction", "点击率/转化率预估与校准链路"
+        if any(token in lowered for token in ("精排", "排序", "rerank", "重排")):
+            return "rerank-engine", "多目标排序与约束重排链路"
+        if any(token in lowered for token in ("频控", "风控", "流量", "治理")):
+            return "traffic-governor", "频控、风控与流量治理链路"
+
+        return "ad-serving-orchestrator", "广告在线投放编排与请求链路推进"

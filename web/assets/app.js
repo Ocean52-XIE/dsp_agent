@@ -1,58 +1,129 @@
-// 前端运行时状态。
-// 这里不引入额外状态管理库，直接用一个轻量对象维护当前会话、选中消息和发送态。
 const state = {
   sessions: [],
   currentSession: null,
   selectedMessageId: null,
+  inlineCitationSelection: {},
+  inlinePanelExpanded: {},
+  composerHintTimer: null,
   sending: false,
+  sidebarCollapsed: false,
+  inspectorCollapsed: false,
 };
 
-// 统一缓存页面上的关键 DOM 节点，避免在每次渲染时反复 querySelector。
+const SESSION_LIST_LIMIT = 20;
+const INLINE_DEBUG_VALUE_MAX_CHARS = 88;
+const DEFAULT_COMPOSER_HINT_TEXT = "";
+const PENDING_BLOCKED_HINT_TEXT = "上一个问题还在思考中，请稍后";
+const ASSISTANT_THINKING_TEXT = "系统思考中。。。";
+
 const elements = {
+  appShell: document.getElementById("appShell"),
+  contentGrid: document.getElementById("contentGrid"),
+  sidebar: document.querySelector(".sidebar"),
+  sidebarToggleBtn: document.getElementById("sidebarToggleBtn"),
+  sidebarCollapsedActions: document.getElementById("sidebarCollapsedActions"),
+  sidebarToggleMiniBtn: document.getElementById("sidebarToggleMiniBtn"),
+  newSessionMiniBtn: document.getElementById("newSessionMiniBtn"),
   newSessionBtn: document.getElementById("newSessionBtn"),
   sessionCountTag: document.getElementById("sessionCountTag"),
   sessionList: document.getElementById("sessionList"),
-  workspaceTitle: document.getElementById("workspaceTitle"),
-  workspaceSubtitle: document.getElementById("workspaceSubtitle"),
   routeBadge: document.getElementById("routeBadge"),
   statusBadge: document.getElementById("statusBadge"),
   messageList: document.getElementById("messageList"),
+  composer: document.querySelector(".composer"),
   composerForm: document.getElementById("composerForm"),
   composerInput: document.getElementById("composerInput"),
+  composerHint: document.getElementById("composerHint"),
   sendButton: document.getElementById("sendButton"),
+  inspectorShell: document.getElementById("inspectorShell"),
+  inspectorBody: document.getElementById("inspectorBody"),
+  inspectorToggleBtn: document.getElementById("inspectorToggleBtn"),
+  inspectorToggleMiniBtn: document.getElementById("inspectorToggleMiniBtn"),
   analysisPanel: document.getElementById("analysisPanel"),
   citationPanel: document.getElementById("citationPanel"),
   debugPanel: document.getElementById("debugPanel"),
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 页面加载后先绑定事件，再触发初始化拉取，保证首屏和交互都走同一套逻辑。
+  restoreSidebarState();
+  restoreInspectorState();
+  normalizeStaticLabels();
   bindEvents();
   bootstrap().catch(handleError);
 });
 
 function bindEvents() {
-  // 新建会话按钮：直接创建一个新的后端会话。
-  elements.newSessionBtn.addEventListener("click", () => {
-    createSession().catch(handleError);
-  });
+  if (elements.sidebarToggleBtn) {
+    elements.sidebarToggleBtn.addEventListener("click", () => {
+      setSidebarCollapsed(!state.sidebarCollapsed);
+    });
+  }
 
-  // 输入框提交：统一走 submitMessage，避免页面默认 form 提交刷新。
-  elements.composerForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    submitMessage().catch(handleError);
-  });
+  if (elements.sidebarToggleMiniBtn) {
+    elements.sidebarToggleMiniBtn.addEventListener("click", () => {
+      setSidebarCollapsed(!state.sidebarCollapsed);
+    });
+  }
 
-  // 事件委托统一处理页面中的动态节点，例如会话项、快捷提问和代码确认按钮。
+  if (elements.inspectorToggleBtn) {
+    elements.inspectorToggleBtn.addEventListener("click", () => {
+      setInspectorCollapsed(!state.inspectorCollapsed);
+    });
+  }
+
+  if (elements.inspectorToggleMiniBtn) {
+    elements.inspectorToggleMiniBtn.addEventListener("click", () => {
+      setInspectorCollapsed(!state.inspectorCollapsed);
+    });
+  }
+
+  if (elements.newSessionBtn) {
+    elements.newSessionBtn.addEventListener("click", () => {
+      beginDraftSession();
+    });
+  }
+
+  if (elements.newSessionMiniBtn) {
+    elements.newSessionMiniBtn.addEventListener("click", () => {
+      beginDraftSession();
+      setSidebarCollapsed(false);
+    });
+  }
+
+  if (elements.composerForm) {
+    elements.composerForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitMessage().catch(handleError);
+    });
+  }
+
+  if (elements.composerInput) {
+    elements.composerInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      if (event.isComposing || event.keyCode === 229) {
+        return;
+      }
+      if (event.ctrlKey) {
+        event.preventDefault();
+        insertComposerNewlineAtCursor();
+        return;
+      }
+      event.preventDefault();
+      submitMessage().catch(handleError);
+    });
+  }
+
+  if (elements.sidebar && elements.sessionList) {
+    elements.sidebar.addEventListener("wheel", onSidebarWheel, { passive: false });
+  }
+
+  if (elements.composer && elements.messageList) {
+    elements.composer.addEventListener("wheel", onComposerWheel, { passive: false });
+  }
+
   document.addEventListener("click", (event) => {
-    const promptButton = event.target.closest("[data-prompt]");
-    if (promptButton) {
-      // 快捷提问只负责把推荐问题写入输入框，不直接发送，方便用户再改一句。
-      elements.composerInput.value = promptButton.dataset.prompt || "";
-      elements.composerInput.focus();
-      return;
-    }
-
     const sessionButton = event.target.closest("[data-session-id]");
     if (sessionButton) {
       openSession(sessionButton.dataset.sessionId).catch(handleError);
@@ -65,29 +136,367 @@ function bindEvents() {
       return;
     }
 
-    const messageCard = event.target.closest(".message-card.selectable[data-message-id]");
-    if (messageCard) {
-      // 只有助手消息允许被选中，因为右侧面板展示的是分析、证据和 debug 信息。
-      state.selectedMessageId = messageCard.dataset.messageId;
-      renderSelectedPanels();
-      renderMessages();
+    const copyCitationCodeButton = event.target.closest("[data-action='copy-citation-code']");
+    if (copyCitationCodeButton) {
+      copyCitationCode(copyCitationCodeButton).catch(() => {
+        // 复制失败时不打断主流程，只保持按钮原状态。
+      });
+      return;
     }
+
+    const copyCitationTextButton = event.target.closest("[data-action='copy-citation-text']");
+    if (copyCitationTextButton) {
+      copyCitationText(copyCitationTextButton).catch(() => {
+        // 复制失败时不打断主流程，只保持按钮原状态。
+      });
+      return;
+    }
+
+    const citationSwitchButton = event.target.closest("[data-action='select-inline-citation']");
+    if (citationSwitchButton) {
+      const messageId = citationSwitchButton.dataset.messageId || "";
+      const citationIndex = Number.parseInt(citationSwitchButton.dataset.citationIndex || "0", 10);
+      selectInlineCitation(messageId, citationIndex);
+      return;
+    }
+
+    const inlinePanelToggleButton = event.target.closest("[data-action='toggle-inline-panel']");
+    if (inlinePanelToggleButton) {
+      const messageId = inlinePanelToggleButton.dataset.messageId || "";
+      const panelType = inlinePanelToggleButton.dataset.panelType || "";
+      toggleInlinePanel(messageId, panelType);
+      return;
+    }
+
   });
 }
 
-async function bootstrap() {
-  // 首屏先拉会话列表，没有会话就自动创建一个，保证页面打开后可立即交互。
-  elements.messageList.innerHTML = `<div class="loading-shell">正在加载会话数据...</div>`;
-  await refreshSessions();
-  if (state.sessions.length === 0) {
-    await createSession();
+function onSidebarWheel(event) {
+  if (window.matchMedia("(max-width: 1180px)").matches || state.sidebarCollapsed) {
     return;
   }
-  await openSession(state.sessions[0].id);
+  const list = elements.sessionList;
+  if (!list || Math.abs(event.deltaY) < 0.1) {
+    return;
+  }
+  event.preventDefault();
+  list.scrollTop += event.deltaY;
+}
+
+function onComposerWheel(event) {
+  if (window.matchMedia("(max-width: 1180px)").matches) {
+    return;
+  }
+  const list = elements.messageList;
+  if (!list || Math.abs(event.deltaY) < 0.1) {
+    return;
+  }
+  const overflowY = window.getComputedStyle(list).overflowY;
+  const canScrollMessageList = overflowY !== "visible" && list.scrollHeight > list.clientHeight + 1;
+  if (!canScrollMessageList) {
+    return;
+  }
+  event.preventDefault();
+  list.scrollTop += event.deltaY;
+}
+
+async function copyCitationCode(button) {
+  const codeWrap = button?.closest(".citation-excerpt-code-wrap");
+  const codeElement = codeWrap?.querySelector("code");
+  const codeText = codeElement?.textContent || "";
+  if (!codeText.trim()) {
+    return;
+  }
+
+  const copied = await copyTextToClipboard(codeText);
+  applyCopyButtonFeedback(button, copied);
+}
+
+async function copyCitationText(button) {
+  const rawText = String(button?.dataset?.copyText || "");
+  if (!rawText.trim()) {
+    return;
+  }
+  const copied = await copyTextToClipboard(rawText);
+  applyCopyButtonFeedback(button, copied);
+}
+
+async function copyTextToClipboard(rawText) {
+  const text = String(rawText || "");
+  if (!text.trim()) {
+    return false;
+  }
+
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (_error) {
+      // fallback
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (_error) {
+    copied = false;
+  }
+  document.body.removeChild(textarea);
+  return copied;
+}
+
+function applyCopyButtonFeedback(button, copied) {
+  if (!button) {
+    return;
+  }
+  const originalLabel = button.dataset.originLabel || button.textContent || "复制";
+  button.dataset.originLabel = originalLabel;
+  button.textContent = copied ? "已复制" : "复制失败";
+  button.classList.toggle("copied", copied);
+  button.classList.toggle("copy-failed", !copied);
+  window.setTimeout(() => {
+    button.textContent = originalLabel;
+    button.classList.remove("copied");
+    button.classList.remove("copy-failed");
+  }, 1300);
+}
+
+function insertComposerNewlineAtCursor() {
+  const input = elements.composerInput;
+  if (!input) {
+    return;
+  }
+
+  const start = Number.isInteger(input.selectionStart) ? input.selectionStart : input.value.length;
+  const end = Number.isInteger(input.selectionEnd) ? input.selectionEnd : input.value.length;
+  const before = input.value.slice(0, start);
+  const after = input.value.slice(end);
+  input.value = `${before}\n${after}`;
+
+  const nextCursor = start + 1;
+  input.selectionStart = nextCursor;
+  input.selectionEnd = nextCursor;
+}
+
+function showComposerHint(text, options = {}) {
+  const { warning = false, autoReset = false, ttlMs = 2200 } = options;
+  if (!elements.composerHint) {
+    return;
+  }
+  const hintText = text || DEFAULT_COMPOSER_HINT_TEXT;
+  elements.composerHint.textContent = hintText;
+  elements.composerHint.hidden = hintText.trim().length === 0;
+  elements.composerHint.classList.toggle("warning", warning);
+
+  if (state.composerHintTimer !== null) {
+    clearTimeout(state.composerHintTimer);
+    state.composerHintTimer = null;
+  }
+  if (!autoReset) {
+    return;
+  }
+  state.composerHintTimer = window.setTimeout(() => {
+    if (!elements.composerHint) {
+      return;
+    }
+    elements.composerHint.textContent = DEFAULT_COMPOSER_HINT_TEXT;
+    elements.composerHint.hidden = DEFAULT_COMPOSER_HINT_TEXT.trim().length === 0;
+    elements.composerHint.classList.remove("warning");
+    state.composerHintTimer = null;
+  }, ttlMs);
+}
+
+function isLocalSessionId(sessionId) {
+  return typeof sessionId === "string" && sessionId.startsWith("local-session-");
+}
+
+function appendOptimisticPendingTurn(content) {
+  const nowIso = new Date().toISOString();
+  if (!state.currentSession) {
+    state.currentSession = {
+      id: `local-session-${Date.now()}`,
+      title: "新会话",
+      status: "processing",
+      updated_at: nowIso,
+      messages: [],
+    };
+    state.inlineCitationSelection = {};
+    state.inlinePanelExpanded = {};
+  }
+  if (!Array.isArray(state.currentSession.messages)) {
+    state.currentSession.messages = [];
+  }
+
+  const userMessageId = `local-user-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const assistantMessageId = `local-assistant-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const userMessage = {
+    id: userMessageId,
+    role: "user",
+    content,
+    created_at: nowIso,
+  };
+  const assistantMessage = {
+    id: assistantMessageId,
+    role: "assistant",
+    content: ASSISTANT_THINKING_TEXT,
+    created_at: nowIso,
+    intent: "knowledge_qa",
+    status: "processing",
+    analysis: {
+      generation_mode: "pending",
+    },
+  };
+
+  state.currentSession.messages.push(userMessage, assistantMessage);
+  state.currentSession.status = "processing";
+  state.currentSession.updated_at = nowIso;
+  state.selectedMessageId = assistantMessageId;
+  renderAll();
+  scrollMessagesToBottom();
+  return { userMessageId, assistantMessageId };
+}
+
+function markOptimisticAssistantAsFailed(assistantMessageId) {
+  if (!assistantMessageId || !state.currentSession || !Array.isArray(state.currentSession.messages)) {
+    return;
+  }
+  const target = state.currentSession.messages.find((item) => item.id === assistantMessageId);
+  if (!target) {
+    return;
+  }
+  target.content = "系统响应失败，请稍后重试。";
+  target.status = "error";
+  target.analysis = {
+    ...(target.analysis || {}),
+    generation_mode: "fallback",
+    llm_fallback_reason: "request_failed",
+  };
+  state.currentSession.status = "error";
+  state.selectedMessageId = assistantMessageId;
+  renderAll();
+}
+
+function selectInlineCitation(messageId, citationIndex) {
+  if (!messageId) {
+    return;
+  }
+  if (!Number.isInteger(citationIndex) || citationIndex < 0) {
+    return;
+  }
+  state.inlineCitationSelection[messageId] = citationIndex;
+  renderMessages();
+}
+
+function getInlinePanelKey(messageId, panelType) {
+  return `${messageId}:${panelType}`;
+}
+
+function isInlinePanelExpanded(messageId, panelType) {
+  if (!messageId || !panelType) {
+    return false;
+  }
+  return state.inlinePanelExpanded[getInlinePanelKey(messageId, panelType)] === true;
+}
+
+function toggleInlinePanel(messageId, panelType) {
+  if (!messageId || !panelType) {
+    return;
+  }
+  const key = getInlinePanelKey(messageId, panelType);
+  state.inlinePanelExpanded[key] = !state.inlinePanelExpanded[key];
+  renderMessages();
+}
+
+function restoreSidebarState() {
+  try {
+    const cached = window.localStorage.getItem("sidebar_collapsed");
+    setSidebarCollapsed(cached === "1");
+  } catch (_error) {
+    setSidebarCollapsed(false);
+  }
+}
+
+function setSidebarCollapsed(collapsed) {
+  state.sidebarCollapsed = Boolean(collapsed);
+
+  if (elements.appShell) {
+    elements.appShell.classList.toggle("sidebar-collapsed", state.sidebarCollapsed);
+  }
+  if (elements.sidebarCollapsedActions) {
+    elements.sidebarCollapsedActions.setAttribute("aria-hidden", state.sidebarCollapsed ? "false" : "true");
+  }
+  if (elements.sidebarToggleBtn) {
+    elements.sidebarToggleBtn.setAttribute("aria-label", state.sidebarCollapsed ? "展开会话栏" : "隐藏会话栏");
+    elements.sidebarToggleBtn.setAttribute("title", state.sidebarCollapsed ? "展开会话栏" : "隐藏会话栏");
+  }
+  if (elements.sidebarToggleMiniBtn) {
+    elements.sidebarToggleMiniBtn.setAttribute("aria-label", state.sidebarCollapsed ? "展开会话栏" : "隐藏会话栏");
+    elements.sidebarToggleMiniBtn.setAttribute("title", state.sidebarCollapsed ? "展开会话栏" : "隐藏会话栏");
+  }
+
+  try {
+    window.localStorage.setItem("sidebar_collapsed", state.sidebarCollapsed ? "1" : "0");
+  } catch (_error) {
+    // ignore
+  }
+}
+
+function restoreInspectorState() {
+  try {
+    const cached = window.localStorage.getItem("inspector_collapsed");
+    setInspectorCollapsed(cached === "1");
+  } catch (_error) {
+    setInspectorCollapsed(false);
+  }
+}
+
+function setInspectorCollapsed(collapsed) {
+  state.inspectorCollapsed = Boolean(collapsed);
+
+  if (elements.inspectorShell) {
+    elements.inspectorShell.classList.toggle("inspector-collapsed", state.inspectorCollapsed);
+  }
+  if (elements.contentGrid) {
+    elements.contentGrid.classList.toggle("inspector-collapsed", state.inspectorCollapsed);
+  }
+  if (elements.inspectorBody) {
+    elements.inspectorBody.setAttribute("aria-hidden", state.inspectorCollapsed ? "true" : "false");
+  }
+  if (elements.inspectorToggleBtn) {
+    elements.inspectorToggleBtn.setAttribute("aria-label", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
+    elements.inspectorToggleBtn.setAttribute("title", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
+  }
+  if (elements.inspectorToggleMiniBtn) {
+    elements.inspectorToggleMiniBtn.setAttribute("aria-label", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
+    elements.inspectorToggleMiniBtn.setAttribute("title", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
+  }
+
+  try {
+    window.localStorage.setItem("inspector_collapsed", state.inspectorCollapsed ? "1" : "0");
+  } catch (_error) {
+    // ignore
+  }
+}
+
+async function bootstrap() {
+  if (elements.messageList) {
+    elements.messageList.innerHTML = `<div class="loading-shell">正在加载会话数据...</div>`;
+  }
+  await refreshSessions();
+  beginDraftSession();
 }
 
 async function api(path, options = {}) {
-  // 所有接口调用统一走这里，保证错误处理和请求头策略一致。
   const response = await fetch(path, {
     headers: {
       "Content-Type": "application/json",
@@ -102,62 +511,79 @@ async function api(path, options = {}) {
       const payload = await response.json();
       errorText = payload.detail || errorText;
     } catch (_error) {
-      // 某些异常响应可能不是 JSON，这里静默忽略解析失败，保留默认错误文案。
+      // ignore
     }
     throw new Error(errorText);
   }
-
   return response.json();
 }
 
 async function refreshSessions() {
-  // 会话列表是左侧栏的数据源；每次创建会话或发送消息后都刷新一次，保持顺序正确。
-  const payload = await api("/api/sessions");
+  const payload = await api(`/api/sessions?limit=${SESSION_LIST_LIMIT}`);
   state.sessions = payload.items || [];
   renderSessionList();
 }
 
-async function createSession() {
-  // 创建会话时先切 pending，避免用户重复点击。
-  setPending(true);
-  try {
-    const payload = await api("/api/sessions", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    await refreshSessions();
-    state.currentSession = payload.session;
-    state.selectedMessageId = payload.session.messages.at(-1)?.id || null;
-    renderAll();
-  } finally {
-    setPending(false);
-  }
-}
-
-async function openSession(sessionId) {
-  // 打开会话时优先选中最新的一条助手消息，让右侧摘要面板立即有内容。
-  if (!sessionId) {
+function beginDraftSession() {
+  if (state.sending) {
     return;
   }
-
-  const payload = await api(`/api/sessions/${sessionId}`);
-  state.currentSession = payload.session;
-  const latestAssistant = [...state.currentSession.messages]
-    .reverse()
-    .find((message) => message.role === "assistant");
-  state.selectedMessageId = latestAssistant?.id || state.currentSession.messages.at(-1)?.id || null;
+  state.currentSession = null;
+  state.selectedMessageId = null;
+  state.inlineCitationSelection = {};
+  state.inlinePanelExpanded = {};
+  if (elements.composerInput) {
+    elements.composerInput.value = "";
+    elements.composerInput.focus();
+  }
   renderAll();
 }
 
+async function openSession(sessionId) {
+  if (!sessionId) {
+    return;
+  }
+  const payload = await api(`/api/sessions/${sessionId}`);
+  state.currentSession = payload.session;
+  state.inlineCitationSelection = {};
+  state.inlinePanelExpanded = {};
+  state.selectedMessageId = resolveSelectedMessageId(state.currentSession);
+  renderAll();
+  scrollMessagesToBottom();
+}
+
 async function submitMessage() {
-  // 发送消息前做三类保护：空内容、无会话、正在发送中。
-  const content = elements.composerInput.value.trim();
-  if (!content || !state.currentSession || state.sending) {
+  const rawContent = elements.composerInput?.value || "";
+  const content = rawContent.trim();
+  if (!content) {
+    return;
+  }
+  if (state.sending) {
+    showComposerHint(PENDING_BLOCKED_HINT_TEXT, { warning: true, autoReset: true });
     return;
   }
 
+  if (elements.composerInput) {
+    elements.composerInput.value = "";
+  }
+
+  const optimisticTurn = appendOptimisticPendingTurn(content);
+
   setPending(true);
   try {
+    if (!state.currentSession || isLocalSessionId(state.currentSession.id)) {
+      const created = await api("/api/sessions", {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      if (!state.currentSession) {
+        state.currentSession = created.session;
+      } else {
+        state.currentSession.id = created.session.id;
+        state.currentSession.title = created.session.title || state.currentSession.title;
+      }
+    }
+
     const payload = await api("/api/messages", {
       method: "POST",
       body: JSON.stringify({
@@ -165,19 +591,21 @@ async function submitMessage() {
         content,
       }),
     });
+
     await refreshSessions();
     state.currentSession = payload.session;
-    state.selectedMessageId = payload.assistant_message_id || state.currentSession.messages.at(-1)?.id || null;
-    elements.composerInput.value = "";
+    state.selectedMessageId = resolveSelectedMessageId(state.currentSession, payload.assistant_message_id);
     renderAll();
     scrollMessagesToBottom();
+  } catch (error) {
+    markOptimisticAssistantAsFailed(optimisticTurn.assistantMessageId);
+    throw error;
   } finally {
     setPending(false);
   }
 }
 
 async function confirmCodeGeneration(messageId) {
-  // 这个动作对应后端的“从问题分析继续进入代码生成路径”。
   if (!messageId || state.sending) {
     return;
   }
@@ -190,7 +618,7 @@ async function confirmCodeGeneration(messageId) {
     });
     await refreshSessions();
     state.currentSession = payload.session;
-    state.selectedMessageId = payload.assistant_message_id || state.currentSession.messages.at(-1)?.id || null;
+    state.selectedMessageId = resolveSelectedMessageId(state.currentSession, payload.assistant_message_id);
     renderAll();
     scrollMessagesToBottom();
   } finally {
@@ -199,79 +627,166 @@ async function confirmCodeGeneration(messageId) {
 }
 
 function renderAll() {
-  // 全量重渲染入口。当前页面规模不大，这样写更直接，后续如有性能问题再细拆。
+  applyDraftComposerModeClass();
   renderSessionList();
   renderWorkspace();
   renderMessages();
   renderSelectedPanels();
 }
 
+function isDraftComposerMode() {
+  if (!state.currentSession) {
+    return true;
+  }
+  const visibleMessages = getVisibleMessages(state.currentSession.messages);
+  return visibleMessages.length === 0;
+}
+
+function applyDraftComposerModeClass() {
+  if (!elements.appShell) {
+    return;
+  }
+  elements.appShell.classList.toggle("draft-composer-mode", isDraftComposerMode());
+}
+
 function renderSessionList() {
-  // 左侧会话列表只展示摘要信息，不展开消息详情。
-  elements.sessionCountTag.textContent = String(state.sessions.length);
-  if (state.sessions.length === 0) {
-    elements.sessionList.innerHTML = `<div class="empty-state">还没有会话，点击上方按钮创建一个。</div>`;
+  if (!elements.sessionList || !elements.sessionCountTag) {
     return;
   }
 
-  elements.sessionList.innerHTML = state.sessions
-    .map((session) => {
-      const active = session.id === state.currentSession?.id ? "active" : "";
+  elements.sessionCountTag.textContent = String(state.sessions.length);
+  if (state.sessions.length === 0) {
+    elements.sessionList.innerHTML = `<div class="empty-state">暂无会话，发送首条消息后会自动创建。</div>`;
+    return;
+  }
+
+  const groups = groupSessionsByAge(state.sessions);
+  elements.sessionList.innerHTML = groups
+    .map((group) => {
       return `
-        <button class="session-item ${active}" type="button" data-session-id="${escapeHtml(session.id)}">
-          <span class="session-title">${escapeHtml(session.title)}</span>
-          <span class="session-meta">
-            <span>${escapeHtml(session.status)}</span>
-            <span>${escapeHtml(formatUpdatedAt(session.updated_at))}</span>
-          </span>
-        </button>
+        <section class="session-group">
+          <div class="session-group-title">${escapeHtml(group.label)}</div>
+          <div class="session-group-items">
+            ${group.items.map((session) => renderSessionItem(session)).join("")}
+          </div>
+        </section>
       `;
     })
     .join("");
 }
 
+function renderSessionItem(session) {
+  const active = session.id === state.currentSession?.id ? "active" : "";
+  const sessionTitle = session.title || "未命名会话";
+  return `
+    <button class="session-item ${active}" type="button" data-session-id="${escapeHtml(session.id)}" title="${escapeHtml(sessionTitle)}">
+      <span class="session-title">${escapeHtml(session.title || "未命名会话")}</span>
+      <span class="session-meta">
+        <span>${escapeHtml(session.status || "--")}</span>
+        <span>${escapeHtml(formatUpdatedAt(session.updated_at))}</span>
+      </span>
+    </button>
+  `;
+}
+
+function groupSessionsByAge(sessions) {
+  const groups = [
+    { label: "今天", items: [] },
+    { label: "昨天", items: [] },
+    { label: "7天内", items: [] },
+    { label: "30天内", items: [] },
+    { label: "更早", items: [] },
+  ];
+
+  sessions.forEach((session) => {
+    const dayDiff = daysSince(session.updated_at);
+    if (dayDiff <= 0) {
+      groups[0].items.push(session);
+      return;
+    }
+    if (dayDiff === 1) {
+      groups[1].items.push(session);
+      return;
+    }
+    if (dayDiff <= 7) {
+      groups[2].items.push(session);
+      return;
+    }
+    if (dayDiff <= 30) {
+      groups[3].items.push(session);
+      return;
+    }
+    groups[4].items.push(session);
+  });
+
+  return groups.filter((group) => group.items.length > 0);
+}
+
+function daysSince(value) {
+  if (!value) {
+    return 0;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 0;
+  }
+  const diff = Date.now() - date.getTime();
+  return Math.max(0, Math.floor(diff / (24 * 60 * 60 * 1000)));
+}
+
 function renderWorkspace() {
-  // 顶部标题区跟随当前会话和当前最新消息状态切换。
   if (!state.currentSession) {
-    elements.workspaceTitle.textContent = "准备开始新会话";
-    elements.workspaceSubtitle.textContent = "发送一个业务问题、报错描述或系统设计问题，界面会根据返回结果切换状态。";
     updateBadges("等待输入", "idle");
     return;
   }
 
-  const latestMessage = state.currentSession.messages.at(-1);
+  const visibleMessages = getVisibleMessages(state.currentSession.messages);
+  const latestMessage = visibleMessages.at(-1) || null;
   const route = latestMessage?.intent && latestMessage.intent !== "system" ? latestMessage.intent : "等待输入";
   const status = state.currentSession.status || "idle";
-  elements.workspaceTitle.textContent = state.currentSession.title;
-  elements.workspaceSubtitle.textContent =
-    "左侧管理会话，中间继续多轮对话，右侧查看证据、分析摘要和 trace 调试信息。";
   updateBadges(route, status);
 }
 
 function renderMessages() {
-  // 中间聊天区渲染完整消息列表，空会话时给出引导卡片。
+  if (!elements.messageList) {
+    return;
+  }
   if (!state.currentSession) {
-    elements.messageList.innerHTML = `<div class="loading-shell">正在准备会话...</div>`;
+    elements.messageList.innerHTML = "";
+    normalizeInlineDebugLabels();
     return;
   }
 
-  if (state.currentSession.messages.length === 0) {
-    elements.messageList.innerHTML = renderEmptyChat();
+  const visibleMessages = getVisibleMessages(state.currentSession.messages);
+  if (visibleMessages.length === 0) {
+    elements.messageList.innerHTML = "";
+    normalizeInlineDebugLabels();
     return;
   }
 
-  elements.messageList.innerHTML = state.currentSession.messages
-    .map((message) => renderMessageCard(message))
-    .join("");
+  elements.messageList.innerHTML = visibleMessages.map((message) => renderMessageCard(message)).join("");
+  normalizeInlineDebugLabels();
+}
+
+function normalizeStaticLabels() {
+  const inspectorDebugTitle = document.querySelector("#debugPanel")?.closest(".panel-block")?.querySelector(".panel-block-header h4");
+  if (inspectorDebugTitle) {
+    inspectorDebugTitle.textContent = "调试信息";
+  }
+}
+
+function normalizeInlineDebugLabels() {
+  const titles = document.querySelectorAll(".message-inline-toggle[data-panel-type='debug'] .message-inline-heading h4");
+  titles.forEach((titleElement) => {
+    titleElement.textContent = "调试信息";
+  });
 }
 
 function renderMessageCard(message) {
-  // 根据消息类型计算 class，驱动颜色、是否可选中等视觉效果。
   const classes = [
     "message-card",
     message.role === "user" ? "user" : "",
     message.intent === "out_of_scope" ? "out-of-scope" : "",
-    message.role === "assistant" ? "selectable" : "",
     message.id === state.selectedMessageId ? "selected" : "",
   ]
     .filter(Boolean)
@@ -289,15 +804,25 @@ function renderMessageCard(message) {
         </div>
         <div class="message-meta">${escapeHtml(formatUpdatedAt(message.created_at))}</div>
       </div>
-      <div class="message-content">${formatMultiline(message.content)}</div>
-      ${buildMessageTags(message)}
+      <div class="${message.role === "assistant" ? "message-content markdown-rendered" : "message-content plain-text"}">${renderMessageContent(message)}</div>
       ${buildMessageActions(message)}
+      ${buildMessageInlinePanels(message)}
     </article>
   `;
 }
 
+function renderMessageContent(message) {
+  const content = String(message?.content || "");
+  if (!content.trim()) {
+    return "--";
+  }
+  if (message?.role === "assistant") {
+    return renderMarkdownToHtml(content);
+  }
+  return formatMultiline(content);
+}
+
 function buildMessageTags(message) {
-  // 这里展示的是快速扫描信息，让用户在聊天区就能看到路由、模块和状态。
   if (message.role !== "assistant") {
     return "";
   }
@@ -323,7 +848,6 @@ function buildMessageTags(message) {
 }
 
 function buildMessageActions(message) {
-  // 目前只有“需要代码实现”这一类消息动作，后续可继续扩展更多 action。
   if (!Array.isArray(message.actions) || message.actions.length === 0) {
     return "";
   }
@@ -351,8 +875,172 @@ function buildMessageActions(message) {
   return buttons ? `<div class="message-actions">${buttons}</div>` : "";
 }
 
+function buildMessageInlinePanels(message) {
+  if (message.role !== "assistant") {
+    return "";
+  }
+  if (isAssistantResponsePending(message)) {
+    return "";
+  }
+
+  const citationPanel = buildInlineCitationPanel(message);
+  const debugPanel = buildInlineDebugPanel(message);
+
+  if (!citationPanel && !debugPanel) {
+    return "";
+  }
+
+  return `
+    <div class="message-inline-panels">
+      ${citationPanel}
+      ${debugPanel}
+    </div>
+  `;
+}
+
+function isAssistantResponsePending(message) {
+  if (!message || message.role !== "assistant") {
+    return false;
+  }
+  const status = String(message.status || "").toLowerCase();
+  const generationMode = String(message.analysis?.generation_mode || "").toLowerCase();
+  const content = String(message.content || "").trim();
+  if (status === "processing" || status === "pending") {
+    return true;
+  }
+  if (generationMode === "pending") {
+    return true;
+  }
+  return content === ASSISTANT_THINKING_TEXT;
+}
+
+function buildInlineCitationPanel(message) {
+  const citations = Array.isArray(message.citations) ? message.citations : [];
+  const expanded = isInlinePanelExpanded(message.id, "citation");
+  const collapsedClass = expanded ? "" : " is-collapsed";
+  const content =
+    citations.length > 0
+      ? (() => {
+          const selectedIndex = getInlineCitationSelectionIndex(message.id, citations.length);
+          const selectedCitation = citations[selectedIndex];
+          const tabs = citations
+            .map((citation, index) => {
+              const activeClass = index === selectedIndex ? "active" : "";
+              const title = citation?.title ? ` title="${escapeHtml(citation.title)}"` : "";
+              return `
+                <button
+                  class="inline-citation-tab ${activeClass}"
+                  type="button"
+                  data-action="select-inline-citation"
+                  data-message-id="${escapeHtml(message.id)}"
+                  data-citation-index="${index}"
+                  ${title}
+                >
+                  证据${index + 1}
+                </button>
+              `;
+            })
+            .join("");
+
+          return `
+            <div class="inline-citation-tabs" role="tablist" aria-label="引用证据切换">
+              ${tabs}
+            </div>
+            <div class="inline-citation-content">
+              ${renderCitationCard(selectedCitation)}
+            </div>
+          `;
+        })()
+      : `<div class="message-inline-empty">当前消息没有引用证据。</div>`;
+
+  return `
+    <section class="message-inline-panel${collapsedClass}">
+      <button
+        class="message-inline-panel-header message-inline-toggle"
+        type="button"
+        data-action="toggle-inline-panel"
+        data-message-id="${escapeHtml(message.id)}"
+        data-panel-type="citation"
+        aria-expanded="${expanded ? "true" : "false"}"
+      >
+        <span class="message-inline-heading">
+        <h4>引用证据</h4>
+          <span class="panel-tag">Sources</span>
+        </span>
+        <span class="message-inline-chevron">${expanded ? "收起" : "展开"}</span>
+      </button>
+      <div class="message-inline-panel-body">${content}</div>
+    </section>
+  `;
+}
+
+function getInlineCitationSelectionIndex(messageId, citationCount) {
+  if (!messageId || citationCount <= 0) {
+    return 0;
+  }
+  const raw = state.inlineCitationSelection[messageId];
+  if (Number.isInteger(raw) && raw >= 0 && raw < citationCount) {
+    return raw;
+  }
+  return 0;
+}
+
+function buildInlineDebugPanel(message) {
+  const debug = message.debug;
+  if (!debug || typeof debug !== "object" || Object.keys(debug).length === 0) {
+    return "";
+  }
+  const expanded = isInlinePanelExpanded(message.id, "debug");
+  const collapsedClass = expanded ? "" : " is-collapsed";
+  const gridItems = [
+    renderDebugCard("message_id", message.id || "--"),
+    renderDebugCard("trace_id", message.trace_id || "--"),
+    renderDebugCard("route", debug.route || message.intent || "--"),
+    renderDebugCard("status", message.status || "--"),
+    renderDebugCard("domain", stringifyMetric(debug.domain_relevance)),
+    renderDebugCard("latency", debug.latency_ms ? `${debug.latency_ms} ms` : "--"),
+    renderDebugCard("backend", debug.graph_backend || "--"),
+    renderDebugCard("next_action", debug.next_action || "--"),
+  ];
+
+  const hasAnyDebug =
+    Boolean(debug.route) ||
+    Boolean(debug.graph_backend) ||
+    Boolean(debug.next_action) ||
+    typeof debug.latency_ms === "number" ||
+    typeof debug.domain_relevance === "number";
+
+  const content = hasAnyDebug
+    ? `
+      <div class="message-inline-debug-grid">
+        ${gridItems.join("")}
+      </div>
+      ${renderPathCard(debug.graph_path)}
+    `
+    : `<div class="message-inline-empty">当前消息没有调试信息。</div>`;
+
+  return `
+    <section class="message-inline-panel${collapsedClass}">
+      <button
+        class="message-inline-panel-header message-inline-toggle"
+        type="button"
+        data-action="toggle-inline-panel"
+        data-message-id="${escapeHtml(message.id)}"
+        data-panel-type="debug"
+        aria-expanded="${expanded ? "true" : "false"}"
+      >
+        <span class="message-inline-heading">
+        <h4>调试面板</h4>
+          <span class="panel-tag">Trace</span>
+        </span>
+        <span class="message-inline-chevron">${expanded ? "收起" : "展开"}</span>
+      </button>
+      <div class="message-inline-panel-body">${content}</div>
+    </section>
+  `;
+}
+
 function renderSelectedPanels() {
-  // 右侧三个面板都基于“当前选中助手消息”渲染。
   const selectedMessage = getSelectedMessage();
   renderAnalysisPanel(selectedMessage);
   renderCitationPanel(selectedMessage);
@@ -360,21 +1048,57 @@ function renderSelectedPanels() {
 }
 
 function getSelectedMessage() {
-  // 如果当前没有显式选中项，则回退到最新助手消息，保证右侧始终有内容。
   if (!state.currentSession) {
     return null;
   }
+
+  const visibleMessages = getVisibleMessages(state.currentSession.messages);
   return (
-    state.currentSession.messages.find((message) => message.id === state.selectedMessageId) ||
-    [...state.currentSession.messages].reverse().find((message) => message.role === "assistant") ||
+    visibleMessages.find((message) => message.id === state.selectedMessageId) ||
+    [...visibleMessages].reverse().find((message) => message.role === "assistant") ||
+    visibleMessages.at(-1) ||
     null
   );
 }
 
+function isSystemBootstrapMessage(message) {
+  return Boolean(message && message.role === "assistant" && message.intent === "system");
+}
+
+function getVisibleMessages(messages) {
+  if (!Array.isArray(messages)) {
+    return [];
+  }
+  return messages.filter((message) => !isSystemBootstrapMessage(message));
+}
+
+function resolveSelectedMessageId(session, preferredMessageId = null) {
+  if (!session || !Array.isArray(session.messages)) {
+    return null;
+  }
+
+  const visibleMessages = getVisibleMessages(session.messages);
+  if (visibleMessages.length === 0) {
+    return null;
+  }
+
+  if (preferredMessageId) {
+    const preferred = visibleMessages.find((message) => message.id === preferredMessageId);
+    if (preferred) {
+      return preferred.id;
+    }
+  }
+
+  const latestAssistant = [...visibleMessages].reverse().find((message) => message.role === "assistant");
+  return latestAssistant?.id || visibleMessages.at(-1)?.id || null;
+}
+
 function renderAnalysisPanel(message) {
-  // 分析摘要面板只消费结构化 analysis 字段，不直接解析自然语言正文。
+  if (!elements.analysisPanel) {
+    return;
+  }
   if (!message?.analysis) {
-    elements.analysisPanel.innerHTML = `<div class="empty-state">选中一条助手消息后，这里会显示模块、根因、修复建议和测试要点。</div>`;
+    elements.analysisPanel.innerHTML = `<div class="empty-state">选中一条助手消息后，这里会显示问答摘要、关联模块和补充说明。</div>`;
     return;
   }
 
@@ -431,7 +1155,9 @@ function renderAnalysisPanel(message) {
 }
 
 function renderCitationPanel(message) {
-  // 引用证据面板统一渲染 citations，来源类型可能是 wiki / case / code。
+  if (!elements.citationPanel) {
+    return;
+  }
   if (!Array.isArray(message?.citations) || message.citations.length === 0) {
     elements.citationPanel.innerHTML = `<div class="empty-state">当前还没有引用证据。</div>`;
     return;
@@ -445,13 +1171,19 @@ function renderCitationPanel(message) {
 }
 
 function renderDebugPanel(message) {
-  // 调试面板直接暴露后端 trace、route、backend 和 graph_path，方便观察编排结果。
+  if (!elements.debugPanel) {
+    return;
+  }
   if (!message) {
     elements.debugPanel.innerHTML = `<div class="empty-state">等待本轮 trace、路由与耗时信息。</div>`;
     return;
   }
 
-  const debug = message.debug || {};
+  const debug = message.debug;
+  if (!debug || typeof debug !== "object" || Object.keys(debug).length === 0) {
+    elements.debugPanel.innerHTML = `<div class="empty-state">当前未返回调试信息（可能未开启系统调试开关）。</div>`;
+    return;
+  }
   elements.debugPanel.innerHTML = `
     <div class="debug-grid">
       ${renderDebugCard("message_id", message.id)}
@@ -468,7 +1200,9 @@ function renderDebugPanel(message) {
 }
 
 function updateBadges(route, status) {
-  // 顶部 badge 颜色和文本都由 route/status 推导。
+  if (!elements.routeBadge || !elements.statusBadge) {
+    return;
+  }
   elements.routeBadge.textContent = route;
   elements.routeBadge.className = `badge ${badgeClassForRoute(route)}`;
   elements.statusBadge.textContent = status;
@@ -476,33 +1210,68 @@ function updateBadges(route, status) {
 }
 
 function setPending(pending) {
-  // 统一处理按钮禁用态，避免多处手工维护。
   state.sending = pending;
-  elements.sendButton.disabled = pending;
-  elements.newSessionBtn.disabled = pending;
-  elements.sendButton.textContent = pending ? "处理中..." : "发送";
+
+  if (elements.sendButton) {
+    elements.sendButton.disabled = pending;
+    elements.sendButton.textContent = pending ? "处理中..." : "发送";
+  }
+  if (elements.newSessionBtn) {
+    elements.newSessionBtn.disabled = pending;
+  }
+  if (elements.newSessionMiniBtn) {
+    elements.newSessionMiniBtn.disabled = pending;
+  }
+  if (elements.sidebarToggleBtn) {
+    elements.sidebarToggleBtn.disabled = pending;
+  }
+  if (elements.sidebarToggleMiniBtn) {
+    elements.sidebarToggleMiniBtn.disabled = pending;
+  }
+  if (elements.inspectorToggleBtn) {
+    elements.inspectorToggleBtn.disabled = pending;
+  }
+  if (elements.inspectorToggleMiniBtn) {
+    elements.inspectorToggleMiniBtn.disabled = pending;
+  }
 }
 
 function scrollMessagesToBottom() {
-  // 新消息渲染完成后滚动到底部，requestAnimationFrame 保证 DOM 已更新。
+  if (!elements.messageList && !elements.contentGrid) {
+    return;
+  }
   requestAnimationFrame(() => {
-    elements.messageList.scrollTop = elements.messageList.scrollHeight;
+    const messageList = elements.messageList;
+    const contentGrid = elements.contentGrid;
+    const canScrollMessageList =
+      !!messageList &&
+      window.getComputedStyle(messageList).overflowY !== "visible" &&
+      messageList.scrollHeight > messageList.clientHeight + 1;
+
+    if (canScrollMessageList && messageList) {
+      messageList.scrollTop = messageList.scrollHeight;
+      return;
+    }
+
+    if (contentGrid) {
+      contentGrid.scrollTop = contentGrid.scrollHeight;
+    }
   });
 }
 
 function handleError(error) {
-  // 当前错误只在调试面板展示，不打断整页结构。
   updateBadges("error", "error");
-  elements.debugPanel.innerHTML = `
-    <div class="debug-card">
-      <div class="debug-label">error</div>
-      <div class="debug-value">${escapeHtml(error.message || String(error))}</div>
-    </div>
-  `;
+  if (elements.debugPanel) {
+    elements.debugPanel.innerHTML = `
+      <div class="debug-card">
+        <div class="debug-label">error</div>
+        <div class="debug-value">${escapeHtml(error.message || String(error))}</div>
+      </div>
+    `;
+  }
 }
 
 function renderMetricCard(label, value) {
-  // 小型统计卡片，复用在分析摘要顶部。
   return `
     <div class="metric-card">
       <div class="metric-label">${escapeHtml(label)}</div>
@@ -512,11 +1281,9 @@ function renderMetricCard(label, value) {
 }
 
 function renderListCard(label, items) {
-  // 通用列表卡片，用于修复建议、风险、验证步骤等结构化列表。
   if (!items || items.length === 0) {
     return "";
   }
-
   return `
     <div class="list-card">
       <div class="citation-title">${escapeHtml(label)}</div>
@@ -527,9 +1294,178 @@ function renderListCard(label, items) {
   `;
 }
 
+function detectCitationLanguage(citation) {
+  const path = String(citation?.path || "").toLowerCase();
+  const title = String(citation?.title || "").toLowerCase();
+  const hint = `${path} ${title}`;
+  if (hint.includes(".py")) {
+    return "python";
+  }
+  if (hint.includes(".ts") || hint.includes(".tsx")) {
+    return "typescript";
+  }
+  if (hint.includes(".js") || hint.includes(".jsx")) {
+    return "javascript";
+  }
+  if (hint.includes(".json")) {
+    return "json";
+  }
+  if (hint.includes(".yaml") || hint.includes(".yml")) {
+    return "yaml";
+  }
+  if (hint.includes(".sql")) {
+    return "sql";
+  }
+  if (hint.includes(".ps1")) {
+    return "powershell";
+  }
+  if (hint.includes(".sh") || hint.includes(".bash")) {
+    return "bash";
+  }
+  if (hint.includes(".md")) {
+    return "markdown";
+  }
+  return "text";
+}
+
+function languageLabel(language) {
+  const mapping = {
+    python: "Python",
+    javascript: "JavaScript",
+    typescript: "TypeScript",
+    json: "JSON",
+    yaml: "YAML",
+    sql: "SQL",
+    bash: "Bash",
+    powershell: "PowerShell",
+    markdown: "Markdown",
+    text: "Text",
+  };
+  return mapping[language] || "Text";
+}
+
+function sanitizeLanguageClass(language) {
+  const normalized = String(language || "text").toLowerCase();
+  const safe = normalized.replace(/[^a-z0-9_-]/g, "");
+  return safe || "text";
+}
+
+function highlightByRegex(code, regex, tokenClassByGroupIndex) {
+  let result = "";
+  let lastIndex = 0;
+  regex.lastIndex = 0;
+  while (true) {
+    const matched = regex.exec(code);
+    if (!matched) {
+      break;
+    }
+    result += escapeHtml(code.slice(lastIndex, matched.index));
+    let tokenClass = "plain";
+    let tokenText = matched[0];
+    for (let groupIndex = 1; groupIndex < matched.length; groupIndex += 1) {
+      if (matched[groupIndex] === undefined) {
+        continue;
+      }
+      tokenClass = tokenClassByGroupIndex[groupIndex] || "plain";
+      tokenText = matched[groupIndex];
+      break;
+    }
+    result += `<span class="code-token ${tokenClass}">${escapeHtml(tokenText)}</span>`;
+    lastIndex = matched.index + tokenText.length;
+    if (regex.lastIndex <= matched.index) {
+      regex.lastIndex = matched.index + 1;
+    }
+  }
+  result += escapeHtml(code.slice(lastIndex));
+  return result;
+}
+
+function highlightCodeByLanguage(code, language) {
+  const raw = String(code || "");
+  switch (language) {
+    case "python":
+      return highlightByRegex(
+        raw,
+        /(#.*$)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|\b(?:def|class|return|if|elif|else|for|while|try|except|finally|with|as|import|from|pass|break|continue|and|or|not|in|is|none|true|false|lambda|yield|async|await|raise|assert)\b|\b\d+(?:\.\d+)?\b|(@[A-Za-z_][A-Za-z0-9_]*)/gim,
+        {
+          1: "comment",
+          2: "string",
+          3: "keyword",
+          4: "number",
+          5: "decorator",
+        }
+      );
+    case "javascript":
+    case "typescript":
+      return highlightByRegex(
+        raw,
+        /(\/\/.*$|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)|\b(?:function|return|if|else|for|while|try|catch|finally|const|let|var|class|new|import|from|export|default|async|await|throw|switch|case|break|continue|extends|implements|interface|type)\b|\b\d+(?:\.\d+)?\b/gim,
+        {
+          1: "comment",
+          2: "string",
+          3: "keyword",
+          4: "number",
+        }
+      );
+    case "json":
+      return highlightByRegex(
+        raw,
+        /("(?:\\.|[^"\\])*"(?=\s*:))|("(?:\\.|[^"\\])*")|\b(?:true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+        {
+          1: "key",
+          2: "string",
+          3: "keyword",
+          4: "number",
+        }
+      );
+    case "sql":
+      return highlightByRegex(
+        raw,
+        /(--.*$|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|\b(?:select|from|where|and|or|join|left|right|inner|outer|on|group|by|order|limit|insert|into|values|update|set|delete|create|table|alter|drop|as|having|union|all)\b|\b\d+(?:\.\d+)?\b/gim,
+        {
+          1: "comment",
+          2: "string",
+          3: "keyword",
+          4: "number",
+        }
+      );
+    case "bash":
+    case "powershell":
+      return highlightByRegex(
+        raw,
+        /(#.*$)|("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|(\$[A-Za-z_][A-Za-z0-9_]*|\$\{[^}]+\})|\b(?:if|then|else|fi|for|while|do|done|function|return|case|esac|in|param)\b|\b\d+(?:\.\d+)?\b/gim,
+        {
+          1: "comment",
+          2: "string",
+          3: "variable",
+          4: "keyword",
+          5: "number",
+        }
+      );
+    default:
+      return escapeHtml(raw);
+  }
+}
+
 function renderCitationCard(citation) {
-  // 单条证据卡片，展示来源类型、标题、路径和摘录。
-  const sourceType = citation.source_type || "source";
+  if (!citation) {
+    return "";
+  }
+  const sourceType = String(citation.source_type || "source");
+  const symbolName = String(citation.symbol_name || "").trim();
+  const startLine = Number.isInteger(citation.start_line) ? citation.start_line : null;
+  const endLine = Number.isInteger(citation.end_line) ? citation.end_line : null;
+  const lineMeta =
+    startLine !== null
+      ? `L${startLine}${endLine !== null && endLine !== startLine ? `-L${endLine}` : ""}`
+      : "";
+  const extraMetaItems = [
+    symbolName ? `<span class="citation-meta-item">symbol ${escapeHtml(symbolName)}</span>` : "",
+    lineMeta ? `<span class="citation-meta-item">${escapeHtml(lineMeta)}</span>` : "",
+  ]
+    .filter(Boolean)
+    .join("");
+  const excerptHtml = renderCitationExcerpt(citation);
   return `
     <div class="citation-card">
       <div class="citation-header">
@@ -538,27 +1474,279 @@ function renderCitationCard(citation) {
       </div>
       <div class="citation-title">${escapeHtml(citation.title || citation.path || "未命名来源")}</div>
       <p class="citation-meta">${escapeHtml(citation.path || "--")}</p>
-      <p>${escapeHtml(citation.excerpt || "")}</p>
+      ${extraMetaItems ? `<div class="citation-extra-meta">${extraMetaItems}</div>` : ""}
+      ${excerptHtml}
     </div>
   `;
 }
 
+function isCodeCitation(citation) {
+  if (!citation) {
+    return false;
+  }
+  const sourceType = String(citation.source_type || "").toLowerCase();
+  if (sourceType.startsWith("wiki")) {
+    return false;
+  }
+  if (sourceType.startsWith("code")) {
+    return true;
+  }
+  if (citation.symbol_name) {
+    return true;
+  }
+  return Number.isInteger(citation.start_line) || Number.isInteger(citation.end_line);
+}
+
+function isWikiCitation(citation) {
+  if (!citation) {
+    return false;
+  }
+  const sourceType = String(citation.source_type || "").toLowerCase();
+  return sourceType.startsWith("wiki");
+}
+
+function sanitizeHttpUrl(url) {
+  const raw = String(url || "").trim();
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+  return "";
+}
+
+function renderInlineMarkdown(text) {
+  let html = escapeHtml(String(text || ""));
+  const inlineCodeSegments = [];
+  html = html.replace(/`([^`\n]+)`/g, (_matched, codeText) => {
+    const token = `__MD_INLINE_CODE_${inlineCodeSegments.length}__`;
+    inlineCodeSegments.push(`<code class="md-inline-code">${codeText}</code>`);
+    return token;
+  });
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => {
+    const safeUrl = sanitizeHttpUrl(url);
+    if (!safeUrl) {
+      return `${label}(${url})`;
+    }
+    return `<a class="md-link" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+  });
+  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/(^|[^A-Za-z0-9_])\*(\S(?:[^*\n]*\S)?)\*(?![A-Za-z0-9_])/g, "$1<em>$2</em>");
+  html = html.replace(/__MD_INLINE_CODE_(\d+)__/g, (_matched, indexText) => {
+    const index = Number(indexText);
+    if (!Number.isInteger(index) || index < 0 || index >= inlineCodeSegments.length) {
+      return "";
+    }
+    return inlineCodeSegments[index];
+  });
+  return html;
+}
+
+function renderMarkdownToHtml(markdown) {
+  const lines = String(markdown || "").replace(/\r\n?/g, "\n").split("\n");
+  const blocks = [];
+  let paragraphLines = [];
+  let listType = "";
+  let listItems = [];
+  let quoteLines = [];
+  let inCodeFence = false;
+  let codeLang = "text";
+  let codeLines = [];
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) {
+      return;
+    }
+    const content = paragraphLines.map((line) => renderInlineMarkdown(line)).join("<br />");
+    blocks.push(`<p>${content}</p>`);
+    paragraphLines = [];
+  };
+
+  const flushList = () => {
+    if (!listType || listItems.length === 0) {
+      listType = "";
+      listItems = [];
+      return;
+    }
+    blocks.push(`<${listType}>${listItems.join("")}</${listType}>`);
+    listType = "";
+    listItems = [];
+  };
+
+  const flushQuote = () => {
+    if (quoteLines.length === 0) {
+      return;
+    }
+    const content = quoteLines.map((line) => renderInlineMarkdown(line)).join("<br />");
+    blocks.push(`<blockquote>${content}</blockquote>`);
+    quoteLines = [];
+  };
+
+  const flushCodeFence = () => {
+    const language = sanitizeLanguageClass(codeLang || "text");
+    const highlighted = highlightCodeByLanguage(codeLines.join("\n"), language);
+    blocks.push(`
+      <div class="citation-excerpt-code-wrap md-code-wrap">
+        <div class="citation-code-toolbar">
+          <span class="citation-code-lang">${escapeHtml(languageLabel(language))}</span>
+          <button class="citation-copy-btn" type="button" data-action="copy-citation-code">复制代码</button>
+        </div>
+        <pre class="citation-excerpt-code language-${language}"><code>${highlighted}</code></pre>
+      </div>
+    `);
+    codeLang = "text";
+    codeLines = [];
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine ?? "";
+    const trimmed = line.trim();
+
+    const fenceMatched = trimmed.match(/^```([A-Za-z0-9_-]+)?$/);
+    if (fenceMatched) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      if (!inCodeFence) {
+        inCodeFence = true;
+        codeLang = fenceMatched[1] ? fenceMatched[1].toLowerCase() : "text";
+        codeLines = [];
+      } else {
+        inCodeFence = false;
+        flushCodeFence();
+      }
+      continue;
+    }
+
+    if (inCodeFence) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      continue;
+    }
+
+    const headingMatched = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatched) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      const level = headingMatched[1].length;
+      blocks.push(`<h${level} class="md-h md-h${level}">${renderInlineMarkdown(headingMatched[2])}</h${level}>`);
+      continue;
+    }
+
+    if (/^([-*_])\1{2,}$/.test(trimmed)) {
+      flushParagraph();
+      flushList();
+      flushQuote();
+      blocks.push('<hr class="md-hr" />');
+      continue;
+    }
+
+    const quoteMatched = line.match(/^>\s?(.*)$/);
+    if (quoteMatched) {
+      flushParagraph();
+      flushList();
+      quoteLines.push(quoteMatched[1]);
+      continue;
+    }
+    flushQuote();
+
+    const unorderedMatched = line.match(/^\s*[-*+]\s+(.+)$/);
+    if (unorderedMatched) {
+      flushParagraph();
+      if (listType && listType !== "ul") {
+        flushList();
+      }
+      listType = "ul";
+      listItems.push(`<li>${renderInlineMarkdown(unorderedMatched[1])}</li>`);
+      continue;
+    }
+
+    const orderedMatched = line.match(/^\s*\d+\.\s+(.+)$/);
+    if (orderedMatched) {
+      flushParagraph();
+      if (listType && listType !== "ol") {
+        flushList();
+      }
+      listType = "ol";
+      listItems.push(`<li>${renderInlineMarkdown(orderedMatched[1])}</li>`);
+      continue;
+    }
+
+    flushList();
+    paragraphLines.push(line);
+  }
+
+  if (inCodeFence) {
+    flushCodeFence();
+  }
+  flushParagraph();
+  flushList();
+  flushQuote();
+
+  return blocks.join("");
+}
+
+function renderCitationExcerpt(citation) {
+  const excerpt = String(citation?.excerpt || "");
+  if (!excerpt.trim()) {
+    return `<div class="citation-excerpt-text">--</div>`;
+  }
+  if (isCodeCitation(citation)) {
+    const language = detectCitationLanguage(citation);
+    const languageClass = sanitizeLanguageClass(language);
+    const highlighted = highlightCodeByLanguage(excerpt, language);
+    return `
+      <div class="citation-excerpt-code-wrap">
+        <div class="citation-code-toolbar">
+          <span class="citation-code-lang">${escapeHtml(languageLabel(language))}</span>
+          <button class="citation-copy-btn" type="button" data-action="copy-citation-code">复制代码</button>
+        </div>
+        <pre class="citation-excerpt-code language-${languageClass}"><code>${highlighted}</code></pre>
+      </div>
+    `;
+  }
+  if (isWikiCitation(citation)) {
+    return `
+      <div class="citation-markdown-toolbar">
+        <button
+          class="citation-copy-btn citation-copy-btn-wiki"
+          type="button"
+          data-action="copy-citation-text"
+          data-copy-text="${escapeHtml(excerpt)}"
+        >
+          复制内容
+        </button>
+      </div>
+      <div class="citation-excerpt-markdown markdown-rendered">${renderMarkdownToHtml(excerpt)}</div>
+    `;
+  }
+  return `<div class="citation-excerpt-text">${formatMultiline(excerpt)}</div>`;
+}
+
 function renderDebugCard(label, value) {
-  // 调试字段卡片，设计成统一的小网格，便于扩展更多运行态字段。
+  const normalizedValue = value === null || value === undefined || String(value).trim() === "" ? "--" : String(value);
+  const isTooLong = normalizedValue.length > INLINE_DEBUG_VALUE_MAX_CHARS;
+  const displayValue = isTooLong
+    ? `${normalizedValue.slice(0, INLINE_DEBUG_VALUE_MAX_CHARS)}...`
+    : normalizedValue;
+  const titleAttr = isTooLong ? ` title="${escapeHtml(normalizedValue)}"` : "";
   return `
     <div class="debug-card">
       <div class="debug-label">${escapeHtml(label)}</div>
-      <div class="debug-value">${escapeHtml(value)}</div>
+      <div class="debug-value debug-value-ellipsis"${titleAttr}>${escapeHtml(displayValue)}</div>
     </div>
   `;
 }
 
 function renderPathCard(graphPath) {
-  // graph_path 用列表直出，可以非常直观地看到后端到底走过哪些节点。
   if (!Array.isArray(graphPath) || graphPath.length === 0) {
     return "";
   }
-
   return `
     <div class="list-card">
       <div class="citation-title">graph_path</div>
@@ -570,7 +1758,6 @@ function renderPathCard(graphPath) {
 }
 
 function renderTagBlock(label, value) {
-  // 聊天消息中的轻量标签块。
   return `
     <div class="tag-block">
       <span class="tag-label">${escapeHtml(label)}</span>
@@ -580,26 +1767,20 @@ function renderTagBlock(label, value) {
 }
 
 function renderEmptyChat() {
-  // 空状态引导区，核心作用是告诉用户系统支持的两类主能力。
   return `
     <div class="empty-chat">
       <div>
-        <p class="eyebrow">READY FOR ROUTING</p>
-        <h3>从知识问答到问题分析的统一入口</h3>
+        <p class="eyebrow">READY FOR KNOWLEDGE QA</p>
+        <h3>业务知识问答统一入口</h3>
         <p class="empty-state">
-          你可以直接输入业务规则问题、异常现象、日志线索，或者点击左侧的快速提问示例。
+          点击“新建会话”后可直接输入问题；发送首条消息时系统会自动创建会话并进入问答流程。
         </p>
-      </div>
-      <div class="prompt-grid">
-        <button class="prompt-chip" type="button" data-prompt="订单结算规则是什么？">先问业务知识</button>
-        <button class="prompt-chip" type="button" data-prompt="库存回调重复导致解锁失败，应该怎么定位？">先做问题分析</button>
       </div>
     </div>
   `;
 }
 
 function badgeClassForRoute(route) {
-  // 路由类型控制颜色：分析偏 warn，知识问答偏 success，无关和错误用 danger。
   if (route === "issue_analysis") {
     return "warn";
   }
@@ -613,7 +1794,6 @@ function badgeClassForRoute(route) {
 }
 
 function badgeClassForStatus(status) {
-  // 状态 badge 单独映射，和 route 的语义不完全一样。
   if (status === "completed") {
     return "success";
   }
@@ -627,7 +1807,6 @@ function badgeClassForStatus(status) {
 }
 
 function formatUpdatedAt(value) {
-  // 左侧列表和消息时间统一格式化到“时:分”。
   if (!value) {
     return "--";
   }
@@ -642,7 +1821,6 @@ function formatUpdatedAt(value) {
 }
 
 function stringifyMetric(value) {
-  // 调试数值统一保留两位小数，避免页面上出现长串浮点误差。
   if (typeof value === "number") {
     return value.toFixed(2);
   }
@@ -650,12 +1828,10 @@ function stringifyMetric(value) {
 }
 
 function formatMultiline(value) {
-  // 聊天正文允许换行，但仍然先做 HTML 转义。
   return escapeHtml(value).replace(/\n/g, "<br />");
 }
 
 function escapeHtml(value) {
-  // 所有字符串输出到 innerHTML 前都必须过这里，防止意外的 HTML 注入。
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

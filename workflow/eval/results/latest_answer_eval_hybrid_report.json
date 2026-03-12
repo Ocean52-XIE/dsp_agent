@@ -1,0 +1,3006 @@
+{
+  "generated_at": "2026-03-12T21:38:38",
+  "config_path": "workflow/eval/config.answer.hybrid.template.json",
+  "dataset_path": "workflow/eval/datasets/ad_engine_answer_eval_hybrid.jsonl",
+  "output_path": "workflow/eval/results/latest_answer_eval_hybrid_report.json",
+  "total_cases": 30,
+  "min_required_coverage_for_pass": 0.8,
+  "require_citation_for_exact": true,
+  "enable_llm_judge": true,
+  "llm_judge_available": true,
+  "qa_llm_enabled": true,
+  "qa_llm_available": true,
+  "qa_llm_model": "deepseek-chat",
+  "llm_judge_required_for_exact": false,
+  "llm_judge_pass_threshold": 0.6,
+  "weights": {
+    "required_fact_coverage": 0.15,
+    "forbidden_claim_pass": 0.1,
+    "expected_mode_accuracy": 0.1,
+    "citation_hit": 0.15,
+    "code_citation_hit": 0.25,
+    "expected_source_hit": 0.15,
+    "llm_judge_score": 0.1
+  },
+  "metric_denominators": {
+    "total_cases": 30,
+    "wiki_citation_cases": 30,
+    "code_citation_cases": 30,
+    "expected_source_cases": 30,
+    "formula_cases": 8,
+    "reason_cases": 8,
+    "function_location_cases": 7,
+    "mixed_followup_cases": 7
+  },
+  "metrics": {
+    "required_fact_coverage": 1.0,
+    "forbidden_claim_pass_rate": 1.0,
+    "expected_mode_accuracy": 1.0,
+    "citation_hit_rate": 1.0,
+    "overall_score": 0.976,
+    "exact_correct_rate": 1.0,
+    "wiki_citation_hit_rate": 0.9,
+    "code_citation_hit_rate": 1.0,
+    "expected_source_hit_rate": 1.0,
+    "llm_judge_score_avg": 0.76,
+    "formula_structure_hit_rate": 1.0,
+    "reason_structure_hit_rate": 1.0,
+    "location_anchor_hit_rate": 1.0,
+    "mixed_dual_source_hit_rate": 1.0
+  },
+  "hybrid_type_metrics": {
+    "formula": {
+      "cases": 8,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    },
+    "function_location": {
+      "cases": 7,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    },
+    "mixed_followup": {
+      "cases": 7,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    },
+    "reason": {
+      "cases": 8,
+      "required_fact_coverage": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "exact_correct_rate": 1.0
+    }
+  },
+  "per_case": [
+    {
+      "id": "ans_hybrid_001",
+      "query": "target_cpa 和 pCVR 的出价公式是什么，代码里哪个函数实现",
+      "intent": "knowledge_qa",
+      "note": "公式问答-出价公式+函数定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_ocpc_bid",
+        "compute_bid_for_request"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "target_cpa * pcvr * alpha",
+          "bid = target_cpa * pCVR * alpha"
+        ],
+        [
+          "compute_ocpc_bid"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，出价公式为：`bid = target_cpa * pcvr * alpha`。\n代码实现函数优先定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_ocpc_bid`（line: 29-37）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `predict_ctr_cvr`（line: 17-33）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 3. 实时出价核心要素` 提到：- 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预算状态：剩余预算、预算消耗速度。 - 风险参数：频控、异常流量过滤、计划限速。\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "target_cpa * pcvr * alpha / bid = target_cpa * pCVR * alpha",
+        "compute_ocpc_bid",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "准确覆盖了所有预期要点，并正确引用了相关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_002",
+      "query": "广告引擎里 eCPM 的常见计算公式是什么，对应代码在哪里体现",
+      "intent": "knowledge_qa",
+      "note": "公式问答-eCPM+排序函数",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_rank_score"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "eCPM = pCTR * Bid * 1000",
+          "ecpm"
+        ],
+        [
+          "compute_rank_score",
+          "rank_score"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，公式为：`eCPM = pCTR * Bid * 1000`。\n代码实现可优先参考 `codes/ad_engine/rerank/rerank_engine.py` -> `compute_rank_score`（line: 28-41）。\n在排序侧可定位到 `codes/ad_engine/rerank/rerank_engine.py` -> `compute_rank_score`（line: 28-41），该函数产出 `rank_score`。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 3. 实时出价核心要素` 提到：- 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预算状态：剩余预算、预算消耗速度。 - 风险参数：频控、异常流量过滤、计划限速。\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rerank/rerank_engine.py` 中的 `compute_rank_score`（line: 28-41）与结论直接相关：以 `eCPM` 作为基础分；扣减频控/风控惩罚项；扣减多样性惩罚项；在特征缺失时做降级处理，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "eCPM = pCTR * Bid * 1000 / ecpm",
+        "compute_rank_score / rank_score",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 0.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "回答正确覆盖了核心公式和主要代码位置，但引用了无关证据并包含冗余信息。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_003",
+      "query": "alpha 调节因子通常怎么计算，代码入口函数是什么",
+      "intent": "knowledge_qa",
+      "note": "公式问答-alpha计算",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_alpha"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "预算超前",
+          "budget_ratio",
+          "competition_level"
+        ],
+        [
+          "compute_alpha"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，出价公式为：`bid = target_cpa * pCVR * alpha`。\n代码实现函数优先定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_alpha`（line: 16-26）。\n`alpha` 根据 `budget_ratio` 与 `competition_level` 分段计算：预算超前会下调，预算落后会提升。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `rate_predictor`（line: 1-44）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_alpha`（line: 16-26）与结论直接相关：这里定义了 `compute_alpha`；这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "预算超前 / budget_ratio / competition_level",
+        "compute_alpha",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答准确覆盖了alpha的计算逻辑和代码入口，但引用了部分非直接相关的证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_004",
+      "query": "请求级出价是如何串联计算的，请给公式和函数链路",
+      "intent": "knowledge_qa",
+      "note": "公式问答-入口函数链路",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_bid_for_request",
+        "compute_alpha",
+        "compute_ocpc_bid"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "compute_bid_for_request"
+        ],
+        [
+          "compute_alpha"
+        ],
+        [
+          "compute_ocpc_bid"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，出价公式为：`bid = target_cpa * pCVR * alpha`。\n代码实现函数优先定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_alpha`（line: 1-51）。\n请求级出价入口函数为 `compute_bid_for_request`。\n函数链路为：`compute_bid_for_request -> compute_alpha -> compute_ocpc_bid`。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_ocpc_bid`（line: 29-37）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 6. 与出价联动` 提到：`eCPM = pCTR * Bid * 1000`",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md",
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "compute_bid_for_request",
+        "compute_alpha",
+        "compute_ocpc_bid"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "回答正确覆盖了预期要点和函数链路，但引用了部分无关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_005",
+      "query": "oCPC 出价公式里包含哪些变量，代码里由哪个函数执行",
+      "intent": "knowledge_qa",
+      "note": "公式问答-oCPC变量",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_ocpc_bid"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "target_cpa",
+          "pcvr",
+          "alpha"
+        ],
+        [
+          "compute_ocpc_bid"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，出价公式为：`bid = target_cpa * pcvr * alpha`。\n代码实现函数优先定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_ocpc_bid`（line: 29-37）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`出价策略` 的 `出价策略 / 3. 实时出价核心要素` 提到：- 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预算状态：剩余预算、预算消耗速度。 - 风险参数：频控、异常流量过滤、计划限速。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md",
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "target_cpa / pcvr / alpha",
+        "compute_ocpc_bid",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 1.0
+      },
+      "overall_score": 1.0,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 1.0,
+        "pass": true,
+        "hallucination_risk": 0.0,
+        "reason": "回答准确覆盖了所有预期要点，正确引用了证据，且无禁忌结论。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_006",
+      "query": "概率校准在代码里的计算形式是什么，函数在哪里",
+      "intent": "knowledge_qa",
+      "note": "公式问答-校准公式",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "calibrate_probability"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "value * slope + bias",
+          "slope",
+          "bias"
+        ],
+        [
+          "calibrate_probability"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，公式为：`calibrated = value * slope + bias`。\n代码实现可优先参考 `codes/ad_engine/rate/rate_predictor.py` -> `calibrate_probability`（line: 36-43）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `calibrate_probability`（line: 36-43）与结论直接相关：这里定义了 `calibrate_probability`；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 4. 关键指标` 提到：- AUC：区分能力。 - LogLoss：概率预测质量。 - Calibration Error：概率校准误差。 - 线上 CTR/CVR 偏差：预测与真实的偏差稳定性。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`广告引擎总体架构` 的 `广告引擎总体架构 / 3. 关键指标` 提到：- pCTR：预测点击率。 - pCVR：预测转化率。 - eCPM：千次展示预期收益，常用作排序核心指标。 - ROI：投入产出比。 - WinRate：竞价胜出率。 - FillRate：请求填充率。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/00-广告引擎总体架构.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "value * slope + bias / slope / bias",
+        "calibrate_probability",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "准确覆盖了公式和代码位置的核心要点，但部分引用证据与问题关联度不高。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_007",
+      "query": "pCTR/pCVR 与出价的关系在业务上如何体现，代码函数如何映射",
+      "intent": "knowledge_qa",
+      "note": "公式问答-两率到出价映射",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_ocpc_bid",
+        "compute_bid_for_request"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "pctr",
+          "pcvr"
+        ],
+        [
+          "compute_ocpc_bid",
+          "compute_bid_for_request"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结论 pCTR/pCVR 与出价的关系在业务上体现为：pCVR 直接参与 oCPC 出价计算，是核心因子之一；pCTR 通过 eCPM 公式与出价关联，影响广告竞争力。代码映射上，pCVR 通过 `compute_ocpc_bid` 函数直接用于出价计算，pCTR 和 pCVR 的预测入口函数为 `predict_ctr_cvr`。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 3. 实时出价核心要素` 提到：- 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预算状态：剩余预算、预算消耗速度。 - 风险参数：频控、异常流量过滤、计划限速。\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "pctr / pcvr",
+        "compute_ocpc_bid / compute_bid_for_request",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "回答覆盖了部分要点，但存在与证据无关的细节和模糊关联。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_008",
+      "query": "校准后概率为什么要截断到 0 到 1，具体在什么函数里做",
+      "intent": "knowledge_qa",
+      "note": "公式问答-概率截断",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "calibrate_probability"
+      ],
+      "hybrid_type": "formula",
+      "required_facts": [
+        [
+          "0.0",
+          "1.0"
+        ],
+        [
+          "calibrate_probability"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，出价公式为：`calibrated = value * slope + bias`。\n代码实现函数优先定位到 `codes/ad_engine/rate/rate_predictor.py` -> `calibrate_probability`（line: 36-43）。\n校准后概率会截断到 `[0.0, 1.0]` 区间，避免概率越界。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `rate_predictor`（line: 1-44）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `calibrate_probability`（line: 36-43）与结论直接相关：这里定义了 `calibrate_probability`；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 4. 关键指标` 提到：- AUC：区分能力。 - LogLoss：概率预测质量。 - Calibration Error：概率校准误差。 - 线上 CTR/CVR 偏差：预测与真实的偏差稳定性。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 5. 常见问题与处理 / 5.1 pCTR/pCVR 集体偏高或偏低` 提到：- 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md",
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "0.0 / 1.0",
+        "calibrate_probability",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "回答正确指出了截断操作和函数位置，但部分证据引用与问题核心关联较弱。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_009",
+      "query": "高 eCPM 广告为什么可能没进最终位，对应代码体现在哪里",
+      "intent": "knowledge_qa",
+      "note": "原因解释-高ecpm未进最终位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_rank_score",
+        "apply_safety_penalty",
+        "apply_diversity_penalty"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "频控",
+          "apply_safety_penalty"
+        ],
+        [
+          "多样性惩罚",
+          "apply_diversity_penalty"
+        ],
+        [
+          "特征缺失",
+          "compute_rank_score"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，主要原因如下：\n\n- 【原因1】触发频控/风控惩罚项后会从基础分中扣分，导致最终 `rank_score` 下降，即使 `eCPM` 较高也可能被后移。\n- 【原因2】触发多样性惩罚时会继续扣减排序分，可能把高 `eCPM` 广告挤出最终位。\n- 【原因3】当特征不完整时会触发降级（例如 `score *= 0.75`），排序分被打折后可能无法进入最终位。\n- 【原因4】最终按综合 `rank_score` 排序而不是仅按 `eCPM`，因此高 `eCPM` 只能作为基础分，仍可能被综合分反超。\n\n- 相关代码入口可优先查看 `codes/ad_engine/rerank/rerank_engine.py` -> `compute_rank_score`（line: 44-50）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rank_topn`（line: 44-50）与结论直接相关：这里定义了 `rank_topn`；这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。\n- 【证据2】`精排策略` 的 `精排策略 / 5. 关键监控` 提到：- 排序时延 P95/P99。 - TopN 点击率和转化率变化。 - 多样性指标（同广告主集中度、行业集中度）。 - 探索流量占比与探索转化收益。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：定义了 `rank_topn` 等关键函数；以 `eCPM` 作为基础分；扣减频控/风控惩罚项；扣减多样性惩罚项；在特征缺失时做降级处理，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/04-精排策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "频控 / apply_safety_penalty",
+        "多样性惩罚 / apply_diversity_penalty",
+        "特征缺失 / compute_rank_score"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.3,
+        "reason": "回答覆盖了所有预期要点，但引用了部分不直接相关的证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_010",
+      "query": "召回阶段候选量骤降常见原因是什么，代码入口是哪",
+      "intent": "knowledge_qa",
+      "note": "原因解释-候选量骤降",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "select_recall_candidates"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "索引延迟",
+          "过滤条件过严",
+          "特征缺失"
+        ],
+        [
+          "select_recall_candidates"
+        ],
+        [
+          "codes/ad_engine/recall/recall_service.py",
+          "recall_service.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n- **结论** 召回阶段候选量骤降的常见原因包括：\n\n- 【原因1】索引延迟\n- 【原因2】过滤条件过严\n- 【原因3】特征缺失\n\n- 相关代码入口可优先查看 `codes/ad_engine/recall/recall_service.py` -> `select_recall_candidates`（line: 21-46）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：这里定义了 `select_recall_candidates`；这里包含召回候选选择逻辑，因此可直接支撑该结论。\n- 【证据2】`在线召回` 的 `在线召回 / 4. 典型问题 / 4.1 候选量骤降` 提到：- 索引延迟导致新广告未入库。 - 过滤条件过严（地域、时段、频控叠加）。 - 用户特征缺失，导致个性化召回失效。\n- 【证据3】`codes/ad_engine/recall/recall_service.py` 中的 `recall_service`（line: 1-47）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：这里先以 `eCPM` 作为基础分，再扣减频控/风控与多样性惩罚，并在特征缺失时降级，最终得到 `rank_score`；这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "索引延迟 / 过滤条件过严 / 特征缺失",
+        "select_recall_candidates",
+        "codes/ad_engine/recall/recall_service.py / recall_service.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.3,
+        "reason": "要点覆盖全面，但引用了无关的rerank文件，存在轻微幻觉风险。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_011",
+      "query": "召回时延高一般是什么原因，代码侧该看哪个函数",
+      "intent": "knowledge_qa",
+      "note": "原因解释-召回时延高",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "select_recall_candidates"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "并发不足",
+          "超时未降级",
+          "下游依赖抖动"
+        ],
+        [
+          "select_recall_candidates"
+        ],
+        [
+          "codes/ad_engine/recall/recall_service.py",
+          "recall_service.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n召回时延高的主要原因包括：\n\n- 【原因1】并发不足\n- 【原因2】超时未降级\n- 【原因3】下游依赖抖动\n\n- 相关代码入口可优先查看 `codes/ad_engine/recall/recall_service.py` -> `select_recall_candidates`（line: 21-46）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：这里定义了 `select_recall_candidates`；这里包含召回候选选择逻辑，因此可直接支撑该结论。\n- 【证据2】`在线召回` 的 `在线召回 / 4. 典型问题 / 4.2 召回时延高` 提到：- 多路召回并发不足。 - 召回源超时未做降级。 - 下游依赖（KV、向量库）抖动。\n- 【证据3】`codes/ad_engine/recall/recall_service.py` 中的 `recall_service`（line: 1-47）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "并发不足 / 超时未降级 / 下游依赖抖动",
+        "select_recall_candidates",
+        "codes/ad_engine/recall/recall_service.py / recall_service.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": false,
+        "hallucination_risk": 0.8,
+        "reason": "回答包含无关证据且存在幻觉风险。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_012",
+      "query": "pCTR/pCVR 集体偏高或偏低常见原因是什么，代码里校准函数在哪",
+      "intent": "knowledge_qa",
+      "note": "原因解释-两率偏差",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "calibrate_probability",
+        "predict_ctr_cvr"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "特征分布漂移",
+          "模型版本误切换",
+          "校准参数同步"
+        ],
+        [
+          "calibrate_probability"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，主要原因如下：\n\n- 【原因1】特征分布漂移\n- 【原因2】模型版本误切换\n- 【原因3】校准参数同步\n\n- 相关代码入口可优先查看 `codes/ad_engine/rate/rate_predictor.py` -> `calibrate_probability`（line: 17-33）。\n- 校准函数可定位到 `codes/ad_engine/rate/rate_predictor.py` -> `calibrate_probability`（line: 17-33）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 5. 常见问题与处理 / 5.1 pCTR/pCVR 集体偏高或偏低` 提到：- 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_bid_for_request`（line: 40-50）与结论直接相关：这里定义了 `compute_bid_for_request`；这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "特征分布漂移 / 模型版本误切换 / 校准参数同步",
+        "calibrate_probability",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "要点覆盖全面，但部分证据引用与问题关联度不高。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_013",
+      "query": "成本超标通常由什么导致，代码里和出价相关的函数是哪些",
+      "intent": "knowledge_qa",
+      "note": "原因解释-成本超标",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_alpha",
+        "compute_ocpc_bid"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "目标配置错误",
+          "回传延迟",
+          "高风险流量抑制缺失"
+        ],
+        [
+          "compute_alpha",
+          "compute_ocpc_bid"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，主要原因如下：\n\n- 【原因1】目标配置错误\n- 【原因2】回传延迟\n- 【原因3】高风险流量抑制缺失\n- 【原因4】与出价相关的函数包括 `compute_alpha` 和 `compute_ocpc_bid`。\n\n- 相关代码入口可优先查看 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_alpha`（line: 1-51）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 6. 常见线上问题 / 6.2 成本超标` 提到：排查：\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md",
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "目标配置错误 / 回传延迟 / 高风险流量抑制缺失",
+        "compute_alpha / compute_ocpc_bid",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "回答准确覆盖了所有预期要点，并提供了相关证据和引用。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_014",
+      "query": "投放胜率下降常见原因有哪些，代码侧优先排查哪个函数",
+      "intent": "knowledge_qa",
+      "note": "原因解释-胜率下降",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_bid_for_request",
+        "compute_alpha"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "竞对出价抬升",
+          "两率预估偏低",
+          "pacing过于保守"
+        ],
+        [
+          "compute_bid_for_request",
+          "compute_alpha"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n投放胜率下降常见原因包括：\n\n- 【原因1】竞对出价抬升\n- 【原因2】两率预估偏低\n- 【原因3】pacing过于保守\n\n- 相关代码入口可优先查看 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_bid_for_request`（line: 40-50）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_bid_for_request`（line: 40-50）与结论直接相关：这里定义了 `compute_bid_for_request`；这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "竞对出价抬升 / 两率预估偏低 / pacing过于保守",
+        "compute_bid_for_request / compute_alpha",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.9
+      },
+      "overall_score": 0.99,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.9,
+        "pass": true,
+        "hallucination_risk": 0.1,
+        "reason": "要点覆盖全面，代码侧排查函数明确，但部分引用证据与问题关联度不高。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_015",
+      "query": "冷启动广告无量通常有哪些原因，相关代码入口是什么",
+      "intent": "knowledge_qa",
+      "note": "原因解释-冷启动无量",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "select_recall_candidates"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "探索流量配额",
+          "内容相似召回",
+          "分层保底策略"
+        ],
+        [
+          "select_recall_candidates",
+          "rank_topn"
+        ],
+        [
+          "codes/ad_engine/recall/recall_service.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n冷启动广告无量通常有以下原因：\n\n- 【原因1】探索流量配额\n- 【原因2】内容相似召回\n- 【原因3】分层保底策略\n\n- 相关代码入口可优先查看 `codes/ad_engine/recall/recall_service.py` -> `select_recall_candidates`（line: 21-46）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rank_topn`（line: 44-50）与结论直接相关：这里定义了 `rank_topn`；这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 5. 常见问题与处理 / 5.2 冷启动广告无量` 提到：- 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。\n- 【证据3】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：这里定义了 `select_recall_candidates`；这里包含召回候选选择逻辑，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rerank/rerank_engine.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "探索流量配额 / 内容相似召回 / 分层保底策略",
+        "select_recall_candidates / rank_topn",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "要点覆盖较全，但部分证据引用不准确或冗余。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_016",
+      "query": "精排结果抖动大通常是什么原因，代码中对应函数在哪",
+      "intent": "knowledge_qa",
+      "note": "原因解释-精排抖动",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_rank_score",
+        "rank_topn"
+      ],
+      "hybrid_type": "reason",
+      "required_facts": [
+        [
+          "实时特征波动",
+          "探索权重过高",
+          "多约束冲突"
+        ],
+        [
+          "compute_rank_score",
+          "rank_topn"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，主要原因如下：\n\n- 【原因1】实时特征波动\n- 【原因2】探索权重过高\n- 【原因3】多约束冲突\n\n- 相关代码入口可优先查看 `codes/ad_engine/rerank/rerank_engine.py` -> `compute_rank_score`（line: 28-41）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：定义了 `apply_diversity_penalty` 等关键函数；扣减频控/风控惩罚项；扣减多样性惩罚项，因此可直接支撑该结论。\n- 【证据2】`精排策略` 的 `精排策略 / 6. 常见问题 / 6.1 精排结果抖动大` 提到：- 实时特征波动。 - 探索权重设置过高。 - 多约束冲突时缺少稳定化策略。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `compute_rank_score`（line: 28-41）与结论直接相关：这里定义了 `compute_rank_score`；这里先以 `eCPM` 作为基础分，再扣减频控/风控与多样性惩罚，并在特征缺失时降级，最终得到 `rank_score`，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/04-精排策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "实时特征波动 / 探索权重过高 / 多约束冲突",
+        "compute_rank_score / rank_topn",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.7
+      },
+      "overall_score": 0.97,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.7,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "答案覆盖了所有预期要点，但引用了无关的召回代码，存在一定幻觉风险。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_017",
+      "query": "代码里负责选择召回候选的函数是哪个，文件路径是什么",
+      "intent": "knowledge_qa",
+      "note": "函数定位-召回入口",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "select_recall_candidates"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "select_recall_candidates"
+        ],
+        [
+          "codes/ad_engine/recall/recall_service.py",
+          "recall_service.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n当前问题可以优先定位到 `codes/ad_engine/recall/recall_service.py` -> `select_recall_candidates`（line: 21-46）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/recall/recall_service.py` -> `recall_service`（line: 1-47）\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `rate_predictor`（line: 1-44）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：这里定义了 `select_recall_candidates`；这里包含召回候选选择逻辑，因此可直接支撑该结论。\n- 【证据2】`在线召回` 的 `在线召回 / 2. 常见召回路` 提到：- 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。\n- 【证据3】`codes/ad_engine/recall/recall_service.py` 中的 `recall_service`（line: 1-47）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "select_recall_candidates",
+        "codes/ad_engine/recall/recall_service.py / recall_service.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "核心答案正确，但模型回答包含了与问题无关的额外信息。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_018",
+      "query": "概率校准函数在哪个文件哪个函数里",
+      "intent": "knowledge_qa",
+      "note": "函数定位-校准函数",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "calibrate_probability"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "calibrate_probability"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n当前问题可以优先定位到 `codes/ad_engine/rate/rate_predictor.py` -> `calibrate_probability`（line: 36-43）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `rate_predictor`（line: 1-44）\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `calibrate_probability`（line: 36-43）与结论直接相关：这里定义了 `calibrate_probability`；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 4. 关键指标` 提到：- AUC：区分能力。 - LogLoss：概率预测质量。 - Calibration Error：概率校准误差。 - 线上 CTR/CVR 偏差：预测与真实的偏差稳定性。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "calibrate_probability",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "核心要点覆盖准确，但额外引用了非直接相关的证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_019",
+      "query": "请求级出价入口函数是哪个，路径在哪",
+      "intent": "knowledge_qa",
+      "note": "函数定位-出价入口",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_bid_for_request"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "compute_bid_for_request"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n当前问题可以优先定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_bid_for_request`（line: 40-50）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `rate_predictor`（line: 1-44）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_bid_for_request`（line: 40-50）与结论直接相关：这里定义了 `compute_bid_for_request`；这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "compute_bid_for_request",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "准确回答了入口函数和路径，但引用了部分不直接相关的证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_020",
+      "query": "精排里计算最终排序分的函数是哪个",
+      "intent": "knowledge_qa",
+      "note": "函数定位-排序分函数",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_rank_score"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "compute_rank_score"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结论 精排里计算最终排序分的函数是 `compute_rank_score`。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `compute_rank_score`（line: 28-41）与结论直接相关：这里定义了 `compute_rank_score`；这里先以 `eCPM` 作为基础分，再扣减频控/风控与多样性惩罚，并在特征缺失时降级，最终得到 `rank_score`，因此可直接支撑该结论。\n- 【证据2】`精排策略` 的 `精排策略 / 4. 常见重排策略` 提到：- 约束重排：保证频控、广告主公平、行业安全。 - 多目标加权：收益、转化、体验加权融合。 - 探索策略：对冷启动广告注入探索分，控制探索预算。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：定义了 `apply_diversity_penalty` 等关键函数；扣减频控/风控惩罚项；扣减多样性惩罚项，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/04-精排策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "compute_rank_score",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "回答正确指出了核心函数，但引用了无关证据（recall_service.py），存在一定幻觉风险。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_021",
+      "query": "多样性惩罚项对应哪个函数，在哪个文件",
+      "intent": "knowledge_qa",
+      "note": "函数定位-多样性惩罚",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "apply_diversity_penalty"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "apply_diversity_penalty"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n当前问题可以优先定位到 `codes/ad_engine/rerank/rerank_engine.py` -> `apply_diversity_penalty`（line: 18-20）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/rerank/rerank_engine.py` -> `rerank_engine`（line: 1-51）\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `apply_diversity_penalty`（line: 18-20）与结论直接相关：这里定义了 `apply_diversity_penalty`，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 4. 关键指标` 提到：- AUC：区分能力。 - LogLoss：概率预测质量。 - Calibration Error：概率校准误差。 - 线上 CTR/CVR 偏差：预测与真实的偏差稳定性。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：定义了 `apply_diversity_penalty`、`apply_safety_penalty`、`compute_rank_score` 等关键函数；扣减频控/风控惩罚项；扣减多样性惩罚项，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "apply_diversity_penalty",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 0.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.8,
+        "reason": "回答正确指出了核心函数和文件，但引用了大量无关证据，存在幻觉风险。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_022",
+      "query": "频控或安全惩罚在代码里是哪个函数",
+      "intent": "knowledge_qa",
+      "note": "函数定位-安全惩罚",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "apply_safety_penalty"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "apply_safety_penalty"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n当前问题可以优先定位到 `codes/ad_engine/rerank/rerank_engine.py` -> `apply_safety_penalty`（line: 23-25）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/rerank/rerank_engine.py` -> `rerank_engine`（line: 1-51）\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `apply_safety_penalty`（line: 23-25）与结论直接相关：这里定义了 `apply_safety_penalty`，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 4. 关键指标` 提到：- AUC：区分能力。 - LogLoss：概率预测质量。 - Calibration Error：概率校准误差。 - 线上 CTR/CVR 偏差：预测与真实的偏差稳定性。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：这里先以 `eCPM` 作为基础分，再扣减频控/风控与多样性惩罚，并在特征缺失时降级，最终得到 `rank_score`，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "apply_safety_penalty",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 0.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "回答正确指出了核心函数，但引用了大量无关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_023",
+      "query": "两率预测入口函数是什么，文件路径给一下",
+      "intent": "knowledge_qa",
+      "note": "函数定位-两率入口",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "predict_ctr_cvr"
+      ],
+      "hybrid_type": "function_location",
+      "required_facts": [
+        [
+          "predict_ctr_cvr"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n当前问题可以优先定位到 `codes/ad_engine/rate/rate_predictor.py` -> `predict_ctr_cvr`（line: 17-33）。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `rate_predictor`（line: 1-44）\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 2. 常见模型形态` 提到：- pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "predict_ctr_cvr",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "准确提供了核心入口函数和文件路径，但额外引用了不直接相关的证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_024",
+      "query": "先说 target_cpa 和 pCVR 的出价公式，再给我入口函数和文件路径",
+      "intent": "knowledge_qa",
+      "note": "混合追问-公式+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_bid_for_request",
+        "compute_ocpc_bid"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "target_cpa * pcvr * alpha",
+          "bid = target_cpa * pCVR * alpha"
+        ],
+        [
+          "compute_bid_for_request"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，出价公式为：`bid = target_cpa * pcvr * alpha`。\n代码实现函数优先定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_ocpc_bid`（line: 29-37）。\n请求级出价入口函数为 `compute_bid_for_request`。\n\n- 主定位实现见上面的优先位置。\n- 可继续关注 `codes/ad_engine/bid/bid_optimizer.py` -> `bid_optimizer`（line: 1-51）\n- 可继续关注 `codes/ad_engine/rate/rate_predictor.py` -> `predict_ctr_cvr`（line: 17-33）\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 3. 实时出价核心要素` 提到：- 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预算状态：剩余预算、预算消耗速度。 - 风险参数：频控、异常流量过滤、计划限速。\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_ocpc_bid`（line: 29-37）与结论直接相关：这里定义了 `compute_ocpc_bid`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "target_cpa * pcvr * alpha / bid = target_cpa * pCVR * alpha",
+        "compute_bid_for_request",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "正确给出了出价公式和入口函数，但将入口函数与具体实现函数混淆。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_025",
+      "query": "高 eCPM 广告没进最终位的主要原因有哪些，并标出关键函数和路径",
+      "intent": "knowledge_qa",
+      "note": "混合追问-原因+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_rank_score",
+        "apply_safety_penalty",
+        "apply_diversity_penalty"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "频控",
+          "多样性惩罚",
+          "特征缺失"
+        ],
+        [
+          "compute_rank_score"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，主要原因如下：\n\n- 【原因1】触发频控/风控惩罚项后会从基础分中扣分，导致最终 `rank_score` 下降，即使 `eCPM` 较高也可能被后移。\n- 【原因2】触发多样性惩罚时会继续扣减排序分，可能把高 `eCPM` 广告挤出最终位。\n- 【原因3】当特征不完整时会触发降级（例如 `score *= 0.75`），排序分被打折后可能无法进入最终位。\n- 【原因4】最终按综合 `rank_score` 排序而不是仅按 `eCPM`，因此高 `eCPM` 只能作为基础分，仍可能被综合分反超。\n\n- 相关代码入口可优先查看 `codes/ad_engine/rerank/rerank_engine.py` -> `compute_rank_score`（line: 44-50）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rank_topn`（line: 44-50）与结论直接相关：这里定义了 `rank_topn`；这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。\n- 【证据2】`精排策略` 的 `精排策略 / 5. 关键监控` 提到：- 排序时延 P95/P99。 - TopN 点击率和转化率变化。 - 多样性指标（同广告主集中度、行业集中度）。 - 探索流量占比与探索转化收益。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：定义了 `rank_topn` 等关键函数；以 `eCPM` 作为基础分；扣减频控/风控惩罚项；扣减多样性惩罚项；在特征缺失时做降级处理，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/04-精排策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "频控 / 多样性惩罚 / 特征缺失",
+        "compute_rank_score",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.3,
+        "reason": "回答覆盖了预期要点，但引用了部分无关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_026",
+      "query": "召回阶段常见质量指标有哪些，同时告诉我候选选择函数在哪",
+      "intent": "knowledge_qa",
+      "note": "混合追问-指标+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "select_recall_candidates"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "Recall@N",
+          "CandidateCount",
+          "RecallLatencyP99",
+          "FilterDropRate"
+        ],
+        [
+          "select_recall_candidates"
+        ],
+        [
+          "codes/ad_engine/recall/recall_service.py",
+          "recall_service.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，答案可以归纳为以下要点：\n\n- 【要点1】Recall@N：目标广告是否出现在前 N 个候选中。\n- 【要点2】CandidateCount：每次请求候选广告数量。\n- 【要点3】RecallLatencyP99：召回阶段 P99 时延。\n- 【要点4】FilterDropRate：过滤器导致的候选丢弃比例。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：这里定义了 `select_recall_candidates`；这里包含召回候选选择逻辑，因此可直接支撑该结论。\n- 【证据2】`在线召回` 的 `在线召回 / 3. 召回质量指标` 提到：- Recall@N：目标广告是否出现在前 N 个候选中。 - CandidateCount：每次请求候选广告数量。 - RecallLatencyP99：召回阶段 P99 时延。 - FilterDropRate：过滤...\n- 【证据3】`codes/ad_engine/recall/recall_service.py` 中的 `recall_service`（line: 1-47）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/01-在线召回.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/recall/recall_service.py",
+        "docs/wiki/ad_engine/01-在线召回.md",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/01-在线召回.md"
+        ],
+        "code": [
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/recall/recall_service.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "Recall@N / CandidateCount / RecallLatencyP99 / FilterDropRate",
+        "select_recall_candidates",
+        "codes/ad_engine/recall/recall_service.py / recall_service.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.3,
+        "reason": "要点覆盖全面，但引用了无关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_027",
+      "query": "pCTR/pCVR 校准时主要看什么指标，并给校准函数和路径",
+      "intent": "knowledge_qa",
+      "note": "混合追问-校准指标+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "calibrate_probability",
+        "predict_ctr_cvr"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "AUC",
+          "LogLoss",
+          "Calibration Error",
+          "线上 CTR/CVR 偏差"
+        ],
+        [
+          "calibrate_probability"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结论 pCTR/pCVR 校准时主要看 AUC、LogLoss、Calibration Error、线上 CTR/CVR 偏差等指标。校准函数为 `calibrate_probability`，在 `predict_ctr_cvr` 函数中被调用，代码路径为 `codes/ad_engine/rate/rate_predictor.py`。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 4. 关键指标` 提到：- AUC：区分能力。 - LogLoss：概率预测质量。 - Calibration Error：概率校准误差。 - 线上 CTR/CVR 偏差：预测与真实的偏差稳定性。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_bid_for_request`（line: 40-50）与结论直接相关：这里定义了 `compute_bid_for_request`；这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "AUC / LogLoss / Calibration Error / 线上 CTR/CVR 偏差",
+        "calibrate_probability",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "回答覆盖了所有预期要点，但引用了部分无关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_028",
+      "query": "成本超标排查要看哪些点，再补充出价入口函数",
+      "intent": "knowledge_qa",
+      "note": "混合追问-排查+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_bid_for_request",
+        "compute_alpha"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "目标配置错误",
+          "回传延迟",
+          "高风险流量抑制"
+        ],
+        [
+          "compute_bid_for_request"
+        ],
+        [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "bid_optimizer.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n成本超标排查要点：\n\n- 【原因1】目标配置错误\n- 【原因2】回传延迟\n- 【原因3】高风险流量抑制缺失\n\n- 相关代码入口可优先查看 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_bid_for_request`（line: 40-50）。\n- 请求级出价入口可定位到 `codes/ad_engine/bid/bid_optimizer.py` -> `compute_bid_for_request`（line: 40-50）。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/bid/bid_optimizer.py` 中的 `compute_bid_for_request`（line: 40-50）与结论直接相关：这里定义了 `compute_bid_for_request`；这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据2】`出价策略` 的 `出价策略 / 4. 常见公式示意` 提到：`bid = target_cpa * pCVR * alpha`\n- 【证据3】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里出现了请求级出价入口 `compute_bid_for_request`；这里关联到 `compute_ocpc_bid` 出价计算逻辑；这里会计算调节系数 `alpha`；这里使用 `target_cpa`、`pCVR` 和 `alpha` 共同计算出价，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/03-出价策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/bid/bid_optimizer.py",
+          "codes/ad_engine/rate/rate_predictor.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "目标配置错误 / 回传延迟 / 高风险流量抑制",
+        "compute_bid_for_request",
+        "codes/ad_engine/bid/bid_optimizer.py / bid_optimizer.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.8
+      },
+      "overall_score": 0.98,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.8,
+        "pass": true,
+        "hallucination_risk": 0.2,
+        "reason": "要点覆盖全面，但引用了部分无关证据。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_029",
+      "query": "精排阶段重点监控哪些指标，并标出排序函数在哪",
+      "intent": "knowledge_qa",
+      "note": "混合追问-监控+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "compute_rank_score",
+        "rank_topn"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "排序时延 P95/P99",
+          "TopN 点击率",
+          "多样性指标",
+          "探索流量占比"
+        ],
+        [
+          "compute_rank_score",
+          "rank_topn"
+        ],
+        [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "rerank_engine.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结合当前证据，答案可以归纳为以下要点：\n\n- 【要点1】排序时延 P95/P99。\n- 【要点2】TopN 点击率和转化率变化。\n- 【要点3】多样性指标（同广告主集中度、行业集中度）。\n- 【要点4】探索流量占比与探索转化收益。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rank_topn`（line: 44-50）与结论直接相关：这里定义了 `rank_topn`；这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。\n- 【证据2】`精排策略` 的 `精排策略 / 5. 关键监控` 提到：- 排序时延 P95/P99。 - TopN 点击率和转化率变化。 - 多样性指标（同广告主集中度、行业集中度）。 - 探索流量占比与探索转化收益。\n- 【证据3】`codes/ad_engine/rerank/rerank_engine.py` 中的 `rerank_engine`（line: 1-51）与结论直接相关：这里先调用 `compute_rank_score` 计算候选分数，再按 `rank_score` 倒序排序并截取 TopN，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/recall/recall_service.py` 中的 `select_recall_candidates`（line: 21-46）与结论直接相关：该片段定义了关键函数并实现了核心业务分支处理，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/04-精排策略.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "docs/wiki/ad_engine/04-精排策略.md",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/04-精排策略.md"
+        ],
+        "code": [
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/rerank/rerank_engine.py",
+          "codes/ad_engine/recall/recall_service.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "排序时延 P95/P99 / TopN 点击率 / 多样性指标 / 探索流量占比",
+        "compute_rank_score / rank_topn",
+        "codes/ad_engine/rerank/rerank_engine.py / rerank_engine.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": false,
+        "hallucination_risk": 0.8,
+        "reason": "回答包含无关证据且未按要求标出排序函数位置。"
+      },
+      "llm_judge_error": null
+    },
+    {
+      "id": "ans_hybrid_030",
+      "query": "在线投放链路里两率预估和出价的关系是什么，并给相关函数定位",
+      "intent": "knowledge_qa",
+      "note": "混合追问-链路关系+定位",
+      "expected_mode": "answer",
+      "gold_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/03-出价策略.md",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_wiki_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "docs/wiki/ad_engine/03-出价策略.md"
+      ],
+      "gold_code_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "expected_sources": [
+        "wiki",
+        "code"
+      ],
+      "expected_code_symbols": [
+        "predict_ctr_cvr",
+        "compute_bid_for_request"
+      ],
+      "hybrid_type": "mixed_followup",
+      "required_facts": [
+        [
+          "两率预估",
+          "出价"
+        ],
+        [
+          "predict_ctr_cvr",
+          "compute_bid_for_request"
+        ],
+        [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "rate_predictor.py"
+        ]
+      ],
+      "forbidden_claims": [],
+      "answer": "### 问题结论\n结论 在线投放链路中，两率预估（pCTR/pCVR）是出价计算的核心输入。具体而言，pCVR 直接参与 oCPC 出价公式的计算，用于将广告主设定的目标转化成本（target_cpa）转化为实时竞价出价。两率预估的入口函数是 `predict_ctr_cvr`，出价计算的核心函数是 `compute_ocpc_bid`。\n\n### 证据说明\n- 【证据1】`codes/ad_engine/rate/rate_predictor.py` 中的 `rate_predictor`（line: 1-44）与结论直接相关：这里包含 pCTR/pCVR 预测入口，因此可直接支撑该结论。\n- 【证据2】`两率预估（pCTR / pCVR）` 的 `两率预估（pCTR / pCVR） / 2. 常见模型形态` 提到：- pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。\n- 【证据3】`codes/ad_engine/rate/rate_predictor.py` 中的 `predict_ctr_cvr`（line: 17-33）与结论直接相关：这里定义了 `predict_ctr_cvr`；这里包含 pCTR/pCVR 预测入口；这里包含概率校准逻辑，因此可直接支撑该结论。\n- 【证据4】`codes/ad_engine/bid/bid_optimizer.py` 中的 `bid_optimizer`（line: 1-51）与结论直接相关：这里会计算调节系数 `alpha`，因此可直接支撑该结论。",
+      "citation_paths": [
+        "docs/wiki/ad_engine/02-两率预估.md"
+      ],
+      "citation_paths_all": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "docs/wiki/ad_engine/02-两率预估.md",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "citation_paths_by_source": {
+        "wiki": [
+          "docs/wiki/ad_engine/02-两率预估.md"
+        ],
+        "code": [
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/rate/rate_predictor.py",
+          "codes/ad_engine/bid/bid_optimizer.py"
+        ],
+        "case": []
+      },
+      "matched_fact_groups": [
+        "两率预估 / 出价",
+        "predict_ctr_cvr / compute_bid_for_request",
+        "codes/ad_engine/rate/rate_predictor.py / rate_predictor.py"
+      ],
+      "missing_fact_groups": [],
+      "hit_forbidden_claims": [],
+      "required_fact_coverage": 1.0,
+      "forbidden_claim_pass": 1.0,
+      "expected_mode_accuracy": 1.0,
+      "citation_hit": 1.0,
+      "wiki_citation_hit": 1.0,
+      "code_citation_hit": 1.0,
+      "expected_source_hit": 1.0,
+      "code_anchor_hit": 1.0,
+      "score_components": {
+        "required_fact_coverage": 1.0,
+        "forbidden_claim_pass": 1.0,
+        "expected_mode_accuracy": 1.0,
+        "citation_hit": 1.0,
+        "code_citation_hit": 1.0,
+        "expected_source_hit": 1.0,
+        "llm_judge_score": 0.6
+      },
+      "overall_score": 0.96,
+      "exact_correct": true,
+      "response_status": "completed",
+      "response_kind": "knowledge_qa",
+      "generation_mode": "llm",
+      "qa_llm_fallback_reason": "None",
+      "llm_judge": {
+        "score": 0.6,
+        "pass": true,
+        "hallucination_risk": 0.4,
+        "reason": "回答覆盖了核心关系，但函数定位与预期要点不完全一致。"
+      },
+      "llm_judge_error": null
+    }
+  ]
+}

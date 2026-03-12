@@ -3,122 +3,88 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>引擎智能 Agent 控制台</title>
+    <title>引擎智能知识问答控制台</title>
     <link rel="stylesheet" href="/assets/styles.css" />
   </head>
   <body>
-    <!-- 背景氛围层：只负责视觉，不承载交互。 -->
     <div class="background-orbit orbit-a"></div>
     <div class="background-orbit orbit-b"></div>
     <div class="noise-mask"></div>
 
-    <div class="app-shell">
-      <!-- 左侧栏：品牌区、会话列表和快捷提问。 -->
+    <div id="appShell" class="app-shell">
       <aside class="sidebar">
+        <div class="sidebar-toolbar reveal">
+          <div class="brand-identity" aria-label="鲸鸿动能">
+            <span class="brand-name">鲸鸿动能</span>
+          </div>
+          <button
+            id="sidebarToggleBtn"
+            class="sidebar-toggle icon-btn"
+            type="button"
+            aria-label="隐藏会话栏"
+            title="隐藏会话栏"
+          >
+            <span class="icon-split-panel" aria-hidden="true"></span>
+          </button>
+          <div id="sidebarCollapsedActions" class="sidebar-collapsed-actions" aria-hidden="true">
+            <button
+              id="sidebarToggleMiniBtn"
+              class="icon-pill-btn"
+              type="button"
+              aria-label="展开会话栏"
+              title="展开会话栏"
+              data-tooltip="展开会话栏"
+            >
+              <span class="icon-split-panel" aria-hidden="true"></span>
+            </button>
+            <button
+              id="newSessionMiniBtn"
+              class="icon-pill-btn"
+              type="button"
+              aria-label="开启新对话"
+              title="开启新对话"
+              data-tooltip="开启新对话"
+            >
+              <span class="icon-plus-circle" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+
         <div class="brand-card reveal">
-          <p class="eyebrow">ENGINE INTELLIGENCE</p>
-          <h1>引擎智能 Agent</h1>
-          <p class="brand-copy">
-            面向业务知识问答、问题分析和代码实现确认的会话式控制台。
-          </p>
-          <button id="newSessionBtn" class="primary-button" type="button">新建会话</button>
+          <button id="newSessionBtn" class="primary-button sidebar-new-session" type="button">
+            <span class="icon-plus-circle" aria-hidden="true"></span>
+            <span>开启新对话</span>
+          </button>
         </div>
 
         <section class="sidebar-section reveal">
           <div class="section-title-row">
-            <h2>会话列表</h2>
             <span id="sessionCountTag" class="counter-tag">0</span>
           </div>
           <div id="sessionList" class="session-list"></div>
         </section>
-
-        <section class="sidebar-section reveal">
-          <h2>快速提问</h2>
-          <div class="prompt-grid">
-            <button class="prompt-chip" type="button" data-prompt="库存扣减失败应该先看哪个模块？">
-              库存问题排查
-            </button>
-            <button class="prompt-chip" type="button" data-prompt="订单结算规则是什么？">
-              业务知识问答
-            </button>
-            <button class="prompt-chip" type="button" data-prompt="支付回调重复触发时怎么分析根因？">
-              根因分析示例
-            </button>
-            <button class="prompt-chip" type="button" data-prompt="今天天气怎么样？">
-              无关问题拦截
-            </button>
-          </div>
-        </section>
       </aside>
 
-      <!-- 主工作区：顶部状态栏 + 中间聊天区 + 右侧分析面板。 -->
       <main class="workspace">
-        <header class="workspace-header reveal">
-          <div>
-            <p class="eyebrow">MULTI-TURN ANALYSIS</p>
-            <h2 id="workspaceTitle">准备开始新会话</h2>
-            <p id="workspaceSubtitle" class="workspace-subtitle">
-              发送一个业务问题、报错描述或系统设计问题，界面会根据返回结果切换状态。
-            </p>
-          </div>
-          <div class="header-badges">
-            <span id="routeBadge" class="badge neutral">等待输入</span>
-            <span id="statusBadge" class="badge neutral">idle</span>
-          </div>
-        </header>
-
-        <section class="content-grid">
-          <!-- 聊天区：消息列表和输入区。 -->
+        <section id="contentGrid" class="content-grid">
           <div class="chat-panel reveal">
             <div id="messageList" class="message-list"></div>
+            <div id="draftHeroTitle" class="draft-hero-title">我已经准备好了，今天有什么可以帮到你？</div>
 
             <form id="composerForm" class="composer">
-              <label class="composer-label" for="composerInput">输入问题</label>
               <textarea
                 id="composerInput"
                 name="content"
                 rows="4"
-                placeholder="例如：库存解锁偶发失败，日志显示重复回调，应该从哪里定位？"
+                aria-label="输入问题"
+                placeholder="按 Enter 发送，按 Ctrl+Enter 换行。"
               ></textarea>
               <div class="composer-footer">
-                <div class="helper-text">支持知识问答、问题分析和代码实现确认演示。</div>
-                <button id="sendButton" class="primary-button" type="submit">发送</button>
+                <div id="composerHint" class="helper-text" hidden></div>
               </div>
             </form>
           </div>
 
-          <!-- 右侧详情区：分析摘要、引用证据和调试面板。 -->
-          <aside class="inspector reveal">
-            <section class="panel">
-              <div class="panel-header">
-                <h3>分析摘要</h3>
-                <span class="panel-tag">Live</span>
-              </div>
-              <div id="analysisPanel" class="panel-body empty-state">
-                选中一条助手消息后，这里会显示模块、根因、修复建议和测试要点。
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-header">
-                <h3>引用证据</h3>
-                <span class="panel-tag">Sources</span>
-              </div>
-              <div id="citationPanel" class="panel-body empty-state">
-                当前还没有引用证据。
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel-header">
-                <h3>调试面板</h3>
-                <span class="panel-tag">Trace</span>
-              </div>
-              <div id="debugPanel" class="panel-body empty-state">
-                等待本轮 trace、路由与耗时信息。
-              </div>
-            </section>
-          </aside>
         </section>
       </main>
     </div>
