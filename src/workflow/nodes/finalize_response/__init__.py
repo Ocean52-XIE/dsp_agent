@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from workflow.utils import normalize_source_type
+
 
 SCENE_LABELS = {
     "knowledge_qa": "知识问答",
@@ -12,24 +14,13 @@ SCENE_LABELS = {
 }
 
 
-def _normalize_source_type(raw_source: Any) -> str:
-    normalized = str(raw_source or "").strip().lower()
-    if normalized.startswith("wiki"):
-        return "wiki"
-    if normalized.startswith("code"):
-        return "code"
-    if normalized.startswith("case"):
-        return "case"
-    return normalized or "unknown"
-
-
 def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
     citations = list(state.get("citations", []) or [])
     if citations:
         normalized_rows: list[dict[str, Any]] = []
         for item in citations:
             row = dict(item)
-            row["source_type"] = _normalize_source_type(row.get("source_type", row.get("source", "")))
+            row["source_type"] = normalize_source_type(row.get("source_type", row.get("source", "")))
             normalized_rows.append(row)
         return normalized_rows
 
@@ -37,7 +28,7 @@ def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
     for key, source_type in (("wiki_hits", "wiki"), ("code_hits", "code"), ("case_hits", "case")):
         for item in list(state.get(key, []) or []):
             row = dict(item)
-            row["source_type"] = _normalize_source_type(row.get("source_type", source_type))
+            row["source_type"] = normalize_source_type(row.get("source_type", source_type))
             hits.append(row)
     return hits
 
@@ -73,7 +64,7 @@ def _select_output_evidence_hits(all_hits: list[dict[str, Any]], *, max_items: i
 def _build_evidence_lines(evidence_hits: list[dict[str, Any]], *, max_items: int = 4) -> list[str]:
     lines: list[str] = []
     for item in evidence_hits[:max_items]:
-        source_type = _normalize_source_type(item.get("source_type"))
+        source_type = normalize_source_type(item.get("source_type"))
         title = str(item.get("title", "")).strip() or str(item.get("path", "")).strip() or "未命名证据"
         path = str(item.get("path", "")).strip()
         section = str(item.get("section", "")).strip()

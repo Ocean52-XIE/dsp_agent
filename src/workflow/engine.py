@@ -45,19 +45,8 @@ from workflow.nodes.retrieve_wiki.wiki_retriever import MarkdownWikiRetriever
 from workflow.nodes.root_cause_analysis import run as root_cause_analysis_node
 from workflow.domain_profile import DomainProfile, load_domain_profile
 from workflow.runtime_logging import get_file_logger
+from workflow.utils import env_bool
 
-
-def _env_bool(name: str, default: bool = False) -> bool:
-    """璇诲彇 bool 鐜鍙橀噺骞跺仛鍏滃簳銆?"""
-    raw_value = os.getenv(name)
-    if raw_value is None:
-        return default
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
 
 # 褰撳墠宸ョ▼宸茬粡鍒囨崲鎴愮湡瀹?LangGraph锛岃繖閲岀粺涓€鏍囪瘑鍚庣绫诲瀷銆?
 BACKEND_NAME = "langgraph"
@@ -167,7 +156,7 @@ class WorkflowService:
         # 绯荤粺璋冭瘯寮€鍏筹紙榛樿鍏抽棴锛夛細
         # - false锛氫繚鎸佸綋鍓嶇簿绠€ debug 杈撳嚭锛?
         # - true锛氬湪鏈€缁堝搷搴斾腑闄勫姞 debug.verbose 鎵╁睍璋冭瘯淇℃伅銆?
-        self.debug_verbose_enabled = _env_bool("WORKFLOW_DEBUG_VERBOSE", default=False)
+        self.debug_verbose_enabled = env_bool("WORKFLOW_DEBUG_VERBOSE", default=False)
         project_root = Path(__file__).resolve().parents[2]
         self._file_logger = get_file_logger(project_root=project_root)
         self.domain_profile: DomainProfile = load_domain_profile(project_root=project_root)

@@ -24,6 +24,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from workflow.retrievers import WeightedFusionRetriever
 from workflow.runtime_logging import get_file_logger
+from workflow.utils import env_float, env_int
 
 
 @dataclass
@@ -60,15 +61,6 @@ class HybridScoreWeights:
                 except Exception:
                     pass
 
-        def env_float(name: str, default: float) -> float:
-            raw = os.getenv(name, "").strip()
-            if not raw:
-                return default
-            try:
-                return float(raw)
-            except ValueError:
-                return default
-
         weights.bm25 = env_float("WORKFLOW_WIKI_WEIGHT_BM25", weights.bm25)
         weights.vector = env_float("WORKFLOW_WIKI_WEIGHT_VECTOR", weights.vector)
         weights.lexical = env_float("WORKFLOW_WIKI_WEIGHT_LEXICAL", weights.lexical)
@@ -101,23 +93,14 @@ class WikiRetrieverRuntimeConfig:
 
     @classmethod
     def from_env(cls, *, default_top_k: int) -> "WikiRetrieverRuntimeConfig":
-        def env_int(name: str, default: int, minimum: int) -> int:
-            raw = os.getenv(name, "").strip()
-            if not raw:
-                return default
-            try:
-                return max(int(raw), minimum)
-            except ValueError:
-                return default
-
         return cls(
-            default_top_k=env_int("WORKFLOW_WIKI_TOP_K", default_top_k, 1),
-            max_chunks_per_doc=env_int("WORKFLOW_WIKI_MAX_CHUNKS_PER_DOC", 1, 1),
-            chunk_size=env_int("WORKFLOW_WIKI_PARAGRAPH_MAX_CHARS", 520, 120),
-            chunk_overlap=env_int("WORKFLOW_WIKI_PARAGRAPH_MIN_CHARS", 80, 0),
-            excerpt_max_chars=env_int("WORKFLOW_WIKI_EXCERPT_MAX_CHARS", 220, 60),
-            candidate_multiplier=env_int("WORKFLOW_WIKI_STAGE2_MULTIPLIER", 6, 1),
-            min_candidates=env_int("WORKFLOW_WIKI_STAGE2_MIN_CANDIDATES", 12, 1),
+            default_top_k=env_int("WORKFLOW_WIKI_TOP_K", default_top_k, minimum=1),
+            max_chunks_per_doc=env_int("WORKFLOW_WIKI_MAX_CHUNKS_PER_DOC", 1, minimum=1),
+            chunk_size=env_int("WORKFLOW_WIKI_PARAGRAPH_MAX_CHARS", 520, minimum=120),
+            chunk_overlap=env_int("WORKFLOW_WIKI_PARAGRAPH_MIN_CHARS", 80, minimum=0),
+            excerpt_max_chars=env_int("WORKFLOW_WIKI_EXCERPT_MAX_CHARS", 220, minimum=60),
+            candidate_multiplier=env_int("WORKFLOW_WIKI_STAGE2_MULTIPLIER", 6, minimum=1),
+            min_candidates=env_int("WORKFLOW_WIKI_STAGE2_MIN_CANDIDATES", 12, minimum=1),
         )
 
 

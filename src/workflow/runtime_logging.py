@@ -7,27 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-
-def _env_bool(name: str, default: bool) -> bool:
-    raw_value = os.getenv(name)
-    if raw_value is None:
-        return default
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
-
-
-def _env_int(name: str, default: int) -> int:
-    raw_value = os.getenv(name)
-    if raw_value is None:
-        return default
-    try:
-        return int(raw_value)
-    except ValueError:
-        return default
+from workflow.utils import env_bool, env_int
 
 
 class WorkflowFileLogger:
@@ -35,10 +15,10 @@ class WorkflowFileLogger:
 
     def __init__(self, *, project_root: Path) -> None:
         self.project_root = Path(project_root)
-        self.enabled = _env_bool("WORKFLOW_FILE_LOG_ENABLED", True)
+        self.enabled = env_bool("WORKFLOW_FILE_LOG_ENABLED", True)
         self.level_name = str(os.getenv("WORKFLOW_FILE_LOG_LEVEL", "INFO") or "INFO").upper()
-        self.max_bytes = max(1024, _env_int("WORKFLOW_FILE_LOG_MAX_BYTES", 5 * 1024 * 1024))
-        self.backup_count = max(1, _env_int("WORKFLOW_FILE_LOG_BACKUP_COUNT", 3))
+        self.max_bytes = max(1024, env_int("WORKFLOW_FILE_LOG_MAX_BYTES", 5 * 1024 * 1024))
+        self.backup_count = max(1, env_int("WORKFLOW_FILE_LOG_BACKUP_COUNT", 3))
         self.log_dir = Path(os.getenv("WORKFLOW_FILE_LOG_DIR", str(self.project_root / "logs")))
         self.file_name = str(os.getenv("WORKFLOW_FILE_LOG_FILE", "workflow.log") or "workflow.log").strip() or "workflow.log"
         self.log_path = self.log_dir / self.file_name

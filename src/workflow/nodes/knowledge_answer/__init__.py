@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from workflow.utils import normalize_source_type
+
 
 def _infer_question_type(service: Any, user_query: str) -> str:
     normalized = user_query.lower().strip()
@@ -43,17 +45,6 @@ def _is_code_location_query(service: Any, user_query: str) -> bool:
     return any(token in normalized for token in fallback)
 
 
-def _normalize_source_type(raw_source: Any) -> str:
-    normalized = str(raw_source or "").strip().lower()
-    if normalized.startswith("wiki"):
-        return "wiki"
-    if normalized.startswith("code"):
-        return "code"
-    if normalized.startswith("case"):
-        return "case"
-    return normalized or "unknown"
-
-
 def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
     citations = state.get("citations", [])
     if isinstance(citations, list) and citations:
@@ -63,7 +54,7 @@ def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
     for key, default_type in (("wiki_hits", "wiki"), ("code_hits", "code"), ("case_hits", "case")):
         for item in list(state.get(key, []) or []):
             row = dict(item)
-            row["source_type"] = _normalize_source_type(row.get("source_type", default_type))
+            row["source_type"] = normalize_source_type(row.get("source_type", default_type))
             fallback_hits.append(row)
     return fallback_hits
 
@@ -93,7 +84,7 @@ def _answer_mentions_code_anchor(answer_text: str, code_hits: list[dict[str, Any
 def _extract_points_from_hits(evidence_hits: list[dict[str, Any]], *, max_points: int = 6) -> list[str]:
     points: list[str] = []
     for item in evidence_hits:
-        source_type = _normalize_source_type(item.get("source_type"))
+        source_type = normalize_source_type(item.get("source_type"))
         excerpt = re.sub(r"\s+", " ", str(item.get("excerpt", "")).strip())
         if source_type == "code":
             path = str(item.get("path", "")).strip() or "unknown_path"

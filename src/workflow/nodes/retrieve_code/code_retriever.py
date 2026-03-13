@@ -15,6 +15,7 @@ from langchain_core.documents import Document
 
 from workflow.retrievers import WeightedFusionRetriever
 from workflow.runtime_logging import get_file_logger
+from workflow.utils import env_float, env_int
 
 
 @dataclass
@@ -65,35 +66,17 @@ class CodeRetrieverRuntimeConfig:
 
     @classmethod
     def from_env(cls) -> "CodeRetrieverRuntimeConfig":
-        def env_int(name: str, default: int, minimum: int) -> int:
-            raw = os.getenv(name, "").strip()
-            if not raw:
-                return default
-            try:
-                return max(int(raw), minimum)
-            except ValueError:
-                return default
-
-        def env_float(name: str, default: float, minimum: float) -> float:
-            raw = os.getenv(name, "").strip()
-            if not raw:
-                return default
-            try:
-                return max(float(raw), minimum)
-            except ValueError:
-                return default
-
         return cls(
-            default_top_k=env_int("WORKFLOW_CODE_RETRIEVER_TOP_K", 4, 1),
-            max_child_candidates=env_int("WORKFLOW_CODE_RETRIEVER_MAX_CHILD_CANDIDATES", 64, 8),
-            max_results_per_path=env_int("WORKFLOW_CODE_RETRIEVER_MAX_PER_PATH", 2, 1),
-            semantic_weight=env_float("WORKFLOW_CODE_RETRIEVER_SEMANTIC_WEIGHT", 4.0, 0.0),
-            pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PATTERN_WEIGHT", 1.6, 0.0),
-            parent_best_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_BEST_PATTERN_WEIGHT", 0.9, 0.0),
-            parent_avg_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_AVG_PATTERN_WEIGHT", 0.35, 0.0),
-            min_final_score=env_float("WORKFLOW_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.25, 0.0),
-            grade_high_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 8.0, 0.0),
-            grade_medium_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 4.0, 0.0),
+            default_top_k=env_int("WORKFLOW_CODE_RETRIEVER_TOP_K", 4, minimum=1),
+            max_child_candidates=env_int("WORKFLOW_CODE_RETRIEVER_MAX_CHILD_CANDIDATES", 64, minimum=8),
+            max_results_per_path=env_int("WORKFLOW_CODE_RETRIEVER_MAX_PER_PATH", 2, minimum=1),
+            semantic_weight=env_float("WORKFLOW_CODE_RETRIEVER_SEMANTIC_WEIGHT", 4.0, minimum=0.0),
+            pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PATTERN_WEIGHT", 1.6, minimum=0.0),
+            parent_best_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_BEST_PATTERN_WEIGHT", 0.9, minimum=0.0),
+            parent_avg_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_AVG_PATTERN_WEIGHT", 0.35, minimum=0.0),
+            min_final_score=env_float("WORKFLOW_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.25, minimum=0.0),
+            grade_high_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 8.0, minimum=0.0),
+            grade_medium_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 4.0, minimum=0.0),
         )
 
 

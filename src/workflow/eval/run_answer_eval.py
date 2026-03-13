@@ -36,38 +36,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from workflow.engine import WorkflowService  # noqa: E402
-
-
-def _to_bool(raw_value: str | None, default: bool) -> bool:
-    """将字符串环境变量解析为布尔值。"""
-    if raw_value is None:
-        return default
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
-
-
-def _to_float(raw_value: str | None, default: float) -> float:
-    """将字符串环境变量解析为浮点数。"""
-    if raw_value is None:
-        return default
-    try:
-        return float(raw_value)
-    except ValueError:
-        return default
-
-
-def _to_int(raw_value: str | None, default: int) -> int:
-    """将字符串环境变量解析为整数。"""
-    if raw_value is None:
-        return default
-    try:
-        return int(raw_value)
-    except ValueError:
-        return default
+from workflow.utils import normalize_source_type, to_bool, to_float, to_int  # noqa: E402
 
 
 @dataclass
@@ -108,13 +77,13 @@ class EvalJudgeLLMConfig:
         环境变量前缀统一使用 `WORKFLOW_EVAL_JUDGE_LLM_`，避免和业务问答 LLM 配置混淆。
         """
         return cls(
-            enabled=_to_bool(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_ENABLED"), False),
+            enabled=to_bool(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_ENABLED"), False),
             base_url=os.getenv("WORKFLOW_EVAL_JUDGE_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
             api_key=os.getenv("WORKFLOW_EVAL_JUDGE_LLM_API_KEY", "").strip(),
             model=os.getenv("WORKFLOW_EVAL_JUDGE_LLM_MODEL", "gpt-4.1-mini").strip(),
-            timeout_seconds=_to_int(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_TIMEOUT_SECONDS"), 20),
-            temperature=_to_float(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_TEMPERATURE"), 0.0),
-            max_tokens=_to_int(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_MAX_TOKENS"), 400),
+            timeout_seconds=to_int(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_TIMEOUT_SECONDS"), 20),
+            temperature=to_float(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_TEMPERATURE"), 0.0),
+            max_tokens=to_int(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_MAX_TOKENS"), 400),
         )
 
 
@@ -360,18 +329,6 @@ def _dedupe_non_empty(items: list[str]) -> list[str]:
     return deduped
 
 
-def _normalize_source_type(raw_source: str) -> str:
-    """将引用 source_type 归一化为稳定枚举值。"""
-    normalized = str(raw_source).strip().lower()
-    if normalized.startswith("wiki"):
-        return "wiki"
-    if normalized.startswith("code"):
-        return "code"
-    if normalized.startswith("case"):
-        return "case"
-    return normalized or "unknown"
-
-
 def _normalize_hybrid_type(raw_type: str) -> str:
     """归一化 hybrid 题型标签。"""
     normalized = str(raw_type).strip().lower()
@@ -425,7 +382,7 @@ def _load_dataset(path: Path) -> list[AnswerEvalCase]:
 
             raw_expected_sources = record.get("expected_sources", [])
             if isinstance(raw_expected_sources, list):
-                expected_sources = _dedupe_non_empty([_normalize_source_type(str(item)) for item in raw_expected_sources])
+                expected_sources = _dedupe_non_empty([normalize_source_type(str(item)) for item in raw_expected_sources])
             else:
                 expected_sources = []
             if not expected_sources:
@@ -570,8 +527,8 @@ def run_eval(config_path: Path) -> dict[str, Any]:
     # 评测稳定性参数（P0）：
     # - 默认重试 1 次（即总尝试 2 次）；
     # - 使用指数退避，减轻瞬时网络波动导致的误判。
-    eval_retry_count = _to_int(os.getenv("WORKFLOW_EVAL_RETRY_COUNT"), 1)
-    eval_retry_base_delay_ms = _to_int(os.getenv("WORKFLOW_EVAL_RETRY_BASE_DELAY_MS"), 300)
+    eval_retry_count = to_int(os.getenv("WORKFLOW_EVAL_RETRY_COUNT"), 1)
+    eval_retry_base_delay_ms = to_int(os.getenv("WORKFLOW_EVAL_RETRY_BASE_DELAY_MS"), 300)
     if not enable_llm_judge:
         # 显式关闭时，不调用评审器。
         llm_judge_client.config.enabled = False
@@ -672,7 +629,7 @@ def run_eval(config_path: Path) -> dict[str, Any]:
             path = str(item.get("path", "")).strip()
             if not path:
                 continue
-            source = _normalize_source_type(str(item.get("source_type", "")))
+            source = normalize_source_type(str(item.get("source_type", "")))
             citation_paths_all.append(path)
             citation_source_set.add(source)
             if source in citation_paths_by_source:

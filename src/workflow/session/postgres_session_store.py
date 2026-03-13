@@ -24,28 +24,7 @@ from typing import Any
 
 from workflow.postgres_bootstrap import ensure_database_exists
 from workflow.runtime_logging import get_file_logger
-
-
-def _to_bool(raw_value: str | None, default: bool) -> bool:
-    """将字符串环境变量转换为 bool。"""
-    if raw_value is None:
-        return default
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
-
-
-def _to_int(raw_value: str | None, default: int) -> int:
-    """将字符串环境变量转换为 int。"""
-    if raw_value is None:
-        return default
-    try:
-        return int(raw_value)
-    except ValueError:
-        return default
+from workflow.utils import to_bool, to_int
 
 
 def _sanitize_identifier(value: str, default: str) -> str:
@@ -103,12 +82,12 @@ class PostgresSessionConfig:
             or "public"
         )
         return cls(
-            enabled=_to_bool(os.getenv("WORKFLOW_SESSION_PG_ENABLED"), enabled_default),
+            enabled=to_bool(os.getenv("WORKFLOW_SESSION_PG_ENABLED"), enabled_default),
             dsn=dsn,
             schema=_sanitize_identifier(schema_env, "public"),
             connect_timeout_seconds=max(
                 1,
-                _to_int(
+                to_int(
                     os.getenv("WORKFLOW_SESSION_PG_CONNECT_TIMEOUT_SECONDS")
                     or os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS"),
                     5,

@@ -24,46 +24,7 @@ from langchain_openai import ChatOpenAI
 
 from workflow.domain_profile import DomainProfile
 from workflow.runtime_logging import get_file_logger
-
-
-def _to_bool(raw_value: str | None, default: bool) -> bool:
-    if raw_value is None:
-        return default
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
-
-
-def _to_float(raw_value: str | None, default: float) -> float:
-    if raw_value is None:
-        return default
-    try:
-        return float(raw_value)
-    except ValueError:
-        return default
-
-
-def _to_int(raw_value: str | None, default: int) -> int:
-    if raw_value is None:
-        return default
-    try:
-        return int(raw_value)
-    except ValueError:
-        return default
-
-
-def _as_source_type(raw_source: Any) -> str:
-    normalized = str(raw_source or "").strip().lower()
-    if normalized.startswith("wiki"):
-        return "wiki"
-    if normalized.startswith("code"):
-        return "code"
-    if normalized.startswith("case"):
-        return "case"
-    return normalized or "unknown"
+from workflow.utils import normalize_source_type, to_bool, to_float, to_int
 
 
 @dataclass
@@ -81,15 +42,15 @@ class KnowledgeQALLMConfig:
     @classmethod
     def from_env(cls) -> "KnowledgeQALLMConfig":
         return cls(
-            enabled=_to_bool(os.getenv("WORKFLOW_QA_LLM_ENABLED"), True),
+            enabled=to_bool(os.getenv("WORKFLOW_QA_LLM_ENABLED"), True),
             base_url=os.getenv("WORKFLOW_QA_LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
             api_key=os.getenv("WORKFLOW_QA_LLM_API_KEY", "").strip(),
             model=os.getenv("WORKFLOW_QA_LLM_MODEL", "gpt-4.1-mini").strip(),
-            timeout_seconds=_to_int(os.getenv("WORKFLOW_QA_LLM_TIMEOUT_SECONDS"), 20),
-            temperature=_to_float(os.getenv("WORKFLOW_QA_LLM_TEMPERATURE"), 0.2),
-            max_tokens=_to_int(os.getenv("WORKFLOW_QA_LLM_MAX_TOKENS"), 600),
-            retry_count=max(0, _to_int(os.getenv("WORKFLOW_QA_LLM_RETRY_COUNT"), 2)),
-            retry_base_delay_ms=max(100, _to_int(os.getenv("WORKFLOW_QA_LLM_RETRY_BASE_DELAY_MS"), 400)),
+            timeout_seconds=to_int(os.getenv("WORKFLOW_QA_LLM_TIMEOUT_SECONDS"), 20),
+            temperature=to_float(os.getenv("WORKFLOW_QA_LLM_TEMPERATURE"), 0.2),
+            max_tokens=to_int(os.getenv("WORKFLOW_QA_LLM_MAX_TOKENS"), 600),
+            retry_count=max(0, to_int(os.getenv("WORKFLOW_QA_LLM_RETRY_COUNT"), 2)),
+            retry_base_delay_ms=max(100, to_int(os.getenv("WORKFLOW_QA_LLM_RETRY_BASE_DELAY_MS"), 400)),
         )
 
 
@@ -409,7 +370,7 @@ class KnowledgeQALLMClient:
     def _build_evidence_block(self, evidence_hits: list[dict[str, Any]]) -> str:
         lines: list[str] = []
         for index, item in enumerate(evidence_hits[:6], start=1):
-            source_type = _as_source_type(item.get("source_type"))
+            source_type = normalize_source_type(item.get("source_type"))
             lines.append(f"[证据{index}]")
             lines.append(f"- source_type: {source_type}")
             lines.append(f"- title: {item.get('title', '')}")

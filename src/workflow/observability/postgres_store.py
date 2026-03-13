@@ -25,38 +25,7 @@ from typing import Any
 
 from workflow.postgres_bootstrap import ensure_database_exists
 from workflow.runtime_logging import get_file_logger
-
-
-def _to_bool(raw_value: str | None, default: bool) -> bool:
-    """将环境变量字符串转换为 bool。"""
-    if raw_value is None:
-        return default
-    normalized = raw_value.strip().lower()
-    if normalized in {"1", "true", "yes", "y", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "n", "off"}:
-        return False
-    return default
-
-
-def _to_int(raw_value: str | None, default: int) -> int:
-    """将环境变量字符串转换为 int。"""
-    if raw_value is None:
-        return default
-    try:
-        return int(raw_value)
-    except ValueError:
-        return default
-
-
-def _to_float(raw_value: str | None, default: float) -> float:
-    """将环境变量字符串转换为 float。"""
-    if raw_value is None:
-        return default
-    try:
-        return float(raw_value)
-    except ValueError:
-        return default
+from workflow.utils import normalize_source_type, to_bool, to_float, to_int
 
 
 def _sanitize_identifier(value: str, default: str) -> str:
@@ -70,18 +39,6 @@ def _sanitize_identifier(value: str, default: str) -> str:
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", normalized):
         return normalized
     return default
-
-
-def _normalize_source_type(raw_source: Any) -> str:
-    """归一化证据来源类型。"""
-    normalized = str(raw_source or "").strip().lower()
-    if normalized.startswith("wiki"):
-        return "wiki"
-    if normalized.startswith("code"):
-        return "code"
-    if normalized.startswith("case"):
-        return "case"
-    return normalized or "unknown"
 
 
 @dataclass
@@ -107,32 +64,32 @@ class PostgresObservabilityConfig:
         dsn = os.getenv("WORKFLOW_OBS_PG_DSN", "").strip()
         enabled_default = bool(dsn)
         return cls(
-            enabled=_to_bool(os.getenv("WORKFLOW_OBS_PG_ENABLED"), enabled_default),
+            enabled=to_bool(os.getenv("WORKFLOW_OBS_PG_ENABLED"), enabled_default),
             dsn=dsn,
             schema=_sanitize_identifier(os.getenv("WORKFLOW_OBS_PG_SCHEMA", "public"), "public"),
-            connect_timeout_seconds=max(1, _to_int(os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS"), 5)),
-            alert_window_minutes=max(5, _to_int(os.getenv("WORKFLOW_OBS_ALERT_WINDOW_MINUTES"), 30)),
-            alert_min_samples=max(1, _to_int(os.getenv("WORKFLOW_OBS_ALERT_MIN_SAMPLES"), 20)),
-            alert_suppress_minutes=max(1, _to_int(os.getenv("WORKFLOW_OBS_ALERT_SUPPRESS_MINUTES"), 30)),
+            connect_timeout_seconds=max(1, to_int(os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS"), 5)),
+            alert_window_minutes=max(5, to_int(os.getenv("WORKFLOW_OBS_ALERT_WINDOW_MINUTES"), 30)),
+            alert_min_samples=max(1, to_int(os.getenv("WORKFLOW_OBS_ALERT_MIN_SAMPLES"), 20)),
+            alert_suppress_minutes=max(1, to_int(os.getenv("WORKFLOW_OBS_ALERT_SUPPRESS_MINUTES"), 30)),
             alert_empty_response_rate_max=max(
                 0.0,
-                min(1.0, _to_float(os.getenv("WORKFLOW_OBS_ALERT_EMPTY_RESPONSE_RATE_MAX"), 0.05)),
+                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_EMPTY_RESPONSE_RATE_MAX"), 0.05)),
             ),
             alert_fallback_rate_max=max(
                 0.0,
-                min(1.0, _to_float(os.getenv("WORKFLOW_OBS_ALERT_FALLBACK_RATE_MAX"), 0.25)),
+                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_FALLBACK_RATE_MAX"), 0.25)),
             ),
             alert_insufficient_rate_max=max(
                 0.0,
-                min(1.0, _to_float(os.getenv("WORKFLOW_OBS_ALERT_INSUFFICIENT_RATE_MAX"), 0.20)),
+                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_INSUFFICIENT_RATE_MAX"), 0.20)),
             ),
             alert_p95_latency_ms_max=max(
                 1.0,
-                _to_float(os.getenv("WORKFLOW_OBS_ALERT_P95_LATENCY_MS_MAX"), 3000.0),
+                to_float(os.getenv("WORKFLOW_OBS_ALERT_P95_LATENCY_MS_MAX"), 3000.0),
             ),
             alert_exact_like_pass_rate_min=max(
                 0.0,
-                min(1.0, _to_float(os.getenv("WORKFLOW_OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN"), 0.70)),
+                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN"), 0.70)),
             ),
         )
 
@@ -395,7 +352,7 @@ class PostgresObservabilityStore:
 
             source_counter = {"wiki": 0, "code": 0, "case": 0}
             for item in citations:
-                source = _normalize_source_type(item.get("source_type"))
+                source = normalize_source_type(item.get("source_type"))
                 if source in source_counter:
                     source_counter[source] += 1
 
@@ -473,7 +430,7 @@ class PostgresObservabilityStore:
                                 trace_id,
                                 message_id,
                                 rank_no,
-                                _normalize_source_type(item.get("source_type")),
+                                normalize_source_type(item.get("source_type")),
                                 str(item.get("path", "") or ""),
                                 str(item.get("title", "") or ""),
                                 str(item.get("section", "") or ""),
