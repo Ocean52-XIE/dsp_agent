@@ -1,0 +1,14 @@
+{
+  "dataset_path": "domain/ad_engine/eval/datasets/ad_engine_retrieval_eval_hard_30.jsonl",
+  "top_ks": [
+    1,
+    3,
+    5
+  ],
+  "max_candidates": 8,
+  "enable_agent_citation_eval": false,
+  "session_id_prefix": "eval_wiki_rg_first",
+  "trace_id_prefix": "eval_wiki_rg_first",
+  "output_path": "src/workflow/eval/results/hard_samples/rg_compare_wiki_rg_first.json",
+  "save_per_case": true
+}

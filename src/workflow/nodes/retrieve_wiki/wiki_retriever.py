@@ -16,6 +16,8 @@ from time import perf_counter
 import json
 import os
 import re
+import shutil
+import subprocess
 from typing import Any
 
 from langchain_community.retrievers import BM25Retriever, TFIDFRetriever
@@ -24,7 +26,19 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from workflow.retrievers import WeightedFusionRetriever
 from workflow.runtime_logging import get_file_logger
-from workflow.utils import env_float, env_int
+from workflow.utils import env_bool, env_float, env_int
+
+
+RG_STRATEGIES = {"rg_first", "rg_only", "no_rg"}
+
+
+def _resolve_rg_strategy(raw_value: str | None, *, default: str) -> str:
+    normalized = str(raw_value or "").strip().lower()
+    if normalized in RG_STRATEGIES:
+        return normalized
+    if default in RG_STRATEGIES:
+        return default
+    return "rg_first"
 
 
 @dataclass
@@ -90,9 +104,23 @@ class WikiRetrieverRuntimeConfig:
     excerpt_max_chars: int = 220
     candidate_multiplier: int = 6
     min_candidates: int = 12
+    rg_strategy: str = "no_rg"
+    rg_max_terms: int = 8
+    rg_timeout_ms: int = 1200
+    rg_path_boost: float = 0.55
+    rg_max_matches_per_term: int = 80
 
     @classmethod
     def from_env(cls, *, default_top_k: int) -> "WikiRetrieverRuntimeConfig":
+        legacy_flag = os.getenv("WORKFLOW_WIKI_RG_FIRST_ENABLED")
+        if legacy_flag is None:
+            default_strategy = "no_rg"
+        else:
+            default_strategy = "rg_first" if env_bool("WORKFLOW_WIKI_RG_FIRST_ENABLED", True) else "no_rg"
+        strategy = _resolve_rg_strategy(
+            os.getenv("WORKFLOW_WIKI_RG_STRATEGY"),
+            default=default_strategy,
+        )
         return cls(
             default_top_k=env_int("WORKFLOW_WIKI_TOP_K", default_top_k, minimum=1),
             max_chunks_per_doc=env_int("WORKFLOW_WIKI_MAX_CHUNKS_PER_DOC", 1, minimum=1),
@@ -101,6 +129,11 @@ class WikiRetrieverRuntimeConfig:
             excerpt_max_chars=env_int("WORKFLOW_WIKI_EXCERPT_MAX_CHARS", 220, minimum=60),
             candidate_multiplier=env_int("WORKFLOW_WIKI_STAGE2_MULTIPLIER", 6, minimum=1),
             min_candidates=env_int("WORKFLOW_WIKI_STAGE2_MIN_CANDIDATES", 12, minimum=1),
+            rg_strategy=strategy,
+            rg_max_terms=env_int("WORKFLOW_WIKI_RG_MAX_TERMS", 8, minimum=1),
+            rg_timeout_ms=env_int("WORKFLOW_WIKI_RG_TIMEOUT_MS", 1200, minimum=100),
+            rg_path_boost=env_float("WORKFLOW_WIKI_RG_PATH_BOOST", 0.55, minimum=0.0),
+            rg_max_matches_per_term=env_int("WORKFLOW_WIKI_RG_MAX_MATCHES_PER_TERM", 80, minimum=1),
         )
 
 
@@ -147,7 +180,10 @@ class MarkdownWikiRetriever:
         self._chunks: list[WikiChunk] = []
         self._documents: list[Document] = []
         self._chunk_by_id: dict[int, WikiChunk] = {}
+        self._chunk_ids_by_path: defaultdict[str, list[int]] = defaultdict(list)
         self.last_search_profile: dict[str, Any] = {}
+        self._rg_executable = shutil.which("rg") if self.runtime_config.rg_strategy != "no_rg" else None
+        self._rg_unavailable_warned = False
 
         self._bm25: BM25Retriever | None = None
         self._tfidf: TFIDFRetriever | None = None
@@ -170,6 +206,15 @@ class MarkdownWikiRetriever:
             },
             latency_ms=int((perf_counter() - started) * 1000),
         )
+        self._logger.info(
+            "workflow.wiki_rg.status",
+            strategy=self.runtime_config.rg_strategy,
+            enabled=self.runtime_config.rg_strategy != "no_rg",
+            available=bool(self._rg_executable),
+            executable=self._rg_executable or "",
+        )
+        if self.runtime_config.rg_strategy in {"rg_first", "rg_only"} and self._rg_executable is None:
+            self._warn_rg_unavailable("rg is unavailable; retrieve_wiki falls back to BM25/TFIDF only.")
 
     def search(
         self,
@@ -179,7 +224,14 @@ class MarkdownWikiRetriever:
         module_name: str | None = None,
         top_k: int | None = None,
     ) -> list[dict[str, Any]]:
-        if not user_query.strip() or not self._documents or self._bm25 is None or self._tfidf is None or self._ensemble is None:
+        rg_strategy = self.runtime_config.rg_strategy
+        use_rg = rg_strategy in {"rg_first", "rg_only"}
+        use_semantic = rg_strategy in {"rg_first", "no_rg"}
+        if (
+            not user_query.strip()
+            or not self._documents
+            or (use_semantic and (self._bm25 is None or self._tfidf is None or self._ensemble is None))
+        ):
             self.last_search_profile = {"latency_ms": 0.0, "hits": 0}
             return []
 
@@ -197,26 +249,49 @@ class MarkdownWikiRetriever:
         )
         merged_query = " ".join(expanded_queries)
 
-        self._bm25.k = candidate_k
-        self._tfidf.k = candidate_k
+        bm25_docs: list[Document] = []
+        tfidf_docs: list[Document] = []
+        ensemble_docs: list[Document] = []
+        if use_semantic:
+            assert self._bm25 is not None and self._tfidf is not None and self._ensemble is not None
+            self._bm25.k = candidate_k
+            self._tfidf.k = candidate_k
 
-        bm25_docs = self._bm25.invoke(merged_query)
-        tfidf_docs = self._tfidf.invoke(merged_query)
-        ensemble_docs = self._ensemble.invoke(merged_query)
+            bm25_docs = self._bm25.invoke(merged_query)
+            tfidf_docs = self._tfidf.invoke(merged_query)
+            ensemble_docs = self._ensemble.invoke(merged_query)
 
         bm25_ranks = self._rank_map(bm25_docs)
         tfidf_ranks = self._rank_map(tfidf_docs)
         ensemble_ranks = self._rank_map(ensemble_docs)
 
         query_terms = self._extract_terms(expanded_queries)
+        rg_terms = self._build_rg_terms(query_terms=query_terms, module_name=module_name or "") if use_rg else []
+        rg_path_hits, rg_profile = self._run_rg_path_hits(terms=rg_terms)
+        rg_boost_by_chunk: dict[int, float] = {}
+        rg_candidate_ids: list[int] = []
+        for path, match_count in rg_path_hits.items():
+            chunk_ids = self._chunk_ids_by_path.get(path, [])
+            if not chunk_ids:
+                continue
+            path_boost = min(
+                self.runtime_config.rg_path_boost * (1.0 + 0.25 * max(match_count - 1, 0)),
+                self.runtime_config.rg_path_boost * 2.5,
+            )
+            for chunk_id in chunk_ids:
+                rg_candidate_ids.append(chunk_id)
+                rg_boost_by_chunk[chunk_id] = max(rg_boost_by_chunk.get(chunk_id, 0.0), path_boost)
 
         candidate_ids: list[int] = []
-        for docs in (ensemble_docs, bm25_docs, tfidf_docs):
-            for doc in docs:
-                chunk_id = int(doc.metadata.get("chunk_id", -1))
-                if chunk_id <= 0:
-                    continue
-                candidate_ids.append(chunk_id)
+        if rg_strategy in {"rg_first", "rg_only"}:
+            candidate_ids.extend(rg_candidate_ids)
+        if use_semantic:
+            for docs in (ensemble_docs, bm25_docs, tfidf_docs):
+                for doc in docs:
+                    chunk_id = int(doc.metadata.get("chunk_id", -1))
+                    if chunk_id <= 0:
+                        continue
+                    candidate_ids.append(chunk_id)
 
         dedup_candidate_ids = list(dict.fromkeys(candidate_ids))[:candidate_k]
         scored: list[dict[str, Any]] = []
@@ -234,14 +309,22 @@ class MarkdownWikiRetriever:
             lexical_score = self._lexical_match_score(chunk.normalized_text, query_terms)
             ensemble_score = self._rank_score(ensemble_rank)
             module_boost = self._module_prior_boost(chunk=chunk, module_name=module_name or "")
+            rg_boost = rg_boost_by_chunk.get(chunk_id, 0.0)
+            path_key = self._to_relative_path(chunk.source_path)
 
-            score = (
-                bm25_score * self.hybrid_weights.bm25
-                + tfidf_score * self.hybrid_weights.vector
-                + lexical_score * self.hybrid_weights.lexical
-                + ensemble_score * 0.25
-                + module_boost
-            )
+            score = 0.0
+            if use_semantic:
+                score = (
+                    bm25_score * self.hybrid_weights.bm25
+                    + tfidf_score * self.hybrid_weights.vector
+                    + lexical_score * self.hybrid_weights.lexical
+                    + ensemble_score * 0.25
+                    + module_boost
+                )
+            if rg_strategy == "rg_first":
+                score += rg_boost
+            elif rg_strategy == "rg_only":
+                score = rg_boost * 4.0 + lexical_score * 0.8 + module_boost
             scored.append(
                 {
                     "chunk": chunk,
@@ -251,6 +334,9 @@ class MarkdownWikiRetriever:
                     "lexical_score": lexical_score,
                     "ensemble_score": ensemble_score,
                     "module_boost": module_boost,
+                    "rg_boost": rg_boost,
+                    "rg_path_hits": int(rg_path_hits.get(path_key, 0)),
+                    "rg_strategy": rg_strategy,
                 }
             )
 
@@ -276,6 +362,9 @@ class MarkdownWikiRetriever:
                         "lexical": round(float(item["lexical_score"]), 4),
                         "ensemble": round(float(item["ensemble_score"]), 4),
                         "module_boost": round(float(item["module_boost"]), 4),
+                        "rg_boost": round(float(item["rg_boost"]), 4),
+                        "rg_path_hits": int(item["rg_path_hits"]),
+                        "rg_strategy": str(item["rg_strategy"]),
                         "weights": {
                             "bm25": round(self.hybrid_weights.bm25, 4),
                             "vector": round(self.hybrid_weights.vector, 4),
@@ -290,6 +379,12 @@ class MarkdownWikiRetriever:
             "candidate_k": candidate_k,
             "expanded_query_count": len(expanded_queries),
             "hits": len(hits),
+            "rg_strategy": rg_strategy,
+            "rg": {
+                **rg_profile,
+                "matched_paths": len(rg_path_hits),
+                "matched_chunks": len(rg_boost_by_chunk),
+            },
         }
         return hits
 
@@ -359,6 +454,7 @@ class MarkdownWikiRetriever:
                 )
                 self._chunks.append(chunk)
                 self._chunk_by_id[next_chunk_id] = chunk
+                self._chunk_ids_by_path[self._to_relative_path(md_file)].append(next_chunk_id)
                 self._documents.append(
                     Document(
                         page_content=content,
@@ -432,6 +528,112 @@ class MarkdownWikiRetriever:
         terms.extend([token for token in re.findall(r"[a-z][a-z0-9_+-]{1,}", merged) if token not in self.STOP_WORDS])
         terms.extend([token for token in re.findall(r"[\u4e00-\u9fff]{2,10}", merged) if token not in self.STOP_WORDS])
         return list(dict.fromkeys(terms))[:48]
+
+    def _build_rg_terms(self, *, query_terms: list[str], module_name: str) -> list[str]:
+        terms: list[str] = []
+        terms.extend(query_terms)
+        terms.extend([token for token in re.findall(r"[a-z0-9_+-]{2,}", module_name.lower()) if token])
+        deduped = list(dict.fromkeys([term.strip() for term in terms if len(term.strip()) >= 2]))
+        return deduped[: self.runtime_config.rg_max_terms]
+
+    def _run_rg_path_hits(self, *, terms: list[str]) -> tuple[Counter[str], dict[str, Any]]:
+        rg_enabled = self.runtime_config.rg_strategy in {"rg_first", "rg_only"}
+        profile: dict[str, Any] = {
+            "strategy": self.runtime_config.rg_strategy,
+            "enabled": bool(rg_enabled),
+            "available": bool(self._rg_executable),
+            "term_count": len(terms),
+            "timeout_ms": int(self.runtime_config.rg_timeout_ms),
+        }
+        if not rg_enabled:
+            return Counter(), profile
+        if self._rg_executable is None:
+            warning = "rg is unavailable; retrieve_wiki falls back to BM25/TFIDF only."
+            if self.runtime_config.rg_strategy == "rg_only":
+                warning = "rg is unavailable; retrieve_wiki rg_only strategy cannot run."
+            self._warn_rg_unavailable(warning)
+            profile["warning"] = warning
+            return Counter(), profile
+        if not terms or not self.wiki_dir.exists():
+            return Counter(), profile
+
+        command: list[str] = [
+            self._rg_executable,
+            "--json",
+            "--line-number",
+            "--no-heading",
+            "--smart-case",
+            "--fixed-strings",
+            "--max-count",
+            str(self.runtime_config.rg_max_matches_per_term),
+        ]
+        for term in terms:
+            command.extend(["-e", term])
+        command.extend(["--glob", "*.md", str(self.wiki_dir)])
+
+        started = perf_counter()
+        try:
+            result = subprocess.run(
+                command,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                timeout=float(self.runtime_config.rg_timeout_ms) / 1000.0,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            warning = "rg timed out during wiki retrieval; fallback to BM25/TFIDF only."
+            if self.runtime_config.rg_strategy == "rg_only":
+                warning = "rg timed out during wiki retrieval; rg_only strategy cannot return results."
+            self._logger.warning(
+                "workflow.wiki_rg.timeout",
+                timeout_ms=int(self.runtime_config.rg_timeout_ms),
+                term_count=len(terms),
+            )
+            profile["warning"] = warning
+            profile["timed_out"] = True
+            return Counter(), profile
+        except Exception as exc:
+            warning = "rg failed during wiki retrieval; fallback to BM25/TFIDF only."
+            if self.runtime_config.rg_strategy == "rg_only":
+                warning = "rg failed during wiki retrieval; rg_only strategy cannot return results."
+            self._logger.warning(
+                "workflow.wiki_rg.error",
+                reason=str(exc),
+                term_count=len(terms),
+            )
+            profile["warning"] = warning
+            return Counter(), profile
+
+        path_hits: Counter[str] = Counter()
+        for line in result.stdout.splitlines():
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if str(payload.get("type", "")) != "match":
+                continue
+            path_raw = str(payload.get("data", {}).get("path", {}).get("text", "")).strip()
+            if not path_raw:
+                continue
+            normalized_path = self._normalize_rg_path(path_raw)
+            if not normalized_path:
+                continue
+            path_hits[normalized_path] += 1
+
+        if result.returncode not in (0, 1):
+            stderr = result.stderr.strip().splitlines()
+            self._logger.warning(
+                "workflow.wiki_rg.nonzero_exit",
+                returncode=int(result.returncode),
+                stderr=(stderr[0] if stderr else ""),
+            )
+            profile["warning"] = "rg exited with non-zero status during wiki retrieval; fallback results may degrade."
+        profile["latency_ms"] = round((perf_counter() - started) * 1000, 3)
+        profile["raw_match_count"] = sum(path_hits.values())
+        return path_hits, profile
 
     def _lexical_match_score(self, text: str, terms: list[str]) -> float:
         if not terms:
@@ -507,6 +709,21 @@ class MarkdownWikiRetriever:
             return path.relative_to(self.project_root).as_posix()
         except ValueError:
             return path.as_posix()
+
+    def _normalize_rg_path(self, raw_path: str) -> str:
+        try:
+            candidate = Path(raw_path)
+            if not candidate.is_absolute():
+                candidate = (self.project_root / candidate).resolve()
+            return self._to_relative_path(candidate)
+        except Exception:
+            return ""
+
+    def _warn_rg_unavailable(self, warning: str) -> None:
+        if self._rg_unavailable_warned:
+            return
+        self._rg_unavailable_warned = True
+        self._logger.warning("workflow.wiki_rg.unavailable", warning=warning)
 
     def _normalize(self, text: str) -> str:
         return re.sub(r"\s+", " ", text.lower()).strip()

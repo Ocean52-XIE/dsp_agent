@@ -6,8 +6,11 @@ from pathlib import Path
 from time import perf_counter
 import ast
 import hashlib
+import json
 import os
 import re
+import shutil
+import subprocess
 from typing import Any, Iterator
 
 from langchain_community.retrievers import BM25Retriever, TFIDFRetriever
@@ -15,7 +18,19 @@ from langchain_core.documents import Document
 
 from workflow.retrievers import WeightedFusionRetriever
 from workflow.runtime_logging import get_file_logger
-from workflow.utils import env_float, env_int
+from workflow.utils import env_bool, env_float, env_int
+
+
+RG_STRATEGIES = {"rg_first", "rg_only", "no_rg"}
+
+
+def _resolve_rg_strategy(raw_value: str | None, *, default: str) -> str:
+    normalized = str(raw_value or "").strip().lower()
+    if normalized in RG_STRATEGIES:
+        return normalized
+    if default in RG_STRATEGIES:
+        return default
+    return "rg_first"
 
 
 @dataclass
@@ -63,9 +78,25 @@ class CodeRetrieverRuntimeConfig:
     min_final_score: float = 0.25
     grade_high_top1_threshold: float = 8.0
     grade_medium_top1_threshold: float = 4.0
+    rg_strategy: str = "rg_first"
+    rg_max_terms: int = 10
+    rg_timeout_ms: int = 1200
+    rg_path_boost: float = 1.0
+    rg_line_boost: float = 2.2
+    rg_max_matches_per_term: int = 120
+    rg_max_lines_per_path: int = 40
 
     @classmethod
     def from_env(cls) -> "CodeRetrieverRuntimeConfig":
+        legacy_flag = os.getenv("WORKFLOW_CODE_RG_FIRST_ENABLED")
+        if legacy_flag is None:
+            default_strategy = "rg_first"
+        else:
+            default_strategy = "rg_first" if env_bool("WORKFLOW_CODE_RG_FIRST_ENABLED", True) else "no_rg"
+        strategy = _resolve_rg_strategy(
+            os.getenv("WORKFLOW_CODE_RG_STRATEGY"),
+            default=default_strategy,
+        )
         return cls(
             default_top_k=env_int("WORKFLOW_CODE_RETRIEVER_TOP_K", 4, minimum=1),
             max_child_candidates=env_int("WORKFLOW_CODE_RETRIEVER_MAX_CHILD_CANDIDATES", 64, minimum=8),
@@ -77,6 +108,13 @@ class CodeRetrieverRuntimeConfig:
             min_final_score=env_float("WORKFLOW_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.25, minimum=0.0),
             grade_high_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 8.0, minimum=0.0),
             grade_medium_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 4.0, minimum=0.0),
+            rg_strategy=strategy,
+            rg_max_terms=env_int("WORKFLOW_CODE_RG_MAX_TERMS", 10, minimum=1),
+            rg_timeout_ms=env_int("WORKFLOW_CODE_RG_TIMEOUT_MS", 1200, minimum=100),
+            rg_path_boost=env_float("WORKFLOW_CODE_RG_PATH_BOOST", 1.0, minimum=0.0),
+            rg_line_boost=env_float("WORKFLOW_CODE_RG_LINE_BOOST", 2.2, minimum=0.0),
+            rg_max_matches_per_term=env_int("WORKFLOW_CODE_RG_MAX_MATCHES_PER_TERM", 120, minimum=1),
+            rg_max_lines_per_path=env_int("WORKFLOW_CODE_RG_MAX_LINES_PER_PATH", 40, minimum=1),
         )
 
 
@@ -107,10 +145,13 @@ class LocalCodeRetriever:
         self._child_chunks: list[CodeChildChunk] = []
         self._child_by_id: dict[str, CodeChildChunk] = {}
         self._child_docs: list[Document] = []
+        self._children_by_path: defaultdict[str, list[CodeChildChunk]] = defaultdict(list)
         self._symbol_index: dict[str, set[str]] = defaultdict(set)
         self._path_token_index: dict[str, set[str]] = defaultdict(set)
         self.last_search_profile: dict[str, Any] = {}
         self._index_read_error_count = 0
+        self._rg_executable = shutil.which("rg") if self.runtime_config.rg_strategy != "no_rg" else None
+        self._rg_unavailable_warned = False
 
         self._bm25: BM25Retriever | None = None
         self._tfidf: TFIDFRetriever | None = None
@@ -128,11 +169,23 @@ class LocalCodeRetriever:
             read_error_count=self._index_read_error_count,
             latency_ms=int((perf_counter() - started_at) * 1000),
         )
+        self._logger.info(
+            "workflow.code_rg.status",
+            strategy=self.runtime_config.rg_strategy,
+            enabled=self.runtime_config.rg_strategy != "no_rg",
+            available=bool(self._rg_executable),
+            executable=self._rg_executable or "",
+        )
+        if self.runtime_config.rg_strategy in {"rg_first", "rg_only"} and self._rg_executable is None:
+            self._warn_rg_unavailable("rg is unavailable; retrieve_code falls back to BM25/TFIDF only.")
 
     def search(self, *, user_query: str, retrieval_queries: list[str] | None = None, module_name: str | None = None, top_k: int | None = None) -> list[dict[str, Any]]:
         started = perf_counter()
         query = user_query.strip()
-        if not query or not self._child_chunks or self._bm25 is None or self._tfidf is None or self._ensemble is None:
+        rg_strategy = self.runtime_config.rg_strategy
+        use_rg = rg_strategy in {"rg_first", "rg_only"}
+        use_semantic = rg_strategy in {"rg_first", "no_rg"}
+        if not query or not self._child_chunks or (use_semantic and (self._bm25 is None or self._tfidf is None or self._ensemble is None)):
             self.last_search_profile = {"latency_ms": round((perf_counter() - started) * 1000, 3)}
             return []
 
@@ -140,19 +193,57 @@ class LocalCodeRetriever:
         merged_query = " ".join([*query_phrases, module_name or ""]).strip()
         patterns = self._extract_patterns(merged_query)
         module_tokens = {tok for tok in re.split(r"[._\-/\s]+", self._normalize(module_name or "")) if len(tok) >= 2}
+        rg_terms = self._build_rg_terms(patterns=patterns, module_tokens=module_tokens) if use_rg else []
+        rg_path_hits, rg_line_hits_by_path, rg_profile = self._run_rg_line_hits(terms=rg_terms)
+        rg_path_boost_by_child: dict[str, float] = {}
+        rg_line_boost_by_child: dict[str, float] = {}
+        rg_candidate_child_ids: list[str] = []
+        for path, hit_count in rg_path_hits.items():
+            children = self._children_by_path.get(path, [])
+            if not children:
+                continue
+            path_boost = min(
+                self.runtime_config.rg_path_boost * (1.0 + 0.2 * max(hit_count - 1, 0)),
+                self.runtime_config.rg_path_boost * 2.5,
+            )
+            path_lines = set(rg_line_hits_by_path.get(path, []))
+            path_candidates = 0
+            for child in children:
+                rg_path_boost_by_child[child.child_id] = max(rg_path_boost_by_child.get(child.child_id, 0.0), path_boost)
+                line_hit_count = 0
+                for line_no in path_lines:
+                    if child.start_line <= line_no <= child.end_line:
+                        line_hit_count += 1
+                if line_hit_count > 0:
+                    line_boost = min(
+                        self.runtime_config.rg_line_boost * line_hit_count,
+                        self.runtime_config.rg_line_boost * 3.0,
+                    )
+                    rg_line_boost_by_child[child.child_id] = max(rg_line_boost_by_child.get(child.child_id, 0.0), line_boost)
+                    rg_candidate_child_ids.append(child.child_id)
+                    continue
+                if path_candidates < 2:
+                    rg_candidate_child_ids.append(child.child_id)
+                    path_candidates += 1
 
         candidate_k = max(self.runtime_config.max_child_candidates, (top_k or self.runtime_config.default_top_k) * 8)
-        self._bm25.k = candidate_k
-        self._tfidf.k = candidate_k
-        bm25_docs = self._bm25.invoke(merged_query)
-        tfidf_docs = self._tfidf.invoke(merged_query)
-        ens_docs = self._ensemble.invoke(merged_query)
+        bm25_docs: list[Document] = []
+        tfidf_docs: list[Document] = []
+        ens_docs: list[Document] = []
+        if use_semantic:
+            assert self._bm25 is not None and self._tfidf is not None and self._ensemble is not None
+            self._bm25.k = candidate_k
+            self._tfidf.k = candidate_k
+            bm25_docs = self._bm25.invoke(merged_query)
+            tfidf_docs = self._tfidf.invoke(merged_query)
+            ens_docs = self._ensemble.invoke(merged_query)
 
         bm25_rank = self._rank_map(bm25_docs)
         tfidf_rank = self._rank_map(tfidf_docs)
         ens_rank = self._rank_map(ens_docs)
 
         candidate_child_ids = list(dict.fromkeys([
+            *(rg_candidate_child_ids if rg_strategy in {"rg_first", "rg_only"} else []),
             *[str(doc.metadata.get("child_id", "")) for doc in ens_docs],
             *[str(doc.metadata.get("child_id", "")) for doc in bm25_docs],
             *[str(doc.metadata.get("child_id", "")) for doc in tfidf_docs],
@@ -167,10 +258,17 @@ class LocalCodeRetriever:
             if module_tokens and any(tok in child.normalized_path for tok in module_tokens):
                 lexical += 0.8
             pattern_score, matched_patterns = self._score_pattern(child, patterns)
+            rg_path_boost = rg_path_boost_by_child.get(child_id, 0.0)
+            rg_line_boost = rg_line_boost_by_child.get(child_id, 0.0)
             score = lexical
-            score += self._rank_score(bm25_rank.get(child_id)) * 0.6
-            score += self._rank_score(max(tfidf_rank.get(child_id, 10**9), ens_rank.get(child_id, 10**9))) * self.runtime_config.semantic_weight
-            score += pattern_score * self.runtime_config.pattern_weight
+            if use_semantic:
+                score += self._rank_score(bm25_rank.get(child_id)) * 0.6
+                score += self._rank_score(max(tfidf_rank.get(child_id, 10**9), ens_rank.get(child_id, 10**9))) * self.runtime_config.semantic_weight
+                score += pattern_score * self.runtime_config.pattern_weight
+            if rg_strategy == "rg_first":
+                score += rg_path_boost + rg_line_boost
+            elif rg_strategy == "rg_only":
+                score = rg_path_boost * 1.4 + rg_line_boost * 1.2 + lexical * 0.7 + pattern_score * 0.8
             if score < self.runtime_config.min_final_score:
                 continue
             scored_children.append(
@@ -180,6 +278,9 @@ class LocalCodeRetriever:
                     "pattern_score": pattern_score,
                     "matched_terms": matched_terms,
                     "matched_patterns": matched_patterns,
+                    "rg_path_boost": rg_path_boost,
+                    "rg_line_boost": rg_line_boost,
+                    "rg_strategy": rg_strategy,
                 }
             )
 
@@ -202,6 +303,8 @@ class LocalCodeRetriever:
                     "matched_terms": set(),
                     "matched_patterns": set(),
                     "hit_count": 0,
+                    "best_rg_path_boost": item["rg_path_boost"],
+                    "best_rg_line_boost": item["rg_line_boost"],
                 },
             )
             bucket["scores"].append(item["score"])
@@ -214,11 +317,14 @@ class LocalCodeRetriever:
                 bucket["best_child_score"] = item["score"]
             if item["pattern_score"] > bucket["best_pattern_score"]:
                 bucket["best_pattern_score"] = item["pattern_score"]
+            bucket["best_rg_path_boost"] = max(bucket["best_rg_path_boost"], item["rg_path_boost"])
+            bucket["best_rg_line_boost"] = max(bucket["best_rg_line_boost"], item["rg_line_boost"])
 
         parent_items: list[dict[str, Any]] = []
         for bucket in parent_buckets.values():
             top_scores = sorted(bucket["scores"], reverse=True)[:2]
             top_pattern = sorted(bucket["pattern_scores"], reverse=True)[:2]
+            parent_path = self._to_relative_path(bucket["parent"].source_path)
             final_score = bucket["best_child_score"] + (sum(top_scores) / max(len(top_scores), 1)) * 0.25
             final_score += bucket["best_pattern_score"] * self.runtime_config.parent_best_pattern_weight
             final_score += (sum(top_pattern) / max(len(top_pattern), 1)) * self.runtime_config.parent_avg_pattern_weight
@@ -232,6 +338,10 @@ class LocalCodeRetriever:
                     "matched_terms": sorted(bucket["matched_terms"], key=len, reverse=True),
                     "matched_patterns": sorted(bucket["matched_patterns"], key=len, reverse=True),
                     "hit_count": bucket["hit_count"],
+                    "rg_path_boost": bucket["best_rg_path_boost"],
+                    "rg_line_boost": bucket["best_rg_line_boost"],
+                    "rg_path_hits": int(rg_path_hits.get(parent_path, 0)),
+                    "rg_strategy": rg_strategy,
                 }
             )
         parent_items.sort(key=lambda item: (item["final_score"], item["best_pattern_score"]), reverse=True)
@@ -275,6 +385,10 @@ class LocalCodeRetriever:
                         "matched_patterns": item["matched_patterns"][:8],
                         "parent_hit_count": item["hit_count"],
                         "pattern_score": round(float(item["best_pattern_score"]), 4),
+                        "rg_path_boost": round(float(item["rg_path_boost"]), 4),
+                        "rg_line_boost": round(float(item["rg_line_boost"]), 4),
+                        "rg_path_hits": int(item["rg_path_hits"]),
+                        "rg_strategy": str(item["rg_strategy"]),
                     },
                 }
             )
@@ -284,6 +398,12 @@ class LocalCodeRetriever:
             "child_candidates": len(scored_children),
             "parent_candidates": len(parent_items),
             "selected_count": len(hits),
+            "rg_strategy": rg_strategy,
+            "rg": {
+                **rg_profile,
+                "matched_paths": len(rg_path_hits),
+                "matched_children": len(rg_candidate_child_ids),
+            },
         }
         return hits
 
@@ -316,6 +436,7 @@ class LocalCodeRetriever:
                 for child in self._split_parent_to_child(parent):
                     self._child_chunks.append(child)
                     self._child_by_id[child.child_id] = child
+                    self._children_by_path[self._to_relative_path(child.source_path)].append(child)
                     self._child_docs.append(
                         Document(
                             page_content=child.content,
@@ -477,6 +598,123 @@ class LocalCodeRetriever:
             return 0.0
         return 14.0 / (rank + 1.0)
 
+    def _build_rg_terms(self, *, patterns: dict[str, Any], module_tokens: set[str]) -> list[str]:
+        terms: list[str] = []
+        terms.extend(patterns.get("exact_identifiers", []))
+        terms.extend(patterns.get("field_like_tokens", []))
+        terms.extend(patterns.get("identifiers", [])[:24])
+        terms.extend(sorted(module_tokens))
+        deduped = list(dict.fromkeys([term.strip() for term in terms if len(term.strip()) >= 2]))
+        return deduped[: self.runtime_config.rg_max_terms]
+
+    def _run_rg_line_hits(self, *, terms: list[str]) -> tuple[Counter[str], dict[str, list[int]], dict[str, Any]]:
+        rg_enabled = self.runtime_config.rg_strategy in {"rg_first", "rg_only"}
+        profile: dict[str, Any] = {
+            "strategy": self.runtime_config.rg_strategy,
+            "enabled": bool(rg_enabled),
+            "available": bool(self._rg_executable),
+            "term_count": len(terms),
+            "timeout_ms": int(self.runtime_config.rg_timeout_ms),
+        }
+        if not rg_enabled:
+            return Counter(), {}, profile
+        if self._rg_executable is None:
+            warning = "rg is unavailable; retrieve_code falls back to BM25/TFIDF only."
+            if self.runtime_config.rg_strategy == "rg_only":
+                warning = "rg is unavailable; retrieve_code rg_only strategy cannot run."
+            self._warn_rg_unavailable(warning)
+            profile["warning"] = warning
+            return Counter(), {}, profile
+        if not terms or not self.code_dirs:
+            return Counter(), {}, profile
+
+        command: list[str] = [
+            self._rg_executable,
+            "--json",
+            "--line-number",
+            "--no-heading",
+            "--smart-case",
+            "--fixed-strings",
+            "--max-count",
+            str(self.runtime_config.rg_max_matches_per_term),
+        ]
+        for term in terms:
+            command.extend(["-e", term])
+        for ext in sorted(self.SUPPORTED_EXTENSIONS):
+            command.extend(["--glob", f"*{ext}"])
+        command.extend([str(path) for path in self.code_dirs])
+
+        started = perf_counter()
+        try:
+            result = subprocess.run(
+                command,
+                cwd=self.project_root,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="ignore",
+                timeout=float(self.runtime_config.rg_timeout_ms) / 1000.0,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            warning = "rg timed out during code retrieval; fallback to BM25/TFIDF only."
+            if self.runtime_config.rg_strategy == "rg_only":
+                warning = "rg timed out during code retrieval; rg_only strategy cannot return results."
+            self._logger.warning(
+                "workflow.code_rg.timeout",
+                timeout_ms=int(self.runtime_config.rg_timeout_ms),
+                term_count=len(terms),
+            )
+            profile["warning"] = warning
+            profile["timed_out"] = True
+            return Counter(), {}, profile
+        except Exception as exc:
+            warning = "rg failed during code retrieval; fallback to BM25/TFIDF only."
+            if self.runtime_config.rg_strategy == "rg_only":
+                warning = "rg failed during code retrieval; rg_only strategy cannot return results."
+            self._logger.warning(
+                "workflow.code_rg.error",
+                reason=str(exc),
+                term_count=len(terms),
+            )
+            profile["warning"] = warning
+            return Counter(), {}, profile
+
+        path_hits: Counter[str] = Counter()
+        line_hits_by_path: dict[str, list[int]] = defaultdict(list)
+        for line in result.stdout.splitlines():
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if str(payload.get("type", "")) != "match":
+                continue
+            data = payload.get("data", {})
+            path_raw = str(data.get("path", {}).get("text", "")).strip()
+            normalized_path = self._normalize_rg_path(path_raw)
+            if not normalized_path:
+                continue
+            path_hits[normalized_path] += 1
+            line_no = int(data.get("line_number", 0) or 0)
+            if line_no <= 0:
+                continue
+            rows = line_hits_by_path.setdefault(normalized_path, [])
+            if len(rows) >= self.runtime_config.rg_max_lines_per_path:
+                continue
+            rows.append(line_no)
+
+        if result.returncode not in (0, 1):
+            stderr = result.stderr.strip().splitlines()
+            self._logger.warning(
+                "workflow.code_rg.nonzero_exit",
+                returncode=int(result.returncode),
+                stderr=(stderr[0] if stderr else ""),
+            )
+            profile["warning"] = "rg exited with non-zero status during code retrieval; fallback results may degrade."
+        profile["latency_ms"] = round((perf_counter() - started) * 1000, 3)
+        profile["raw_match_count"] = sum(path_hits.values())
+        return path_hits, line_hits_by_path, profile
+
     def _extract_patterns(self, merged_query: str) -> dict[str, Any]:
         normalized = self._normalize(merged_query)
         identifiers = [self._normalize(token) for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]{1,}", merged_query)]
@@ -600,6 +838,21 @@ class LocalCodeRetriever:
             return path.relative_to(self.project_root).as_posix()
         except ValueError:
             return path.as_posix()
+
+    def _normalize_rg_path(self, raw_path: str) -> str:
+        try:
+            candidate = Path(raw_path)
+            if not candidate.is_absolute():
+                candidate = (self.project_root / candidate).resolve()
+            return self._to_relative_path(candidate)
+        except Exception:
+            return ""
+
+    def _warn_rg_unavailable(self, warning: str) -> None:
+        if self._rg_unavailable_warned:
+            return
+        self._rg_unavailable_warned = True
+        self._logger.warning("workflow.code_rg.unavailable", warning=warning)
 
     def _normalize(self, text: str) -> str:
         return re.sub(r"\s+", " ", text.lower()).strip()

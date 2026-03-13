@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-03-13T15:20:29",
+  "datasets": {
+    "wiki": "domain/ad_engine/eval/datasets/ad_engine_retrieval_eval_hard_30.jsonl",
+    "code": "domain/ad_engine/eval/datasets/ad_engine_code_retrieval_eval_hard_30.jsonl"
+  },
+  "wiki": {
+    "rg_first": {
+      "output_path": "src/workflow/eval/results/hard_samples/rg_compare_wiki_rg_first.json",
+      "total_cases": 30,
+      "metrics": {
+        "recall@1": 0.3,
+        "recall@3": 0.5,
+        "recall@5": 0.9,
+        "mrr": 0.481429
+      }
+    },
+    "rg_only": {
+      "output_path": "src/workflow/eval/results/hard_samples/rg_compare_wiki_rg_only.json",
+      "total_cases": 30,
+      "metrics": {
+        "recall@1": 0.4,
+        "recall@3": 0.566667,
+        "recall@5": 0.666667,
+        "mrr": 0.497222
+      }
+    },
+    "no_rg": {
+      "output_path": "src/workflow/eval/results/hard_samples/rg_compare_wiki_no_rg.json",
+      "total_cases": 30,
+      "metrics": {
+        "recall@1": 0.266667,
+        "recall@3": 0.5,
+        "recall@5": 0.933333,
+        "mrr": 0.465079
+      }
+    }
+  },
+  "code": {
+    "rg_first": {
+      "output_path": "src/workflow/eval/results/hard_samples/rg_compare_code_rg_first.json",
+      "total_cases": 30,
+      "metrics": {
+        "recall@1": 0.866667,
+        "recall@3": 0.966667,
+        "recall@5": 1.0,
+        "mrr": 0.923333,
+        "top1_path_accuracy": 0.866667,
+        "symbol_hit_rate@3": 0.7,
+        "pattern_hit_rate@1": 0.766667,
+        "pattern_hit_rate@3": 0.866667,
+        "highlight_hit_rate@3": 0.866667,
+        "avg_latency_ms": 38.553
+      }
+    },
+    "rg_only": {
+      "output_path": "src/workflow/eval/results/hard_samples/rg_compare_code_rg_only.json",
+      "total_cases": 30,
+      "metrics": {
+        "recall@1": 0.9,
+        "recall@3": 0.966667,
+        "recall@5": 0.966667,
+        "mrr": 0.927778,
+        "top1_path_accuracy": 0.9,
+        "symbol_hit_rate@3": 0.766667,
+        "pattern_hit_rate@1": 0.866667,
+        "pattern_hit_rate@3": 0.966667,
+        "highlight_hit_rate@3": 0.966667,
+        "avg_latency_ms": 28.008
+      }
+    },
+    "no_rg": {
+      "output_path": "src/workflow/eval/results/hard_samples/rg_compare_code_no_rg.json",
+      "total_cases": 30,
+      "metrics": {
+        "recall@1": 0.8,
+        "recall@3": 0.966667,
+        "recall@5": 1.0,
+        "mrr": 0.884444,
+        "top1_path_accuracy": 0.8,
+        "symbol_hit_rate@3": 0.7,
+        "pattern_hit_rate@1": 0.7,
+        "pattern_hit_rate@3": 0.866667,
+        "highlight_hit_rate@3": 0.866667,
+        "avg_latency_ms": 6.438
+      }
+    }
+  }
+}

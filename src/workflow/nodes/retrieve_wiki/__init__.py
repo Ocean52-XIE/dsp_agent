@@ -71,17 +71,20 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         should_retry=lambda first_grade, first_top1: first_grade in {"insufficient", "low"} or first_top1 < retry_min_top1,
     )
 
-    profile = {
-        "latency_ms": result.latency_ms,
-        "hits": len(result.final_items),
-        "top_k": result.final_top_k,
-        "initial_top_k": result.initial_top_k,
-        "strategy": retrieval_plan.get("strategy", "unknown"),
-        "retried": result.retried,
-        "first_grade": result.first_grade,
-        "final_grade": result.final_grade,
-        "first_top1": round(result.first_top1, 4),
-    }
+    profile = dict(service._wiki_retriever.last_search_profile)
+    profile.update(
+        {
+            "latency_ms": result.latency_ms,
+            "hits": len(result.final_items),
+            "top_k": result.final_top_k,
+            "initial_top_k": result.initial_top_k,
+            "strategy": retrieval_plan.get("strategy", "unknown"),
+            "retried": result.retried,
+            "first_grade": result.first_grade,
+            "final_grade": result.final_grade,
+            "first_top1": round(result.first_top1, 4),
+        }
+    )
     return {
         "wiki_hits": result.final_items,
         "wiki_retrieval_grade": result.final_grade,

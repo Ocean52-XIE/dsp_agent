@@ -1,0 +1,30 @@
+{"id":"hw_arch_001","query":"一次广告请求要先粗选再估效果再出价格最后定展示位，这条流水线顺序是什么","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["2. 在线链路"],"intent":"knowledge_qa","note":"链路顺序-语义表达"}
+{"id":"hw_arch_002","query":"系统里负责把收益和体验一起平衡的阶段，在总览里怎么描述","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["2. 在线链路"],"intent":"knowledge_qa","note":"链路职责-间接问法"}
+{"id":"hw_arch_003","query":"拿量不足时先看候选规模和过滤漏斗，这类排查建议在哪","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["5. 线上问题定位建议"],"intent":"knowledge_qa","note":"排障建议-弱词面"}
+{"id":"hw_arch_004","query":"哪些指标可以同时反映竞价胜出与流量填充","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["3. 关键指标"],"intent":"knowledge_qa","note":"指标问法-改写"}
+{"id":"hw_arch_005","query":"预算约束、风控约束、业务约束分别举了哪些例子","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["4. 常见策略约束"],"intent":"knowledge_qa","note":"约束分类-组合问法"}
+{"id":"hw_recall_006","query":"从海量库存里先捞一批可用候选，通常会走哪些入口方式","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["2. 常见召回路"],"intent":"knowledge_qa","note":"召回方式-同义改写"}
+{"id":"hw_recall_007","query":"候选突然变少时，建议先后检查索引、过滤、特征完整性的顺序是什么","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["4.1 候选量骤降"],"intent":"knowledge_qa","note":"召回排障-流程化问法"}
+{"id":"hw_recall_008","query":"召回阶段延迟偏高但业务还要兜底时，文档建议用什么组合手段","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["4.2 召回时延高"],"intent":"knowledge_qa","note":"时延问题-兜底策略"}
+{"id":"hw_recall_009","query":"为了后续定位问题，召回环节最少应打哪些运行指标","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["5. 推荐实践"],"intent":"knowledge_qa","note":"工程实践-打点字段"}
+{"id":"hw_recall_010","query":"为什么候选结果里要带来源标识，主要给下游做什么","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["5. 推荐实践"],"intent":"knowledge_qa","note":"source_tag 目的-间接问法"}
+{"id":"hw_rate_011","query":"点击与转化两个目标共用底层特征的建模方式叫什么","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["2. 常见模型形态"],"intent":"knowledge_qa","note":"模型形态-弱词面"}
+{"id":"hw_rate_012","query":"如果线上预估整体漂了，优先从哪几类因素排查","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["5.1 pCTR/pCVR 集体偏高或偏低"],"intent":"knowledge_qa","note":"漂移排障-概念表达"}
+{"id":"hw_rate_013","query":"冷启动计划没有量时，推荐怎么给探索机会又控制风险","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["5.2 冷启动广告无量"],"intent":"knowledge_qa","note":"冷启动策略-改写"}
+{"id":"hw_rate_014","query":"在效果导向出价里，哪个公式会把点击概率和转化概率同时乘进去","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["6. 与出价联动"],"intent":"knowledge_qa","note":"公式定位-间接描述"}
+{"id":"hw_rate_015","query":"为了避免竞价误差被放大，预估链路里哪一步不能省","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["6. 与出价联动"],"intent":"knowledge_qa","note":"校准必要性-语义问法"}
+{"id":"hw_bid_016","query":"把业务目标映射成实时竞价金额的模块说明在哪","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["1. 目标"],"intent":"knowledge_qa","note":"模块职责-改写"}
+{"id":"hw_bid_017","query":"转化目标场景里，调节因子通常受哪些状态共同影响","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["4. 常见公式示意"],"intent":"knowledge_qa","note":"alpha 来源-语义表达"}
+{"id":"hw_bid_018","query":"消耗跑太快时，策略建议把哪个因子往什么方向调","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["5. 预算与节奏（Pacing）"],"intent":"knowledge_qa","note":"pacing 调节-间接问法"}
+{"id":"hw_bid_019","query":"排查成本超标时，除了目标配置外还要关注哪类回传问题","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["6.2 成本超标"],"intent":"knowledge_qa","note":"成本排障-弱词面"}
+{"id":"hw_bid_020","query":"出价链路日志除了结果值，还要求记录哪些上下文与截断信息","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["7. 工程实践"],"intent":"knowledge_qa","note":"日志要求-组合问法"}
+{"id":"hw_rerank_021","query":"最终展示阶段如何同时顾及收入、体验和约束","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["1. 职责"],"intent":"knowledge_qa","note":"精排目标-语义问法"}
+{"id":"hw_rerank_022","query":"高分广告没进前列，文档给了哪三类典型原因","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["6.2 高 eCPM 广告未进最终位"],"intent":"knowledge_qa","note":"失败原因-间接问法"}
+{"id":"hw_rerank_023","query":"探索和利用的平衡在精排策略里是怎么落地描述的","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["3. 常见排序目标"],"intent":"knowledge_qa","note":"探索利用-改写"}
+{"id":"hw_rerank_024","query":"为了可解释回放，重排前后建议补哪些原因码记录","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["7. 建议"],"intent":"knowledge_qa","note":"可解释性-工程建议"}
+{"id":"hw_rerank_025","query":"哪些监控项能看出列表是否过度集中在少数广告主或行业","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["5. 关键监控"],"intent":"knowledge_qa","note":"多样性监控-语义问法"}
+{"id":"hw_trouble_026","query":"联调时的最小信息集，除了时间窗还必须带哪些标识","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["2. 一次完整排障最小信息"],"intent":"knowledge_qa","note":"最小信息集-改写"}
+{"id":"hw_trouble_027","query":"先看候选量再看两率再看出价再看重排，这个排查顺序在哪","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["3. 标准排查顺序"],"intent":"knowledge_qa","note":"排障顺序-概括问法"}
+{"id":"hw_trouble_028","query":"无量但召回看起来正常时，下一步通常应该盯哪一环","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["4.1 无量问题"],"intent":"knowledge_qa","note":"无量分流判断"}
+{"id":"hw_trouble_029","query":"成本高而转化少时，优先怀疑预测链路里的哪类问题","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["4.2 成本问题"],"intent":"knowledge_qa","note":"成本问题-语义表达"}
+{"id":"hw_trouble_030","query":"排障日志字段里哪些可以直接追踪每次请求的去留原因","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["5. 日志建议字段"],"intent":"knowledge_qa","note":"日志字段-间接问法"}

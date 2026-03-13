@@ -1,0 +1,3967 @@
+{
+  "generated_at": "2026-03-13T15:20:32",
+  "config_path": "src/workflow/eval/results/hard_samples/rg_strategy_compare_configs/wiki_rg_only.json",
+  "dataset_path": "domain/ad_engine/eval/datasets/ad_engine_retrieval_eval_hard_30.jsonl",
+  "output_path": "src/workflow/eval/results/hard_samples/rg_compare_wiki_rg_only.json",
+  "total_cases": 30,
+  "top_ks": [
+    1,
+    3,
+    5
+  ],
+  "max_candidates": 8,
+  "enable_agent_citation_eval": false,
+  "metrics": {
+    "recall@1": 0.4,
+    "recall@3": 0.566667,
+    "recall@5": 0.666667,
+    "mrr": 0.497222
+  },
+  "per_case": [
+    {
+      "id": "hw_arch_001",
+      "query": "一次广告请求要先粗选再估效果再出价格最后定展示位，这条流水线顺序是什么",
+      "gold_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "一次广告请求要先粗选再估效果再出价格最后定展示位，这条流水线顺序是什么",
+        "出价策略",
+        "ocpc tcpa 出价",
+        "出价",
+        "竞价",
+        "bid",
+        "单次转化成本"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 5.5782,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 1.2727,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 3.2664,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5455,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.2009,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3636,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.5709,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3636,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "链路顺序-语义表达"
+    },
+    {
+      "id": "hw_arch_002",
+      "query": "系统里负责把收益和体验一起平衡的阶段，在总览里怎么描述",
+      "gold_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "系统里负责把收益和体验一起平衡的阶段，在总览里怎么描述",
+        "广告在线投放",
+        "核心链路 架构流程"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.5957,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5886,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4286,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.5,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "链路职责-间接问法"
+    },
+    {
+      "id": "hw_arch_003",
+      "query": "拿量不足时先看候选规模和过滤漏斗，这类排查建议在哪",
+      "gold_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "拿量不足时先看候选规模和过滤漏斗，这类排查建议在哪",
+        "在线召回",
+        "召回阶段 候选生成",
+        "排障",
+        "排查",
+        "故障定位",
+        "问题定位"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 5.82,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 1.375,
+            "rg_path_hits": 8,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 4.88,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 4.33,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 2.91,
+          "section": "6. 常见线上问题",
+          "chunk_type": "list",
+          "excerpt": "## 6. 常见线上问题 ### 6.1 胜率下降 排查： - 竞对出价是否明显抬升。 - 两率预估是否偏低导致 eCPM 下降。 - 预算 pacing 是否过于保守。 ### 6.2 成本超标 排查： - 目标 CPA/ROI 配置是否错误。 - 转化回传延迟是否导致反馈滞后。 - 是否缺少高风险流量抑制规则。 ## 7. 工程实践 - 出价模块需记录“输入特征 + 目标配置 + 计算结果 + 截断原因”。 - 所有调参应支持灰度开...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 2.36,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "排障建议-弱词面"
+    },
+    {
+      "id": "hw_arch_004",
+      "query": "哪些指标可以同时反映竞价胜出与流量填充",
+      "gold_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "哪些指标可以同时反映竞价胜出与流量填充",
+        "广告在线投放",
+        "核心链路 架构流程",
+        "指标",
+        "关键指标",
+        "监控指标",
+        "业务指标",
+        "出价",
+        "竞价",
+        "bid",
+        "出价策略"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/04-精排策略.md",
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 3.4814,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.7143,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 3.0929,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 两率预估（pCTR / pCVR） ## 1. 职责 两率预估用于估计候选广告被点击与转化的概率，是出价和精排的核心输入。 ## 2. 常见模型形态 - pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。 ## 3. 特征体系 ### 3.1 用户侧 - 用户画像特征（兴趣、消费层级）。 - 历史行为特征（曝光、点击、转化序列）...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4286,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 3.0929,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4286,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.9314,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.7143,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 2.6571,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5714,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "指标问法-改写"
+    },
+    {
+      "id": "hw_arch_005",
+      "query": "预算约束、风控约束、业务约束分别举了哪些例子",
+      "gold_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "预算约束、风控约束、业务约束分别举了哪些例子",
+        "bid-optimizer 业务说明"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 5.7157,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.2375,
+            "rg_path_hits": 6,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 5.3386,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.2375,
+            "rg_path_hits": 6,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 4.7086,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 两率预估（pCTR / pCVR） ## 1. 职责 两率预估用于估计候选广告被点击与转化的概率，是出价和精排的核心输入。 ## 2. 常见模型形态 - pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。 ## 3. 特征体系 ### 3.1 用户侧 - 用户画像特征（兴趣、消费层级）。 - 历史行为特征（曝光、点击、转化序列）...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 3.6086,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.1386,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "约束分类-组合问法"
+    },
+    {
+      "id": "hw_recall_006",
+      "query": "从海量库存里先捞一批可用候选，通常会走哪些入口方式",
+      "gold_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "从海量库存里先捞一批可用候选，通常会走哪些入口方式",
+        "ad-recall 业务说明"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/README.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 3.1767,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.1767,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "召回方式-同义改写"
+    },
+    {
+      "id": "hw_recall_007",
+      "query": "候选突然变少时，建议先后检查索引、过滤、特征完整性的顺序是什么",
+      "gold_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "候选突然变少时，建议先后检查索引、过滤、特征完整性的顺序是什么",
+        "在线召回",
+        "召回阶段 候选生成"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 6.3457,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 7,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.1386,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.4286,
+          "section": "5. 线上问题定位建议",
+          "chunk_type": "list",
+          "excerpt": "## 5. 线上问题定位建议 - 召回不足：重点看候选量、过滤器命中率、索引延迟。 - 两率波动：重点看特征新鲜度、模型版本、校准参数。 - 出价异常：重点看目标 CPA/ROI 配置、预算节奏、竞价日志。 - 精排抖动：重点看特征缺失、重排约束冲突、探索权重。",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4286,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 2.4286,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "召回排障-流程化问法"
+    },
+    {
+      "id": "hw_recall_008",
+      "query": "召回阶段延迟偏高但业务还要兜底时，文档建议用什么组合手段",
+      "gold_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "召回阶段延迟偏高但业务还要兜底时，文档建议用什么组合手段",
+        "在线召回",
+        "召回阶段 候选生成",
+        "召回",
+        "候选召回",
+        "候选生成"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 6.26,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.75,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 18,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.05,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.25,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 4.05,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.25,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.31,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "精排策略",
+          "path": "domain/ad_engine/wiki/04-精排策略.md",
+          "score": 2.95,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 精排策略 ## 1. 职责 精排负责在召回候选中做最终排序，目标是在收益、用户体验和业务约束间取得平衡。 ## 2. 典型输入 - 候选广告及召回来源。 - 两率预估结果（pCTR/pCVR）。 - 出价结果和预算状态。 - 业务约束（频控、行业约束、多样性约束）。 ## 3. 常见排序目标 - 最大化短期收益（eCPM）。 - 最大化长期价值（转化质量、复购）。 - 平衡探索与利用（新广告探索 vs 稳定投放）。 ## 4. 常见...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.25,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "时延问题-兜底策略"
+    },
+    {
+      "id": "hw_recall_009",
+      "query": "为了后续定位问题，召回环节最少应打哪些运行指标",
+      "gold_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "为了后续定位问题，召回环节最少应打哪些运行指标",
+        "在线召回",
+        "召回阶段 候选生成",
+        "指标",
+        "关键指标",
+        "监控指标",
+        "业务指标",
+        "召回",
+        "候选召回",
+        "候选生成"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/04-精排策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 5.0933,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.1767,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 3.15,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "精排策略",
+          "path": "domain/ad_engine/wiki/04-精排策略.md",
+          "score": 2.4667,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 精排策略 ## 1. 职责 精排负责在召回候选中做最终排序，目标是在收益、用户体验和业务约束间取得平衡。 ## 2. 典型输入 - 候选广告及召回来源。 - 两率预估结果（pCTR/pCVR）。 - 出价结果和预算状态。 - 业务约束（频控、行业约束、多样性约束）。 ## 3. 常见排序目标 - 最大化短期收益（eCPM）。 - 最大化长期价值（转化质量、复购）。 - 平衡探索与利用（新广告探索 vs 稳定投放）。 ## 4. 常见...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 2.4667,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 两率预估（pCTR / pCVR） ## 1. 职责 两率预估用于估计候选广告被点击与转化的概率，是出价和精排的核心输入。 ## 2. 常见模型形态 - pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。 ## 3. 特征体系 ### 3.1 用户侧 - 用户画像特征（兴趣、消费层级）。 - 历史行为特征（曝光、点击、转化序列）...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "工程实践-打点字段"
+    },
+    {
+      "id": "hw_recall_010",
+      "query": "为什么候选结果里要带来源标识，主要给下游做什么",
+      "gold_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "为什么候选结果里要带来源标识，主要给下游做什么",
+        "ad-recall 业务说明"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/README.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 3.7267,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.1767,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "source_tag 目的-间接问法"
+    },
+    {
+      "id": "hw_rate_011",
+      "query": "点击与转化两个目标共用底层特征的建模方式叫什么",
+      "gold_paths": [
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "点击与转化两个目标共用底层特征的建模方式叫什么",
+        "ad-serving-orchestrator 业务说明"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/README.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.6267,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.6267,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "模型形态-弱词面"
+    },
+    {
+      "id": "hw_rate_012",
+      "query": "如果线上预估整体漂了，优先从哪几类因素排查",
+      "gold_paths": [
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "module_name": "rate-prediction",
+      "module_hint": "点击率/转化率预估与校准链路",
+      "retrieval_queries": [
+        "如果线上预估整体漂了，优先从哪几类因素排查",
+        "两率预估",
+        "pctr pcvr 预估校准",
+        "排障",
+        "排查",
+        "故障定位",
+        "问题定位",
+        "点击率",
+        "转化率",
+        "预估点击率",
+        "预估转化率"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md",
+        "domain/ad_engine/wiki/01-在线召回.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 6.3,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 两率预估（pCTR / pCVR） ## 1. 职责 两率预估用于估计候选广告被点击与转化的概率，是出价和精排的核心输入。 ## 2. 常见模型形态 - pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。 ## 3. 特征体系 ### 3.1 用户侧 - 用户画像特征（兴趣、消费层级）。 - 历史行为特征（曝光、点击、转化序列）...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 8,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 6.22,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.375,
+            "rg_path_hits": 11,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 4.8,
+          "section": "6. 常见线上问题",
+          "chunk_type": "list",
+          "excerpt": "## 6. 常见线上问题 ### 6.1 胜率下降 排查： - 竞对出价是否明显抬升。 - 两率预估是否偏低导致 eCPM 下降。 - 预算 pacing 是否过于保守。 ### 6.2 成本超标 排查： - 目标 CPA/ROI 配置是否错误。 - 转化回传延迟是否导致反馈滞后。 - 是否缺少高风险流量抑制规则。 ## 7. 工程实践 - 出价模块需记录“输入特征 + 目标配置 + 计算结果 + 截断原因”。 - 所有调参应支持灰度开...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.57,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 4.5433,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "漂移排障-概念表达"
+    },
+    {
+      "id": "hw_rate_013",
+      "query": "冷启动计划没有量时，推荐怎么给探索机会又控制风险",
+      "gold_paths": [
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "冷启动计划没有量时，推荐怎么给探索机会又控制风险",
+        "广告在线投放",
+        "核心链路 架构流程"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.5957,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5886,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4286,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "冷启动策略-改写"
+    },
+    {
+      "id": "hw_rate_014",
+      "query": "在效果导向出价里，哪个公式会把点击概率和转化概率同时乘进去",
+      "gold_paths": [
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "在效果导向出价里，哪个公式会把点击概率和转化概率同时乘进去",
+        "bid-optimizer 业务说明",
+        "出价",
+        "竞价",
+        "bid",
+        "出价策略"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 6.3711,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8889,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 7,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 5.5633,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.2375,
+            "rg_path_hits": 6,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.8356,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 4.8356,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.2656,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.5,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "公式定位-间接描述"
+    },
+    {
+      "id": "hw_rate_015",
+      "query": "为了避免竞价误差被放大，预估链路里哪一步不能省",
+      "gold_paths": [
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "module_name": "rate-prediction",
+      "module_hint": "点击率/转化率预估与校准链路",
+      "retrieval_queries": [
+        "为了避免竞价误差被放大，预估链路里哪一步不能省",
+        "两率预估",
+        "pctr pcvr 预估校准",
+        "出价",
+        "竞价",
+        "bid",
+        "出价策略",
+        "点击率",
+        "转化率",
+        "预估点击率",
+        "预估转化率"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 6.4333,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 1.0667,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.375,
+            "rg_path_hits": 7,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 6.4067,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 两率预估（pCTR / pCVR） ## 1. 职责 两率预估用于估计候选广告被点击与转化的概率，是出价和精排的核心输入。 ## 2. 常见模型形态 - pCTR：点击率模型，常用于估计点击概率。 - pCVR：转化率模型，常用于估计成交或深转化概率。 - 多任务模型：共享底层特征并同时预测 CTR、CVR。 ## 3. 特征体系 ### 3.1 用户侧 - 用户画像特征（兴趣、消费层级）。 - 历史行为特征（曝光、点击、转化序列）...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.9333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 11,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 6.22,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.375,
+            "rg_path_hits": 8,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 6.14,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 1.375,
+            "rg_path_hits": 9,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 4.65,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.5,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "校准必要性-语义问法"
+    },
+    {
+      "id": "hw_bid_016",
+      "query": "把业务目标映射成实时竞价金额的模块说明在哪",
+      "gold_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "把业务目标映射成实时竞价金额的模块说明在哪",
+        "ad-serving-orchestrator 业务说明",
+        "出价",
+        "竞价",
+        "bid",
+        "出价策略"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 6.2111,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8889,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 1.375,
+            "rg_path_hits": 7,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 5.4833,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 1.2375,
+            "rg_path_hits": 6,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 5.0933,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 4.7556,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.4433,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "模块职责-改写"
+    },
+    {
+      "id": "hw_bid_017",
+      "query": "转化目标场景里，调节因子通常受哪些状态共同影响",
+      "gold_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "转化目标场景里，调节因子通常受哪些状态共同影响",
+        "ad-serving-orchestrator 业务说明"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/README.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.6267,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.6267,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "alpha 来源-语义表达"
+    },
+    {
+      "id": "hw_bid_018",
+      "query": "消耗跑太快时，策略建议把哪个因子往什么方向调",
+      "gold_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "消耗跑太快时，策略建议把哪个因子往什么方向调",
+        "ad-serving-orchestrator 业务说明"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.6267,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.6267,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3333,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "pacing 调节-间接问法"
+    },
+    {
+      "id": "hw_bid_019",
+      "query": "排查成本超标时，除了目标配置外还要关注哪类回传问题",
+      "gold_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "排查成本超标时，除了目标配置外还要关注哪类回传问题",
+        "出价策略 6.2 成本超标 目标配置错误 回传延迟 高风险流量抑制",
+        "compute_alpha compute_ocpc_bid bid_optimizer.py",
+        "出价策略",
+        "ocpc tcpa 出价",
+        "排障",
+        "排查",
+        "故障定位",
+        "问题定位",
+        "单次转化成本"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/README.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 3.31,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.68,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "成本排障-弱词面"
+    },
+    {
+      "id": "hw_bid_020",
+      "query": "出价链路日志除了结果值，还要求记录哪些上下文与截断信息",
+      "gold_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "出价链路日志除了结果值，还要求记录哪些上下文与截断信息",
+        "出价策略",
+        "ocpc tcpa 出价",
+        "出价",
+        "竞价",
+        "bid",
+        "单次转化成本"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 6.78,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 1.4,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 9,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 5.51,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.2375,
+            "rg_path_hits": 6,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.25,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 4.25,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.23,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "日志要求-组合问法"
+    },
+    {
+      "id": "hw_rerank_021",
+      "query": "最终展示阶段如何同时顾及收入、体验和约束",
+      "gold_paths": [
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "最终展示阶段如何同时顾及收入、体验和约束",
+        "广告在线投放",
+        "核心链路 架构流程"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.5957,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5886,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4286,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "精排目标-语义问法"
+    },
+    {
+      "id": "hw_rerank_022",
+      "query": "高分广告没进前列，文档给了哪三类典型原因",
+      "gold_paths": [
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "高分广告没进前列，文档给了哪三类典型原因",
+        "出价策略 6.1 胜率下降 竞对出价抬升 两率预估偏低 pacing过于保守",
+        "compute_bid_for_request compute_alpha bid_optimizer.py"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 4.7692,
+          "section": "6. 常见线上问题",
+          "chunk_type": "list",
+          "excerpt": "## 6. 常见线上问题 ### 6.1 胜率下降 排查： - 竞对出价是否明显抬升。 - 两率预估是否偏低导致 eCPM 下降。 - 预算 pacing 是否过于保守。 ### 6.2 成本超标 排查： - 目标 CPA/ROI 配置是否错误。 - 转化回传延迟是否导致反馈滞后。 - 是否缺少高风险流量抑制规则。 ## 7. 工程实践 - 出价模块需记录“输入特征 + 目标配置 + 计算结果 + 截断原因”。 - 所有调参应支持灰度开...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4615,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.8292,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4615,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.6062,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3077,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 2.3231,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.1538,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.3231,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.1538,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "失败原因-间接问法"
+    },
+    {
+      "id": "hw_rerank_023",
+      "query": "探索和利用的平衡在精排策略里是怎么落地描述的",
+      "gold_paths": [
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "module_name": "rerank-engine",
+      "module_hint": "多目标排序与约束重排链路",
+      "retrieval_queries": [
+        "探索和利用的平衡在精排策略里是怎么落地描述的",
+        "rerank-engine 业务说明",
+        "精排",
+        "排序",
+        "重排",
+        "rerank"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/04-精排策略.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "精排策略",
+          "path": "domain/ad_engine/wiki/04-精排策略.md",
+          "score": 6.1933,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 精排策略 ## 1. 职责 精排负责在召回候选中做最终排序，目标是在收益、用户体验和业务约束间取得平衡。 ## 2. 典型输入 - 候选广告及召回来源。 - 两率预估结果（pCTR/pCVR）。 - 出价结果和预算状态。 - 业务约束（频控、行业约束、多样性约束）。 ## 3. 常见排序目标 - 最大化短期收益（eCPM）。 - 最大化长期价值（转化质量、复购）。 - 平衡探索与利用（新广告探索 vs 稳定投放）。 ## 4. 常见...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.6667,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 7,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.8356,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 3.7356,
+          "section": "4. 典型问题",
+          "chunk_type": "list",
+          "excerpt": "## 4. 典型问题 ### 4.1 候选量骤降 常见原因： - 索引延迟导致新广告未入库。 - 过滤条件过严（地域、时段、频控叠加）。 - 用户特征缺失，导致个性化召回失效。 排查顺序： 1. 看索引构建时间与在线索引版本。 2. 看各过滤器前后候选量漏斗。 3. 看请求特征是否完整（uid、device、query）。 ### 4.2 召回时延高 常见原因： - 多路召回并发不足。 - 召回源超时未做降级。 - 下游依赖（KV、向量...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.0878,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2222,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 3.0078,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2222,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "探索利用-改写"
+    },
+    {
+      "id": "hw_rerank_024",
+      "query": "为了可解释回放，重排前后建议补哪些原因码记录",
+      "gold_paths": [
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "module_name": "rerank-engine",
+      "module_hint": "多目标排序与约束重排链路",
+      "retrieval_queries": [
+        "为了可解释回放，重排前后建议补哪些原因码记录",
+        "出价策略 6.1 胜率下降 竞对出价抬升 两率预估偏低 pacing过于保守",
+        "compute_bid_for_request compute_alpha bid_optimizer.py",
+        "rerank-engine 业务说明",
+        "精排",
+        "排序",
+        "重排",
+        "rerank"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 3.5526,
+          "section": "6. 常见线上问题",
+          "chunk_type": "list",
+          "excerpt": "## 6. 常见线上问题 ### 6.1 胜率下降 排查： - 竞对出价是否明显抬升。 - 两率预估是否偏低导致 eCPM 下降。 - 预算 pacing 是否过于保守。 ### 6.2 成本超标 排查： - 目标 CPA/ROI 配置是否错误。 - 转化回传延迟是否导致反馈滞后。 - 是否缺少高风险流量抑制规则。 ## 7. 工程实践 - 出价模块需记录“输入特征 + 目标配置 + 计算结果 + 截断原因”。 - 所有调参应支持灰度开...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3158,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.6126,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3158,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5326,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.3158,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4484,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2105,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "可解释性-工程建议"
+    },
+    {
+      "id": "hw_rerank_025",
+      "query": "哪些监控项能看出列表是否过度集中在少数广告主或行业",
+      "gold_paths": [
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "哪些监控项能看出列表是否过度集中在少数广告主或行业",
+        "广告在线投放",
+        "核心链路 架构流程"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.5957,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5886,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4286,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.0,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "多样性监控-语义问法"
+    },
+    {
+      "id": "hw_trouble_026",
+      "query": "联调时的最小信息集，除了时间窗还必须带哪些标识",
+      "gold_paths": [
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "联调时的最小信息集，除了时间窗还必须带哪些标识",
+        "广告在线投放",
+        "核心链路 架构流程"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.5957,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5886,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.4286,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.3333333333333333,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "最小信息集-改写"
+    },
+    {
+      "id": "hw_trouble_027",
+      "query": "先看候选量再看两率再看出价再看重排，这个排查顺序在哪",
+      "gold_paths": [
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "先看候选量再看两率再看出价再看重排，这个排查顺序在哪",
+        "出价策略",
+        "ocpc tcpa 出价",
+        "出价",
+        "竞价",
+        "bid",
+        "精排",
+        "排序",
+        "重排",
+        "rerank",
+        "排障",
+        "排查",
+        "故障定位",
+        "问题定位",
+        "单次转化成本"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 5.1822,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.7778,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.2656,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 3.1856,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.4444,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.7244,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5556,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.25,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "排障顺序-概括问法"
+    },
+    {
+      "id": "hw_trouble_028",
+      "query": "无量但召回看起来正常时，下一步通常应该盯哪一环",
+      "gold_paths": [
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "module_name": "ad-recall",
+      "module_hint": "广告候选召回与过滤链路",
+      "retrieval_queries": [
+        "无量但召回看起来正常时，下一步通常应该盯哪一环",
+        "在线召回",
+        "召回阶段 候选生成",
+        "召回",
+        "候选召回",
+        "候选生成"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/01-在线召回.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "在线召回",
+          "path": "domain/ad_engine/wiki/01-在线召回.md",
+          "score": 6.3457,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 在线召回 ## 1. 职责 在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。 ## 2. 常见召回路 - 人群包召回：按用户标签、人群圈选规则召回。 - 语义召回：按查询意图或上下文 embedding 召回。 - 规则召回：按广告位、行业、地域、时段规则召回。 - 重定向召回：按用户历史行为和再营销策略召回。 ## 3. 召回质量指标 - Recall@N：目标广告是否出现在前 N 个候选中。 - ...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.8571,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 18,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.0786,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 4.0786,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.3671,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5714,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "精排策略",
+          "path": "domain/ad_engine/wiki/04-精排策略.md",
+          "score": 2.9786,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "excerpt": "# 精排策略 ## 1. 职责 精排负责在召回候选中做最终排序，目标是在收益、用户体验和业务约束间取得平衡。 ## 2. 典型输入 - 候选广告及召回来源。 - 两率预估结果（pCTR/pCVR）。 - 出价结果和预算状态。 - 业务约束（频控、行业约束、多样性约束）。 ## 3. 常见排序目标 - 最大化短期收益（eCPM）。 - 最大化长期价值（转化质量、复购）。 - 平衡探索与利用（新广告探索 vs 稳定投放）。 ## 4. 常见...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.2857,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.3333333333333333,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "无量分流判断"
+    },
+    {
+      "id": "hw_trouble_029",
+      "query": "成本高而转化少时，优先怀疑预测链路里的哪类问题",
+      "gold_paths": [
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "module_name": "bid-optimizer",
+      "module_hint": "实时出价、预算节奏与竞争策略链路",
+      "retrieval_queries": [
+        "成本高而转化少时，优先怀疑预测链路里的哪类问题",
+        "出价策略",
+        "ocpc tcpa 出价",
+        "单次转化成本"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/02-两率预估.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/04-精排策略.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 6.66,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 出价策略 ## 1. 目标 出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。 ## 2. 常见模式 - CPC：按点击计费。 - CPM：按千次曝光计费。 - oCPC：以转化目标约束 CPC。 - tCPA：目标单次转化成本。 - tROAS：目标投入产出比。 ## 3. 实时出价核心要素 - 预估效果：pCTR、pCVR。 - 目标参数：target_cpa、target_roas。 - 预...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 1.25,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 1.375,
+            "rg_path_hits": 8,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "两率预估（pCTR / pCVR）",
+          "path": "domain/ad_engine/wiki/02-两率预估.md",
+          "score": 4.88,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "excerpt": "## 5. 常见问题与处理 ### 5.1 pCTR/pCVR 集体偏高或偏低 重点排查： - 特征分布是否发生漂移。 - 模型版本是否误切换。 - 校准参数是否同步。 ### 5.2 冷启动广告无量 处理思路： - 引入探索流量配额。 - 使用内容相似召回 + 类目先验。 - 对冷启动计划使用分层保底策略。 ## 6. 与出价联动 常见 eCPM 形态： `eCPM = pCTR * Bid * 1000` 当目标是转化时也常见： `...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 1.1,
+            "rg_path_hits": 5,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 4.13,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.25,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.9625,
+            "rg_path_hits": 4,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 3.58,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.25,
+            "ensemble": 0.0,
+            "module_boost": 0.08,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 3.31,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 5,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.6875,
+            "rg_path_hits": 2,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.25,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "成本问题-语义表达"
+    },
+    {
+      "id": "hw_trouble_030",
+      "query": "排障日志字段里哪些可以直接追踪每次请求的去留原因",
+      "gold_paths": [
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "module_name": "ad-serving-orchestrator",
+      "module_hint": "广告在线投放编排与请求链路推进",
+      "retrieval_queries": [
+        "排障日志字段里哪些可以直接追踪每次请求的去留原因",
+        "出价策略 6.1 胜率下降 竞对出价抬升 两率预估偏低 pacing过于保守",
+        "compute_bid_for_request compute_alpha bid_optimizer.py",
+        "广告在线投放",
+        "核心链路 架构流程",
+        "排障",
+        "排查",
+        "故障定位",
+        "问题定位"
+      ],
+      "retrieved_paths": [
+        "domain/ad_engine/wiki/03-出价策略.md",
+        "domain/ad_engine/wiki/README.md",
+        "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+        "domain/ad_engine/wiki/05-联调排障手册.md"
+      ],
+      "top_hits": [
+        {
+          "source_type": "wiki",
+          "title": "出价策略",
+          "path": "domain/ad_engine/wiki/03-出价策略.md",
+          "score": 3.6048,
+          "section": "6. 常见线上问题",
+          "chunk_type": "list",
+          "excerpt": "## 6. 常见线上问题 ### 6.1 胜率下降 排查： - 竞对出价是否明显抬升。 - 两率预估是否偏低导致 eCPM 下降。 - 预算 pacing 是否过于保守。 ### 6.2 成本超标 排查： - 目标 CPA/ROI 配置是否错误。 - 转化回传延迟是否导致反馈滞后。 - 是否缺少高风险流量抑制规则。 ## 7. 工程实践 - 出价模块需记录“输入特征 + 目标配置 + 计算结果 + 截断原因”。 - 所有调参应支持灰度开...",
+          "rank": 1,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.381,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.825,
+            "rg_path_hits": 3,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎 Wiki",
+          "path": "domain/ad_engine/wiki/README.md",
+          "score": 2.8171,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎 Wiki 本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路： - 在线召回 - 两率预估（pCTR/pCVR） - 出价策略 - 精排策略 - 联调与排障 这些文档会被 `workflow/nodes/retrieve_wiki/wiki_retriever.py` 作为检索语料直接加载，用于驱动 `workflow/engine.py` 的 `retrieve_wiki` 节点。 ## 文档清单 - `00...",
+          "rank": 2,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.5714,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "广告引擎总体架构",
+          "path": "domain/ad_engine/wiki/00-广告引擎总体架构.md",
+          "score": 2.5124,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "excerpt": "# 广告引擎总体架构 ## 1. 目标 广告引擎的核心目标是在每次请求中完成以下动作： 1. 在毫秒级时延内召回候选广告。 2. 估计每个候选的点击率与转化率。 3. 结合业务目标完成出价计算。 4. 通过精排模型输出最终展示序列。 ## 2. 在线链路 典型在线投放链路如下： `请求接入 -> 召回 -> 两率预估 -> 出价 -> 精排 -> 计费/日志回传` 说明： - 召回负责“找全候选”。 - 两率预估负责“估计效果”。 - ...",
+          "rank": 3,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.1905,
+            "ensemble": 0.0,
+            "module_boost": 0.16,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        },
+        {
+          "source_type": "wiki",
+          "title": "联调排障手册",
+          "path": "domain/ad_engine/wiki/05-联调排障手册.md",
+          "score": 2.5048,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "excerpt": "# 联调排障手册 ## 1. 适用范围 用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。 ## 2. 一次完整排障最小信息 - 请求时间窗口（精确到分钟）。 - trace_id / request_id。 - 广告位与终端信息。 - 计划 ID / 创意 ID。 - 实际曝光、点击、转化回传数据。 ## 3. 标准排查顺序 1. 看召回是否拿到足够候选（CandidateCount）。 2. 看两率预估是否异常...",
+          "rank": 4,
+          "retrieval_debug": {
+            "bm25": 0.0,
+            "vector": 0.0,
+            "lexical": 0.381,
+            "ensemble": 0.0,
+            "module_boost": 0.0,
+            "rg_boost": 0.55,
+            "rg_path_hits": 1,
+            "rg_strategy": "rg_only",
+            "weights": {
+              "bm25": 0.5,
+              "vector": 0.35,
+              "lexical": 0.15
+            }
+          }
+        }
+      ],
+      "mrr": 0.25,
+      "recall@1": 0.0,
+      "recall@3": 0.0,
+      "recall@5": 1.0,
+      "citation_hit": null,
+      "citation_paths": [],
+      "intent": "knowledge_qa",
+      "note": "日志字段-间接问法"
+    }
+  ]
+}
