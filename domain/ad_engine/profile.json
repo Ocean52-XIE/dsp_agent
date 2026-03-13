@@ -1,0 +1,646 @@
+{
+  "schema_version": 1,
+  "profile_id": "ad_engine",
+  "display_name": "广告引擎",
+  "language": "zh-CN",
+  "sources": {
+    "wiki": {
+      "root": "wiki",
+      "glob": "**/*.md"
+    },
+    "code": {
+      "roots": [
+        "codes"
+      ],
+      "include_ext": [
+        ".py",
+        ".js",
+        ".jsx",
+        ".ts",
+        ".tsx",
+        ".go",
+        ".java",
+        ".sql"
+      ],
+      "exclude_dirs": [
+        ".git",
+        "__pycache__",
+        ".pytest_cache",
+        "node_modules",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        "target"
+      ]
+    },
+    "cases": {
+      "path": "eval/datasets/ad_engine_answer_eval_hybrid.jsonl"
+    }
+  },
+  "domain_gate": {
+    "threshold": 0.5,
+    "weak_in_scope_min_score": 0.62,
+    "weak_code_hint_min_score": 0.58,
+    "history_memory_bonus": 0.18,
+    "offtopic_penalty": 0.45,
+    "short_query_penalty": 0.25,
+    "short_query_max_len": 4,
+    "code_hint_regex": "[A-Za-z_][A-Za-z0-9_]{2,}\\s*(\\(|\\.py\\b|/)",
+    "laugh_like_regex": "^[哈呵嘿啊嗯哦嗨~\\s!！?？,，。…]+$",
+    "domain_terms": [
+      "广告",
+      "投放",
+      "召回",
+      "两率",
+      "预估",
+      "出价",
+      "精排",
+      "重排",
+      "竞价",
+      "预算",
+      "pacing",
+      "ecpm",
+      "ocpc",
+      "tcpa",
+      "troas",
+      "roas",
+      "cpa",
+      "ctr",
+      "cvr",
+      "pctr",
+      "pcvr",
+      "target_cpa",
+      "target_roas",
+      "链路",
+      "模块",
+      "指标",
+      "口径",
+      "监控",
+      "日志",
+      "回传",
+      "排障",
+      "排查",
+      "异常",
+      "定位",
+      "修复",
+      "函数",
+      "文件",
+      "代码",
+      "实现",
+      "检索",
+      "wiki"
+    ],
+    "small_talk_exact": [
+      "哈",
+      "哈哈",
+      "哈哈哈",
+      "呵呵",
+      "嘿嘿",
+      "嗯",
+      "哦",
+      "嗨",
+      "在吗",
+      "你好",
+      "hi",
+      "hello",
+      "ok",
+      "thanks",
+      "谢谢"
+    ],
+    "small_talk_substr": [
+      "笑死",
+      "晚安",
+      "早安",
+      "早上好",
+      "中午好",
+      "晚上好"
+    ],
+    "offtopic_terms": [
+      "天气",
+      "股价",
+      "股票",
+      "基金",
+      "彩票",
+      "电影",
+      "翻译",
+      "作文",
+      "旅游",
+      "菜谱",
+      "八卦",
+      "星座"
+    ]
+  },
+  "routing": {
+    "default_module": "ad-serving-orchestrator",
+    "module_infer_strategy": "keyword_then_symbol",
+    "prefer_symbol_match": true
+  },
+  "modules": [
+    {
+      "name": "ad-serving-orchestrator",
+      "hint": "广告在线投放编排与请求链路推进",
+      "route_priority": 100,
+      "keywords": [
+        "广告引擎",
+        "在线投放",
+        "链路",
+        "流程",
+        "全局",
+        "总体",
+        "架构",
+        "风控",
+        "流量治理"
+      ],
+      "aliases": [
+        "广告在线投放",
+        "核心链路 架构流程"
+      ],
+      "wiki_hints": [
+        "00-",
+        "总体架构"
+      ]
+    },
+    {
+      "name": "ad-recall",
+      "hint": "广告候选召回与过滤链路",
+      "route_priority": 20,
+      "keywords": [
+        "召回",
+        "recall",
+        "候选",
+        "人群包",
+        "过滤",
+        "索引"
+      ],
+      "symbol_keywords": [
+        "select_recall_candidates",
+        "recall_service.py"
+      ],
+      "aliases": [
+        "在线召回",
+        "召回阶段 候选生成"
+      ],
+      "wiki_hints": [
+        "01-",
+        "在线召回"
+      ]
+    },
+    {
+      "name": "rate-prediction",
+      "hint": "点击率/转化率预估与校准链路",
+      "route_priority": 30,
+      "keywords": [
+        "两率",
+        "ctr",
+        "cvr",
+        "pctr",
+        "pcvr",
+        "预估",
+        "校准"
+      ],
+      "symbol_keywords": [
+        "predict_ctr_cvr",
+        "calibrate_probability",
+        "rate_predictor.py"
+      ],
+      "aliases": [
+        "两率预估",
+        "pctr pcvr 预估校准"
+      ],
+      "wiki_hints": [
+        "02-",
+        "两率"
+      ]
+    },
+    {
+      "name": "bid-optimizer",
+      "hint": "实时出价、预算节奏与竞争策略链路",
+      "route_priority": 10,
+      "keywords": [
+        "出价",
+        "bid",
+        "ocpc",
+        "tcpa",
+        "troas",
+        "target_cpa",
+        "target_roas",
+        "预算",
+        "pacing",
+        "cpa",
+        "roas",
+        "成本",
+        "胜率"
+      ],
+      "symbol_keywords": [
+        "compute_bid_for_request",
+        "compute_ocpc_bid",
+        "compute_alpha",
+        "bid_optimizer.py"
+      ],
+      "aliases": [
+        "出价策略",
+        "ocpc tcpa 出价"
+      ],
+      "wiki_hints": [
+        "03-",
+        "出价"
+      ]
+    },
+    {
+      "name": "rerank-engine",
+      "hint": "多目标排序与约束重排链路",
+      "route_priority": 15,
+      "keywords": [
+        "精排",
+        "排序",
+        "rerank",
+        "重排",
+        "rank_score",
+        "ecpm",
+        "最终位",
+        "多样性",
+        "频控"
+      ],
+      "symbol_keywords": [
+        "apply_diversity_penalty",
+        "apply_safety_penalty",
+        "rank_topn",
+        "compute_rank_score",
+        "rerank_engine.py"
+      ],
+      "aliases": [
+        "精排策略",
+        "重排 多目标排序"
+      ],
+      "wiki_hints": [
+        "04-",
+        "精排"
+      ]
+    },
+    {
+      "name": "traffic-governor",
+      "hint": "频控、风控与流量治理链路",
+      "route_priority": 40,
+      "keywords": [
+        "频控",
+        "风控",
+        "流量治理"
+      ],
+      "aliases": [
+        "频控风控",
+        "流量治理 频次控制"
+      ]
+    }
+  ],
+  "query_rewrite": {
+    "synonyms": {
+      "在线投放": [
+        "广告投放",
+        "在线链路"
+      ],
+      "核心链路": [
+        "核心流程",
+        "主链路"
+      ],
+      "指标": [
+        "关键指标",
+        "监控指标",
+        "业务指标"
+      ],
+      "口径": [
+        "定义",
+        "统计口径",
+        "计算口径"
+      ],
+      "召回": [
+        "候选召回",
+        "候选生成"
+      ],
+      "两率预估": [
+        "ctr cvr 预估",
+        "点击率转化率预估"
+      ],
+      "出价": [
+        "竞价",
+        "bid",
+        "出价策略"
+      ],
+      "精排": [
+        "排序",
+        "重排",
+        "rerank"
+      ],
+      "排障": [
+        "排查",
+        "故障定位",
+        "问题定位"
+      ]
+    },
+    "abbreviations": {
+      "ctr": "点击率",
+      "cvr": "转化率",
+      "pctr": "预估点击率",
+      "pcvr": "预估转化率",
+      "ecpm": "千次展示收益",
+      "cpa": "单次转化成本",
+      "roas": "广告投入产出比"
+    },
+    "symbol_aliases": {
+      "多样性惩罚": [
+        "apply_diversity_penalty",
+        "rerank_engine.py"
+      ],
+      "安全惩罚": [
+        "apply_safety_penalty",
+        "rerank_engine.py"
+      ],
+      "频控惩罚": [
+        "apply_safety_penalty",
+        "rerank_engine.py"
+      ],
+      "排序函数": [
+        "compute_rank_score",
+        "rank_topn",
+        "rerank_engine.py"
+      ],
+      "最终排序分": [
+        "compute_rank_score",
+        "rerank_engine.py"
+      ],
+      "请求级出价入口": [
+        "compute_bid_for_request",
+        "bid_optimizer.py"
+      ],
+      "出价入口函数": [
+        "compute_bid_for_request",
+        "bid_optimizer.py"
+      ],
+      "出价入口": [
+        "compute_bid_for_request",
+        "bid_optimizer.py"
+      ],
+      "两率预测入口": [
+        "predict_ctr_cvr",
+        "rate_predictor.py"
+      ],
+      "预测入口函数": [
+        "predict_ctr_cvr",
+        "rate_predictor.py"
+      ]
+    },
+    "intent_terms": {
+      "metric": [
+        "指标",
+        "口径",
+        "监控",
+        "统计",
+        "ctr",
+        "cvr",
+        "ecpm",
+        "roi",
+        "winrate"
+      ],
+      "pipeline": [
+        "链路",
+        "流程",
+        "阶段",
+        "环节",
+        "步骤",
+        "顺序"
+      ],
+      "architecture": [
+        "架构",
+        "总体",
+        "全景",
+        "模块关系"
+      ],
+      "troubleshoot": [
+        "排障",
+        "排查",
+        "故障",
+        "异常",
+        "无量",
+        "抖动",
+        "定位",
+        "成本",
+        "超标",
+        "胜率",
+        "冷启动",
+        "掉量",
+        "没量",
+        "不稳定",
+        "联调",
+        "实战建议",
+        "手册"
+      ],
+      "code": [
+        "代码",
+        "函数",
+        "类",
+        "实现",
+        "定义",
+        "在哪个文件",
+        "哪一行",
+        "trace",
+        "stack",
+        "参数",
+        "how to fix"
+      ],
+      "code_location": [
+        "哪个函数",
+        "什么函数",
+        "函数名",
+        "入口函数",
+        "实现函数",
+        "文件路径",
+        "哪个文件",
+        "在哪个文件",
+        "哪一行",
+        "行号",
+        "路径在哪",
+        "定义在哪",
+        "where",
+        "which function",
+        "function",
+        "compute_bid_for_request",
+        "compute_ocpc_bid",
+        "compute_alpha",
+        "predict_ctr_cvr",
+        "calibrate_probability",
+        "select_recall_candidates",
+        "compute_rank_score",
+        "rank_topn",
+        "apply_diversity_penalty",
+        "apply_safety_penalty"
+      ]
+    },
+    "query_templates": [
+      {
+        "name": "bid_winrate_reason",
+        "trigger_any": [
+          "胜率",
+          "原因",
+          "下降"
+        ],
+        "queries": [
+          "出价策略 6.1 胜率下降 竞对出价抬升 两率预估偏低 pacing过于保守",
+          "compute_bid_for_request compute_alpha bid_optimizer.py"
+        ]
+      },
+      {
+        "name": "cost_overspend_reason",
+        "trigger_all": [
+          "成本",
+          "超标"
+        ],
+        "queries": [
+          "出价策略 6.2 成本超标 目标配置错误 回传延迟 高风险流量抑制",
+          "compute_alpha compute_ocpc_bid bid_optimizer.py"
+        ]
+      },
+      {
+        "name": "recall_drop",
+        "trigger_any": [
+          "候选量骤降",
+          "召回骤降"
+        ],
+        "queries": [
+          "在线召回 4.1 候选量骤降 索引延迟 过滤条件过严 特征缺失"
+        ]
+      },
+      {
+        "name": "recall_latency",
+        "trigger_any": [
+          "召回时延高",
+          "召回时延"
+        ],
+        "queries": [
+          "在线召回 4.2 召回时延高 并发不足 超时未降级 下游依赖抖动"
+        ]
+      },
+      {
+        "name": "rate_bias",
+        "trigger_any": [
+          "pctr偏高",
+          "pcvr偏高",
+          "pctr偏低",
+          "pcvr偏低"
+        ],
+        "queries": [
+          "两率预估 5.1 pCTR pCVR 集体偏高或偏低 特征分布漂移 模型版本误切换 校准参数同步"
+        ]
+      },
+      {
+        "name": "cold_start",
+        "trigger_all": [
+          "冷启动",
+          "无量"
+        ],
+        "queries": [
+          "两率预估 5.2 冷启动广告无量 探索流量配额 内容相似召回 分层保底策略",
+          "select_recall_candidates rank_topn recall_service.py rerank_engine.py"
+        ]
+      },
+      {
+        "name": "rerank_shake",
+        "trigger_any": [
+          "精排结果抖动",
+          "精排抖动"
+        ],
+        "queries": [
+          "精排策略 6.1 精排结果抖动大 实时特征波动 探索权重过高 多约束冲突"
+        ]
+      }
+    ]
+  },
+  "retrieval": {
+    "presets": {
+      "hybrid": {
+        "wiki_top_k": 4,
+        "code_top_k": 4,
+        "case_top_k": 2,
+        "final_top_k": 6
+      },
+      "wiki_first": {
+        "wiki_top_k": 6,
+        "code_top_k": 2,
+        "case_top_k": 1,
+        "final_top_k": 6
+      },
+      "code_first": {
+        "wiki_top_k": 2,
+        "code_top_k": 7,
+        "case_top_k": 1,
+        "final_top_k": 6
+      }
+    },
+    "source_weights": {
+      "wiki": 1.0,
+      "code": 1.0,
+      "case": 0.6
+    },
+    "max_per_source": {
+      "wiki": 4,
+      "code": 4,
+      "case": 1
+    },
+    "enable_wiki": true,
+    "enable_code": true,
+    "enable_cases": false
+  },
+  "fusion": {
+    "intent_source_bias": {
+      "code_location": {
+        "code": 0.25,
+        "wiki": -0.1,
+        "case": 0.0
+      },
+      "wiki_first": {
+        "wiki": 0.15,
+        "code": -0.05,
+        "case": 0.0
+      }
+    }
+  },
+  "answering": {
+    "calibration_terms": [
+      "校准",
+      "pctr",
+      "pcvr",
+      "ctr",
+      "cvr"
+    ],
+    "bid_terms": [
+      "target_cpa",
+      "target_roas",
+      "出价",
+      "bid",
+      "pcvr"
+    ],
+    "bid_entry_terms": [
+      "入口",
+      "函数",
+      "实现"
+    ],
+    "default_entry_symbol": "compute_bid_for_request"
+  },
+  "code_generation": {
+    "file_templates": [
+      "services/ad_engine/{module_name}/handler.py",
+      "tests/ad_engine/{module_name}/test_handler.py"
+    ]
+  },
+  "prompts": {
+    "qa_system": "你是广告引擎平台知识问答助手，请严格遵守：\\n1. 只能基于提供的检索证据回答，不补充证据外事实。\\n2. 只有在无法形成结论时，才输出“当前证据不足”。\\n3. 输出中文，结构化为：结论 -> 依据。\\n4. 若问题要求函数/文件定位且有 code 证据，至少给 1 个代码锚点（路径+符号，尽量带行号）。\\n5. 若问题是 pCTR/pCVR 校准关注点，优先覆盖：AUC、LogLoss、Calibration Error、线上 CTR/CVR 偏差。\\n6. 若问题涉及 target_cpa/pCVR 出价公式并追问实现函数，优先给出入口函数名（如 compute_bid_for_request）。\\n7. 不输出与问题无关的泛化内容。"
+  },
+  "ui": {
+    "welcome_message": "这里已经切换成 LangGraph 工作流入口。当前版本聚焦广告引擎知识问答主链路，并已接入本地 Wiki 实时检索（召回、两率预估、出价、精排）；问题分析和代码实现节点已保留，可继续逐步增强。"
+  },
+  "eval": {
+    "retrieval_dataset": "eval/datasets/ad_engine_retrieval_eval.jsonl",
+    "code_retrieval_dataset": "eval/datasets/ad_engine_code_retrieval_eval.jsonl",
+    "answer_dataset": "eval/datasets/ad_engine_answer_eval.jsonl",
+    "hybrid_answer_dataset": "eval/datasets/ad_engine_answer_eval_hybrid.jsonl"
+  }
+}

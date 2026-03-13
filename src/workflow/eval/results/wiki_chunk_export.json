@@ -1,0 +1,209 @@
+{
+  "generated_at": "2026-03-12T22:42:32",
+  "wiki_dir": "docs/wiki/ad_engine",
+  "total_docs": 7,
+  "total_chunks": 13,
+  "documents": [
+    {
+      "path": "docs/wiki/ad_engine/00-广告引擎总体架构.md",
+      "title": "广告引擎总体架构",
+      "chunk_count": 2,
+      "sections": {
+        "1. 目标": 1,
+        "5. 线上问题定位建议": 1
+      },
+      "chunk_types": {
+        "list": 2
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 1,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "content_length": 476,
+          "content_preview": "# 广告引擎总体架构\n\n## 1. 目标\n\n广告引擎的核心目标是在每次请求中完成以下动作：\n\n1. 在毫秒级时延内召回候选广告。\n2. 估计每个候选的点击率与转"
+        },
+        {
+          "doc_chunk_index": 2,
+          "global_chunk_index": 2,
+          "section": "5. 线上问题定位建议",
+          "chunk_type": "list",
+          "content_length": 132,
+          "content_preview": "## 5. 线上问题定位建议\n\n- 召回不足：重点看候选量、过滤器命中率、索引延迟。\n- 两率波动：重点看特征新鲜度、模型版本、校准参数。\n- 出价异常：重点看"
+        }
+      ]
+    },
+    {
+      "path": "docs/wiki/ad_engine/01-在线召回.md",
+      "title": "在线召回",
+      "chunk_count": 2,
+      "sections": {
+        "1. 职责": 1,
+        "4. 典型问题": 1
+      },
+      "chunk_types": {
+        "list": 2
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 3,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "content_length": 315,
+          "content_preview": "# 在线召回\n\n## 1. 职责\n\n在线召回负责在超低时延下从海量广告中找出高相关候选集，为后续预估与排序提供输入。\n\n## 2. 常见召回路\n\n- 人群包召回"
+        },
+        {
+          "doc_chunk_index": 2,
+          "global_chunk_index": 4,
+          "section": "4. 典型问题",
+          "chunk_type": "list",
+          "content_length": 396,
+          "content_preview": "## 4. 典型问题\n\n### 4.1 候选量骤降\n\n常见原因：\n\n- 索引延迟导致新广告未入库。\n- 过滤条件过严（地域、时段、频控叠加）。\n- 用户特征缺失"
+        }
+      ]
+    },
+    {
+      "path": "docs/wiki/ad_engine/02-两率预估.md",
+      "title": "两率预估（pCTR / pCVR）",
+      "chunk_count": 2,
+      "sections": {
+        "1. 职责": 1,
+        "5. 常见问题与处理": 1
+      },
+      "chunk_types": {
+        "list": 2
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 5,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "content_length": 424,
+          "content_preview": "# 两率预估（pCTR / pCVR）\n\n## 1. 职责\n\n两率预估用于估计候选广告被点击与转化的概率，是出价和精排的核心输入。\n\n## 2. 常见模型形态\n"
+        },
+        {
+          "doc_chunk_index": 2,
+          "global_chunk_index": 6,
+          "section": "5. 常见问题与处理",
+          "chunk_type": "list",
+          "content_length": 321,
+          "content_preview": "## 5. 常见问题与处理\n\n### 5.1 pCTR/pCVR 集体偏高或偏低\n\n重点排查：\n\n- 特征分布是否发生漂移。\n- 模型版本是否误切换。\n- 校准"
+        }
+      ]
+    },
+    {
+      "path": "docs/wiki/ad_engine/03-出价策略.md",
+      "title": "出价策略",
+      "chunk_count": 2,
+      "sections": {
+        "1. 目标": 1,
+        "6. 常见线上问题": 1
+      },
+      "chunk_types": {
+        "list": 2
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 7,
+          "section": "1. 目标",
+          "chunk_type": "list",
+          "content_length": 470,
+          "content_preview": "# 出价策略\n\n## 1. 目标\n\n出价策略负责将广告主目标（CTR、CPA、ROI、GMV）映射为可参与竞价的实时出价。\n\n## 2. 常见模式\n\n- CPC"
+        },
+        {
+          "doc_chunk_index": 2,
+          "global_chunk_index": 8,
+          "section": "6. 常见线上问题",
+          "chunk_type": "list",
+          "content_length": 266,
+          "content_preview": "## 6. 常见线上问题\n\n### 6.1 胜率下降\n\n排查：\n\n- 竞对出价是否明显抬升。\n- 两率预估是否偏低导致 eCPM 下降。\n- 预算 pacing"
+        }
+      ]
+    },
+    {
+      "path": "docs/wiki/ad_engine/04-精排策略.md",
+      "title": "精排策略",
+      "chunk_count": 2,
+      "sections": {
+        "1. 职责": 1,
+        "6. 常见问题": 1
+      },
+      "chunk_types": {
+        "list": 2
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 9,
+          "section": "1. 职责",
+          "chunk_type": "list",
+          "content_length": 393,
+          "content_preview": "# 精排策略\n\n## 1. 职责\n\n精排负责在召回候选中做最终排序，目标是在收益、用户体验和业务约束间取得平衡。\n\n## 2. 典型输入\n\n- 候选广告及召回来"
+        },
+        {
+          "doc_chunk_index": 2,
+          "global_chunk_index": 10,
+          "section": "6. 常见问题",
+          "chunk_type": "list",
+          "content_length": 243,
+          "content_preview": "## 6. 常见问题\n\n### 6.1 精排结果抖动大\n\n可能原因：\n\n- 实时特征波动。\n- 探索权重设置过高。\n- 多约束冲突时缺少稳定化策略。\n\n### "
+        }
+      ]
+    },
+    {
+      "path": "docs/wiki/ad_engine/05-联调排障手册.md",
+      "title": "联调排障手册",
+      "chunk_count": 2,
+      "sections": {
+        "1. 适用范围": 1,
+        "5. 日志建议字段": 1
+      },
+      "chunk_types": {
+        "list": 2
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 11,
+          "section": "1. 适用范围",
+          "chunk_type": "list",
+          "content_length": 443,
+          "content_preview": "# 联调排障手册\n\n## 1. 适用范围\n\n用于广告在线投放链路的快速排障，覆盖召回、两率预估、出价、精排四大环节。\n\n## 2. 一次完整排障最小信息\n\n- "
+        },
+        {
+          "doc_chunk_index": 2,
+          "global_chunk_index": 12,
+          "section": "5. 日志建议字段",
+          "chunk_type": "list",
+          "content_length": 278,
+          "content_preview": "## 5. 日志建议字段\n\n- `trace_id`\n- `recall_sources`\n- `candidate_count_before_filter`\n"
+        }
+      ]
+    },
+    {
+      "path": "docs/wiki/ad_engine/README.md",
+      "title": "广告引擎 Wiki",
+      "chunk_count": 1,
+      "sections": {
+        "文档清单": 1
+      },
+      "chunk_types": {
+        "list": 1
+      },
+      "chunks": [
+        {
+          "doc_chunk_index": 1,
+          "global_chunk_index": 13,
+          "section": "文档清单",
+          "chunk_type": "list",
+          "content_length": 315,
+          "content_preview": "# 广告引擎 Wiki\n\n本目录提供广告在线投放场景的基础业务知识文档，覆盖以下核心链路：\n\n- 在线召回\n- 两率预估（pCTR/pCVR）\n- 出价策略\n-"
+        }
+      ]
+    }
+  ]
+}

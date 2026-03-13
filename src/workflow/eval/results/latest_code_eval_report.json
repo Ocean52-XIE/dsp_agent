@@ -1,0 +1,5864 @@
+{
+  "generated_at": "2026-03-13T08:57:46",
+  "config_path": "workflow/eval/config.code.template.json",
+  "dataset_path": "workflow/eval/datasets/ad_engine_code_retrieval_eval.jsonl",
+  "output_path": "workflow/eval/results/latest_code_eval_report.json",
+  "code_roots": [
+    "codes"
+  ],
+  "total_cases": 12,
+  "top_ks": [
+    1,
+    3,
+    5
+  ],
+  "max_candidates": 8,
+  "symbol_eval_k": 3,
+  "pattern_eval_k": 3,
+  "highlight_eval_k": 3,
+  "metrics": {
+    "recall@1": 1.0,
+    "recall@3": 1.0,
+    "recall@5": 1.0,
+    "mrr": 1.0,
+    "top1_path_accuracy": 1.0,
+    "symbol_hit_rate@3": 1.0,
+    "pattern_hit_rate@1": 1.0,
+    "pattern_hit_rate@3": 1.0,
+    "highlight_hit_rate@3": 0.75,
+    "avg_latency_ms": 43.127
+  },
+  "per_case": [
+    {
+      "id": "code_recall_001",
+      "query": "召回候选选择函数在哪里",
+      "retrieval_queries": [
+        "select_recall_candidates recall_service"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_symbols": [
+        "select_recall_candidates"
+      ],
+      "expected_patterns": [
+        "source_tag"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "select_recall_candidates",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 49.8833,
+          "stage1_score": 30.5067,
+          "excerpt": ">>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n     32:         \"user_id\": context.user_id,\n     33:     }\n     34:     raw_candidates = index_client.search(filter_query, top_n=800)\n     35:     results: list[dict[str, Any]] = []\n     36:     for item in raw_candidates:\n     37:         if item.get(\"creative_status\") != \"online\":\n     38:             continue\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "        \"user_id\": context.user_id,",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    }",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    raw_candidates = index_client.search(filter_query, top_n=800)",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    results: list[dict[str, Any]] = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    for item in raw_candidates:",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "        if item.get(\"creative_status\") != \"online\":",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "            continue",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            21
+          ],
+          "section": "function:select_recall_candidates",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "select_recall_candidates",
+          "signature": "def select_recall_candidates(context, index_client)",
+          "start_line": 21,
+          "end_line": 46,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "select_recall_candidates"
+            ],
+            "matched_patterns": [
+              "exact_symbol:select_recall_candidates",
+              "path_like:recall_service",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 9.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "recall_service",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 37.0663,
+          "stage1_score": 23.46,
+          "excerpt": "...\n     19: \n     20: \n>>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n     32:         \"user_id\": context.user_id,\n     33:     }\n     34:     raw_candidates = index_client.search(filter_query, top_n=800)\n     35:     results: list[dict[str, Any]] = []\n     36:     for item in raw_candidates:",
+          "excerpt_lines": [
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "        \"user_id\": context.user_id,",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    }",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    raw_candidates = index_client.search(filter_query, top_n=800)",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    results: list[dict[str, Any]] = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    for item in raw_candidates:",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            21
+          ],
+          "section": "file:recall_service",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "recall_service",
+          "signature": "recall_service.py",
+          "start_line": 1,
+          "end_line": 47,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "select_recall_candidates"
+            ],
+            "matched_patterns": [
+              "exact_symbol:recall_service",
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rank_topn",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 24.7,
+          "stage1_score": 19.16,
+          "excerpt": ">>   44: def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:\n     45:     \"\"\"返回最终 TopN。\"\"\"\n     46:     scored = []\n     47:     for item in items:\n     48:         scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})\n     49:     scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)\n     50:     return scored[:top_n]",
+          "excerpt_lines": [
+            {
+              "line_no": 44,
+              "content": "def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 45,
+              "content": "    \"\"\"返回最终 TopN。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    scored = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 47,
+              "content": "    for item in items:",
+              "is_hit": false
+            },
+            {
+              "line_no": 48,
+              "content": "        scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})",
+              "is_hit": false
+            },
+            {
+              "line_no": 49,
+              "content": "    scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)",
+              "is_hit": false
+            },
+            {
+              "line_no": 50,
+              "content": "    return scored[:top_n]",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            44
+          ],
+          "section": "function:rank_topn",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "rank_topn",
+          "signature": "def rank_topn(items, top_n)",
+          "start_line": 44,
+          "end_line": 50,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "apply_safety_penalty",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 18.575,
+          "stage1_score": 14.26,
+          "excerpt": ">>   23: def apply_safety_penalty(item: RankItem) -> float:\n     24:     \"\"\"频控/风控惩罚项。\"\"\"\n     25:     return item.freq_penalty * 0.8",
+          "excerpt_lines": [
+            {
+              "line_no": 23,
+              "content": "def apply_safety_penalty(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 24,
+              "content": "    \"\"\"频控/风控惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    return item.freq_penalty * 0.8",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            23
+          ],
+          "section": "function:apply_safety_penalty",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "apply_safety_penalty",
+          "signature": "def apply_safety_penalty(item)",
+          "start_line": 23,
+          "end_line": 25,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "calibrate_probability",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 8.1423,
+          "stage1_score": 5.9138,
+          "excerpt": ">>   36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n     38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            36
+          ],
+          "section": "function:calibrate_probability",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "calibrate_probability",
+          "signature": "def calibrate_probability(value, slope, bias)",
+          "start_line": 36,
+          "end_line": 43,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 0.0,
+      "latency_ms": 491.99,
+      "intent": "issue_analysis",
+      "note": "召回入口函数定位",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_recall_002",
+      "query": "召回上下文结构体定义在哪",
+      "retrieval_queries": [
+        "RecallContext dataclass"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "gold_symbols": [
+        "RecallContext"
+      ],
+      "expected_patterns": [
+        "request_id",
+        "trace_id"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "recall_service",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 46.4849,
+          "stage1_score": 40.06,
+          "excerpt": "...\n      4: \"\"\"\n      5: \n>>    6: from dataclasses import dataclass\n      7: from typing import Any\n      8: \n      9: \n>>   10: @dataclass\n>>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str\n     19: \n     20: \n>>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 4,
+              "content": "\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 5,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 6,
+              "content": "from dataclasses import dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 7,
+              "content": "from typing import Any",
+              "is_hit": false
+            },
+            {
+              "line_no": 8,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 9,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "@dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            6,
+            10,
+            11,
+            21
+          ],
+          "section": "file:recall_service",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "recall_service",
+          "signature": "recall_service.py",
+          "start_line": 1,
+          "end_line": 47,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "recallcontext",
+              "dataclass"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 35.1028,
+          "stage1_score": 21.4822,
+          "excerpt": ">>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "recallcontext"
+            ],
+            "matched_patterns": [
+              "exact_symbol:recallcontext",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rerank_engine",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 27.8194,
+          "stage1_score": 23.16,
+          "excerpt": "1: \"\"\"精排策略 mock 代码语料。\"\"\"\n      2: \n>>    3: from dataclasses import dataclass\n      4: from typing import Any\n      5: \n      6: \n>>    7: @dataclass\n      8: class RankItem:\n      9:     \"\"\"精排候选项。\"\"\"\n     10: \n     11:     ad_id: str\n     12:     ecpm: float\n     13:     freq_penalty: float\n     14:     diversity_penalty: float\n     15:     feature_complete: bool\n     16: \n     17: \n     18: def apply_diversity_penalty(item: RankItem) -> float:\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 1,
+              "content": "\"\"\"精排策略 mock 代码语料。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 2,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 3,
+              "content": "from dataclasses import dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 4,
+              "content": "from typing import Any",
+              "is_hit": false
+            },
+            {
+              "line_no": 5,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 6,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 7,
+              "content": "@dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 8,
+              "content": "class RankItem:",
+              "is_hit": false
+            },
+            {
+              "line_no": 9,
+              "content": "    \"\"\"精排候选项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    ad_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    ecpm: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    freq_penalty: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    diversity_penalty: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    feature_complete: bool",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "def apply_diversity_penalty(item: RankItem) -> float:",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            3,
+            7
+          ],
+          "section": "file:rerank_engine",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rerank_engine",
+          "signature": "rerank_engine.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [
+              "dataclass"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "tracing",
+          "path": "codes/ad_engine/common/tracing.py",
+          "score": 23.5854,
+          "stage1_score": 19.8933,
+          "excerpt": "1: \"\"\"追踪日志 mock 代码语料。\"\"\"\n      2: \n>>    3: from dataclasses import dataclass\n      4: from datetime import datetime\n      5: \n      6: \n>>    7: @dataclass\n      8: class TraceRecord:\n      9:     \"\"\"请求级 trace 记录。\"\"\"\n     10: \n     11:     trace_id: str\n     12:     module_name: str\n     13:     event: str\n     14:     timestamp: str\n     15: \n     16: \n     17: def build_trace_record(*, trace_id: str, module_name: str, event: str) -> TraceRecord:\n     18:     \"\"\"构造 trace 记录。\"\"\"\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 1,
+              "content": "\"\"\"追踪日志 mock 代码语料。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 2,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 3,
+              "content": "from dataclasses import dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 4,
+              "content": "from datetime import datetime",
+              "is_hit": false
+            },
+            {
+              "line_no": 5,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 6,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 7,
+              "content": "@dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 8,
+              "content": "class TraceRecord:",
+              "is_hit": false
+            },
+            {
+              "line_no": 9,
+              "content": "    \"\"\"请求级 trace 记录。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    module_name: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    event: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    timestamp: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "def build_trace_record(*, trace_id: str, module_name: str, event: str) -> TraceRecord:",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    \"\"\"构造 trace 记录。\"\"\"",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            3,
+            7
+          ],
+          "section": "file:tracing",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "tracing",
+          "signature": "tracing.py",
+          "start_line": 1,
+          "end_line": 30,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [
+              "dataclass"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "bid_optimizer",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 22.4875,
+          "stage1_score": 18.96,
+          "excerpt": "1: \"\"\"出价策略 mock 代码语料。\"\"\"\n      2: \n>>    3: from dataclasses import dataclass\n      4: \n      5: \n>>    6: @dataclass\n      7: class BidContext:\n      8:     \"\"\"实时出价上下文。\"\"\"\n      9: \n     10:     target_cpa: float\n     11:     budget_ratio: float\n     12:     competition_level: float\n     13:     trace_id: str\n     14: \n     15: \n     16: def compute_alpha(*, budget_ratio: float, competition_level: float) -> float:\n     17:     \"\"\"根据预算进度与竞争强度计算调节因子 alpha。\"\"\"\n     18:     if budget_ratio > 1.05:\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 1,
+              "content": "\"\"\"出价策略 mock 代码语料。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 2,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 3,
+              "content": "from dataclasses import dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 4,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 5,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 6,
+              "content": "@dataclass",
+              "is_hit": true
+            },
+            {
+              "line_no": 7,
+              "content": "class BidContext:",
+              "is_hit": false
+            },
+            {
+              "line_no": 8,
+              "content": "    \"\"\"实时出价上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 9,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "    target_cpa: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    budget_ratio: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    competition_level: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "def compute_alpha(*, budget_ratio: float, competition_level: float) -> float:",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    \"\"\"根据预算进度与竞争强度计算调节因子 alpha。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    if budget_ratio > 1.05:",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            3,
+            6
+          ],
+          "section": "file:bid_optimizer",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "bid_optimizer",
+          "signature": "bid_optimizer.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [
+              "dataclass"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 0.0,
+      "latency_ms": 2.52,
+      "intent": "issue_analysis",
+      "note": "召回上下文字段",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_rate_001",
+      "query": "pctr pcvr 预测函数在哪里实现",
+      "retrieval_queries": [
+        "predict_ctr_cvr rate_predictor"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_symbols": [
+        "predict_ctr_cvr"
+      ],
+      "expected_patterns": [
+        "calibrate_probability"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "predict_ctr_cvr",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 102.5,
+          "stage1_score": 69.0,
+          "excerpt": ">>   17: def predict_ctr_cvr(features: PredictFeatures, model_client: Any) -> dict[str, float]:\n>>   18:     \"\"\"预测 pCTR / pCVR。\n     19: \n     20:     注意：\n     21:     - 线上推理后需要做概率校准；\n     22:     - 校准版本应与模型版本一致，避免偏差放大。\n     23:     \"\"\"\n     24:     raw = model_client.infer(\n     25:         {\n     26:             \"user_vector\": features.user_vector,\n     27:             \"ad_vector\": features.ad_vector,\n     28:             \"context_vector\": features.context_vector,\n     29:         }\n     30:     )\n>>   31:     pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)\n>>   32:     pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)\n>>   33:     return {\"pctr\": pctr, \"pcvr\": pcvr}",
+          "excerpt_lines": [
+            {
+              "line_no": 17,
+              "content": "def predict_ctr_cvr(features: PredictFeatures, model_client: Any) -> dict[str, float]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 18,
+              "content": "    \"\"\"预测 pCTR / pCVR。",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    注意：",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "    - 线上推理后需要做概率校准；",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "    - 校准版本应与模型版本一致，避免偏差放大。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    raw = model_client.infer(",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "        {",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "            \"user_vector\": features.user_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "            \"ad_vector\": features.ad_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "            \"context_vector\": features.context_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "        }",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)",
+              "is_hit": true
+            },
+            {
+              "line_no": 32,
+              "content": "    pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    return {\"pctr\": pctr, \"pcvr\": pcvr}",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            17,
+            18,
+            31,
+            32,
+            33
+          ],
+          "section": "function:predict_ctr_cvr",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "predict_ctr_cvr",
+          "signature": "def predict_ctr_cvr(features, model_client)",
+          "start_line": 17,
+          "end_line": 33,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "predict_ctr_cvr",
+              "pctr",
+              "pcvr"
+            ],
+            "matched_patterns": [
+              "exact_symbol:predict_ctr_cvr",
+              "path_like:rate_predictor",
+              "formula_expression",
+              "predict_ctr_cvr",
+              "location_intent",
+              "pcvr",
+              "pctr"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 13.0
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rate_predictor",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 72.8375,
+          "stage1_score": 48.42,
+          "excerpt": "...\n     15: \n     16: \n>>   17: def predict_ctr_cvr(features: PredictFeatures, model_client: Any) -> dict[str, float]:\n>>   18:     \"\"\"预测 pCTR / pCVR。\n     19: \n     20:     注意：\n     21:     - 线上推理后需要做概率校准；\n     22:     - 校准版本应与模型版本一致，避免偏差放大。\n     23:     \"\"\"\n     24:     raw = model_client.infer(\n     25:         {\n     26:             \"user_vector\": features.user_vector,\n     27:             \"ad_vector\": features.ad_vector,\n     28:             \"context_vector\": features.context_vector,\n     29:         }\n     30:     )\n>>   31:     pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)\n>>   32:     pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 15,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "def predict_ctr_cvr(features: PredictFeatures, model_client: Any) -> dict[str, float]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 18,
+              "content": "    \"\"\"预测 pCTR / pCVR。",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    注意：",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "    - 线上推理后需要做概率校准；",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "    - 校准版本应与模型版本一致，避免偏差放大。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    raw = model_client.infer(",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "        {",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "            \"user_vector\": features.user_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "            \"ad_vector\": features.ad_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "            \"context_vector\": features.context_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "        }",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)",
+              "is_hit": true
+            },
+            {
+              "line_no": 32,
+              "content": "    pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            17,
+            18,
+            31,
+            32
+          ],
+          "section": "file:rate_predictor",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rate_predictor",
+          "signature": "rate_predictor.py",
+          "start_line": 1,
+          "end_line": 44,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "predict_ctr_cvr",
+              "pctr",
+              "pcvr"
+            ],
+            "matched_patterns": [
+              "exact_symbol:rate_predictor",
+              "formula_expression",
+              "predict_ctr_cvr",
+              "location_intent",
+              "pcvr",
+              "pctr"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 10.2
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "bid_optimizer",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 30.4,
+          "stage1_score": 22.16,
+          "excerpt": ">>   29: def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:\n     30:     \"\"\"oCPC 简化出价公式。\n     31: \n>>   32:     bid = target_cpa * pcvr * alpha\n     33:     \"\"\"\n>>   34:     bid = target_cpa * pcvr * alpha\n     35:     if bid < 0:\n     36:         return 0.0\n     37:     return bid\n     38: \n     39: \n>>   40: def compute_bid_for_request(context: BidContext, pcvr: float) -> float:\n     41:     \"\"\"请求级出价入口。\"\"\"\n     42:     alpha = compute_alpha(\n     43:         budget_ratio=context.budget_ratio,\n     44:         competition_level=context.competition_level,\n     45:     )\n     46:     return compute_ocpc_bid(\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 29,
+              "content": "def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 30,
+              "content": "    \"\"\"oCPC 简化出价公式。",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 35,
+              "content": "    if bid < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    return bid",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "def compute_bid_for_request(context: BidContext, pcvr: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 41,
+              "content": "    \"\"\"请求级出价入口。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "    alpha = compute_alpha(",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "        budget_ratio=context.budget_ratio,",
+              "is_hit": false
+            },
+            {
+              "line_no": 44,
+              "content": "        competition_level=context.competition_level,",
+              "is_hit": false
+            },
+            {
+              "line_no": 45,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    return compute_ocpc_bid(",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            29,
+            32,
+            34,
+            40
+          ],
+          "section": "file:bid_optimizer",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "bid_optimizer",
+          "signature": "bid_optimizer.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [
+              "pcvr"
+            ],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent",
+              "pcvr"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 2.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "compute_ocpc_bid",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 28.425,
+          "stage1_score": 20.14,
+          "excerpt": ">>   29: def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:\n     30:     \"\"\"oCPC 简化出价公式。\n     31: \n>>   32:     bid = target_cpa * pcvr * alpha\n     33:     \"\"\"\n>>   34:     bid = target_cpa * pcvr * alpha\n     35:     if bid < 0:\n     36:         return 0.0\n     37:     return bid",
+          "excerpt_lines": [
+            {
+              "line_no": 29,
+              "content": "def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 30,
+              "content": "    \"\"\"oCPC 简化出价公式。",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 35,
+              "content": "    if bid < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    return bid",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            29,
+            32,
+            34
+          ],
+          "section": "function:compute_ocpc_bid",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_ocpc_bid",
+          "signature": "def compute_ocpc_bid(target_cpa, pcvr, alpha)",
+          "start_line": 29,
+          "end_line": 37,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [
+              "pcvr"
+            ],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent",
+              "pcvr"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 2.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rank_topn",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 13.9,
+          "stage1_score": 9.32,
+          "excerpt": ">>   44: def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:\n     45:     \"\"\"返回最终 TopN。\"\"\"\n     46:     scored = []\n     47:     for item in items:\n     48:         scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})\n     49:     scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)\n     50:     return scored[:top_n]",
+          "excerpt_lines": [
+            {
+              "line_no": 44,
+              "content": "def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 45,
+              "content": "    \"\"\"返回最终 TopN。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    scored = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 47,
+              "content": "    for item in items:",
+              "is_hit": false
+            },
+            {
+              "line_no": 48,
+              "content": "        scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})",
+              "is_hit": false
+            },
+            {
+              "line_no": 49,
+              "content": "    scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)",
+              "is_hit": false
+            },
+            {
+              "line_no": 50,
+              "content": "    return scored[:top_n]",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            44
+          ],
+          "section": "function:rank_topn",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "rank_topn",
+          "signature": "def rank_topn(items, top_n)",
+          "start_line": 44,
+          "end_line": 50,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 1.8
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.75,
+      "intent": "issue_analysis",
+      "note": "两率预测入口",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_rate_002",
+      "query": "概率校准函数在哪",
+      "retrieval_queries": [
+        "calibrate_probability slope bias"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "gold_symbols": [
+        "calibrate_probability"
+      ],
+      "expected_patterns": [
+        "slope",
+        "bias"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "calibrate_probability",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 66.4083,
+          "stage1_score": 46.5267,
+          "excerpt": ">>   36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n>>   38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": true
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            36,
+            38
+          ],
+          "section": "function:calibrate_probability",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "calibrate_probability",
+          "signature": "def calibrate_probability(value, slope, bias)",
+          "start_line": 36,
+          "end_line": 43,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "calibrate_probability",
+              "slope",
+              "bias"
+            ],
+            "matched_patterns": [
+              "exact_symbol:calibrate_probability",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rate_predictor",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 47.0481,
+          "stage1_score": 38.6267,
+          "excerpt": "29: }\n     30:     )\n>>   31:     pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)\n>>   32:     pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)\n     33:     return {\"pctr\": pctr, \"pcvr\": pcvr}\n     34: \n     35: \n>>   36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n>>   38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 29,
+              "content": "}",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)",
+              "is_hit": true
+            },
+            {
+              "line_no": 32,
+              "content": "    pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    return {\"pctr\": pctr, \"pcvr\": pcvr}",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": true
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            31,
+            32,
+            36,
+            38
+          ],
+          "section": "file:rate_predictor",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rate_predictor",
+          "signature": "rate_predictor.py",
+          "start_line": 1,
+          "end_line": 44,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "calibrate_probability",
+              "slope",
+              "bias"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RankItem",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 15.3667,
+          "stage1_score": 11.6933,
+          "excerpt": ">>    8: class RankItem:\n      9:     \"\"\"精排候选项。\"\"\"\n     10: \n     11:     ad_id: str\n     12:     ecpm: float\n     13:     freq_penalty: float\n     14:     diversity_penalty: float\n     15:     feature_complete: bool",
+          "excerpt_lines": [
+            {
+              "line_no": 8,
+              "content": "class RankItem:",
+              "is_hit": true
+            },
+            {
+              "line_no": 9,
+              "content": "    \"\"\"精排候选项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    ad_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    ecpm: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    freq_penalty: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    diversity_penalty: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    feature_complete: bool",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            8
+          ],
+          "section": "class:RankItem",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RankItem",
+          "signature": "class RankItem",
+          "start_line": 8,
+          "end_line": 15,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rerank_engine",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 13.3063,
+          "stage1_score": 10.16,
+          "excerpt": ">>   29: \"\"\"最终排序分。\n     30: \n     31:     该逻辑解释了“高 eCPM 广告为何未进最终位”：\n     32:     - 频控惩罚\n     33:     - 多样性惩罚\n     34:     - 特征缺失降级\n     35:     \"\"\"\n     36:     score = item.ecpm\n     37:     score -= apply_safety_penalty(item)\n     38:     score -= apply_diversity_penalty(item)\n     39:     if not item.feature_complete:\n     40:         score *= 0.75\n     41:     return score\n     42: \n     43: \n     44: def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:\n     45:     \"\"\"返回最终 TopN。\"\"\"\n     46:     scored = []\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 29,
+              "content": "\"\"\"最终排序分。",
+              "is_hit": true
+            },
+            {
+              "line_no": 30,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    该逻辑解释了“高 eCPM 广告为何未进最终位”：",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    - 频控惩罚",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    - 多样性惩罚",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    - 特征缺失降级",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    score = item.ecpm",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    score -= apply_safety_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    score -= apply_diversity_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if not item.feature_complete:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        score *= 0.75",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    return score",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 44,
+              "content": "def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:",
+              "is_hit": false
+            },
+            {
+              "line_no": 45,
+              "content": "    \"\"\"返回最终 TopN。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    scored = []",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            29
+          ],
+          "section": "file:rerank_engine",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rerank_engine",
+          "signature": "rerank_engine.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 7.6667,
+          "stage1_score": 5.5333,
+          "excerpt": ">>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.27,
+      "intent": "issue_analysis",
+      "note": "两率校准逻辑",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_bid_001",
+      "query": "target_cpa 和 pcvr 的 ocpc 出价公式代码在哪",
+      "retrieval_queries": [
+        "compute_ocpc_bid target_cpa pcvr alpha"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_symbols": [
+        "compute_ocpc_bid"
+      ],
+      "expected_patterns": [
+        "bid = target_cpa * pcvr * alpha"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "compute_ocpc_bid",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 95.2583,
+          "stage1_score": 66.8067,
+          "excerpt": ">>   29: def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:\n>>   30:     \"\"\"oCPC 简化出价公式。\n     31: \n>>   32:     bid = target_cpa * pcvr * alpha\n     33:     \"\"\"\n>>   34:     bid = target_cpa * pcvr * alpha\n     35:     if bid < 0:\n     36:         return 0.0\n     37:     return bid",
+          "excerpt_lines": [
+            {
+              "line_no": 29,
+              "content": "def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 30,
+              "content": "    \"\"\"oCPC 简化出价公式。",
+              "is_hit": true
+            },
+            {
+              "line_no": 31,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 35,
+              "content": "    if bid < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    return bid",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            29,
+            30,
+            32,
+            34
+          ],
+          "section": "function:compute_ocpc_bid",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_ocpc_bid",
+          "signature": "def compute_ocpc_bid(target_cpa, pcvr, alpha)",
+          "start_line": 29,
+          "end_line": 37,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_ocpc_bid",
+              "target_cpa",
+              "alpha",
+              "pcvr",
+              "ocpc"
+            ],
+            "matched_patterns": [
+              "exact_symbol:compute_ocpc_bid",
+              "formula_expression",
+              "location_intent",
+              "target_cpa",
+              "pcvr"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 9.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "bid_optimizer",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 67.9125,
+          "stage1_score": 52.1067,
+          "excerpt": ">>   29: def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:\n>>   30:     \"\"\"oCPC 简化出价公式。\n     31: \n>>   32:     bid = target_cpa * pcvr * alpha\n     33:     \"\"\"\n>>   34:     bid = target_cpa * pcvr * alpha\n     35:     if bid < 0:\n     36:         return 0.0\n     37:     return bid\n     38: \n     39: \n>>   40: def compute_bid_for_request(context: BidContext, pcvr: float) -> float:\n     41:     \"\"\"请求级出价入口。\"\"\"\n>>   42:     alpha = compute_alpha(\n     43:         budget_ratio=context.budget_ratio,\n     44:         competition_level=context.competition_level,\n     45:     )\n>>   46:     return compute_ocpc_bid(\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 29,
+              "content": "def compute_ocpc_bid(*, target_cpa: float, pcvr: float, alpha: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 30,
+              "content": "    \"\"\"oCPC 简化出价公式。",
+              "is_hit": true
+            },
+            {
+              "line_no": 31,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    bid = target_cpa * pcvr * alpha",
+              "is_hit": true
+            },
+            {
+              "line_no": 35,
+              "content": "    if bid < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    return bid",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "def compute_bid_for_request(context: BidContext, pcvr: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 41,
+              "content": "    \"\"\"请求级出价入口。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "    alpha = compute_alpha(",
+              "is_hit": true
+            },
+            {
+              "line_no": 43,
+              "content": "        budget_ratio=context.budget_ratio,",
+              "is_hit": false
+            },
+            {
+              "line_no": 44,
+              "content": "        competition_level=context.competition_level,",
+              "is_hit": false
+            },
+            {
+              "line_no": 45,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    return compute_ocpc_bid(",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            29,
+            30,
+            32,
+            34,
+            40,
+            42,
+            46
+          ],
+          "section": "file:bid_optimizer",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "bid_optimizer",
+          "signature": "bid_optimizer.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_ocpc_bid",
+              "target_cpa",
+              "alpha",
+              "pcvr",
+              "ocpc"
+            ],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent",
+              "target_cpa",
+              "pcvr"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 3.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "predict_ctr_cvr",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 28.9667,
+          "stage1_score": 20.5733,
+          "excerpt": "17: def predict_ctr_cvr(features: PredictFeatures, model_client: Any) -> dict[str, float]:\n>>   18:     \"\"\"预测 pCTR / pCVR。\n     19: \n     20:     注意：\n     21:     - 线上推理后需要做概率校准；\n     22:     - 校准版本应与模型版本一致，避免偏差放大。\n     23:     \"\"\"\n     24:     raw = model_client.infer(\n     25:         {\n     26:             \"user_vector\": features.user_vector,\n     27:             \"ad_vector\": features.ad_vector,\n     28:             \"context_vector\": features.context_vector,\n     29:         }\n     30:     )\n     31:     pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)\n>>   32:     pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)\n>>   33:     return {\"pctr\": pctr, \"pcvr\": pcvr}",
+          "excerpt_lines": [
+            {
+              "line_no": 17,
+              "content": "def predict_ctr_cvr(features: PredictFeatures, model_client: Any) -> dict[str, float]:",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    \"\"\"预测 pCTR / pCVR。",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    注意：",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "    - 线上推理后需要做概率校准；",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "    - 校准版本应与模型版本一致，避免偏差放大。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    raw = model_client.infer(",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "        {",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "            \"user_vector\": features.user_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "            \"ad_vector\": features.ad_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "            \"context_vector\": features.context_vector,",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "        }",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    return {\"pctr\": pctr, \"pcvr\": pcvr}",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            18,
+            32,
+            33
+          ],
+          "section": "function:predict_ctr_cvr",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "predict_ctr_cvr",
+          "signature": "def predict_ctr_cvr(features, model_client)",
+          "start_line": 17,
+          "end_line": 33,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [
+              "pcvr"
+            ],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent",
+              "pcvr"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 2.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rate_predictor",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 25.334,
+          "stage1_score": 17.76,
+          "excerpt": "...\n     30:     )\n     31:     pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)\n>>   32:     pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)\n>>   33:     return {\"pctr\": pctr, \"pcvr\": pcvr}\n     34: \n     35: \n     36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n     38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 30,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    pctr = calibrate_probability(raw.get(\"pctr\", 0.0), slope=0.96, bias=0.01)",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    pcvr = calibrate_probability(raw.get(\"pcvr\", 0.0), slope=1.02, bias=-0.005)",
+              "is_hit": true
+            },
+            {
+              "line_no": 33,
+              "content": "    return {\"pctr\": pctr, \"pcvr\": pcvr}",
+              "is_hit": true
+            },
+            {
+              "line_no": 34,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            32,
+            33
+          ],
+          "section": "file:rate_predictor",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rate_predictor",
+          "signature": "rate_predictor.py",
+          "start_line": 1,
+          "end_line": 44,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [
+              "pcvr"
+            ],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent",
+              "pcvr"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 2.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "compute_rank_score",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 13.1682,
+          "stage1_score": 8.7345,
+          "excerpt": ">>   28: def compute_rank_score(item: RankItem) -> float:\n     29:     \"\"\"最终排序分。\n     30: \n     31:     该逻辑解释了“高 eCPM 广告为何未进最终位”：\n     32:     - 频控惩罚\n     33:     - 多样性惩罚\n     34:     - 特征缺失降级\n     35:     \"\"\"\n     36:     score = item.ecpm\n     37:     score -= apply_safety_penalty(item)\n     38:     score -= apply_diversity_penalty(item)\n     39:     if not item.feature_complete:\n     40:         score *= 0.75\n     41:     return score",
+          "excerpt_lines": [
+            {
+              "line_no": 28,
+              "content": "def compute_rank_score(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 29,
+              "content": "    \"\"\"最终排序分。",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    该逻辑解释了“高 eCPM 广告为何未进最终位”：",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "    - 频控惩罚",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    - 多样性惩罚",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    - 特征缺失降级",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    score = item.ecpm",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    score -= apply_safety_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    score -= apply_diversity_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if not item.feature_complete:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        score *= 0.75",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    return score",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            28
+          ],
+          "section": "function:compute_rank_score",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_rank_score",
+          "signature": "def compute_rank_score(item)",
+          "start_line": 28,
+          "end_line": 41,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "formula_expression",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 1.8
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.7,
+      "intent": "issue_analysis",
+      "note": "出价公式定位",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_bid_002",
+      "query": "预算超前消耗时 alpha 调节在哪里",
+      "retrieval_queries": [
+        "compute_alpha budget_ratio"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_symbols": [
+        "compute_alpha"
+      ],
+      "expected_patterns": [
+        "预算超前消耗"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "compute_alpha",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 82.575,
+          "stage1_score": 59.46,
+          "excerpt": ">>   16: def compute_alpha(*, budget_ratio: float, competition_level: float) -> float:\n>>   17:     \"\"\"根据预算进度与竞争强度计算调节因子 alpha。\"\"\"\n>>   18:     if budget_ratio > 1.05:\n>>   19:         # 预算超前消耗：下调 alpha，限制激进拿量。\n     20:         return 0.85\n>>   21:     if budget_ratio < 0.75:\n>>   22:         # 预算落后消耗：上调 alpha，提高竞争能力。\n     23:         return 1.15\n     24:     if competition_level > 0.8:\n     25:         return 1.05\n     26:     return 1.0",
+          "excerpt_lines": [
+            {
+              "line_no": 16,
+              "content": "def compute_alpha(*, budget_ratio: float, competition_level: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 17,
+              "content": "    \"\"\"根据预算进度与竞争强度计算调节因子 alpha。\"\"\"",
+              "is_hit": true
+            },
+            {
+              "line_no": 18,
+              "content": "    if budget_ratio > 1.05:",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "        # 预算超前消耗：下调 alpha，限制激进拿量。",
+              "is_hit": true
+            },
+            {
+              "line_no": 20,
+              "content": "        return 0.85",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "    if budget_ratio < 0.75:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "        # 预算落后消耗：上调 alpha，提高竞争能力。",
+              "is_hit": true
+            },
+            {
+              "line_no": 23,
+              "content": "        return 1.15",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    if competition_level > 0.8:",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "        return 1.05",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    return 1.0",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            16,
+            17,
+            18,
+            19,
+            21,
+            22
+          ],
+          "section": "function:compute_alpha",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_alpha",
+          "signature": "def compute_alpha(budget_ratio, competition_level)",
+          "start_line": 16,
+          "end_line": 26,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_alpha",
+              "budget_ratio",
+              "alpha"
+            ],
+            "matched_patterns": [
+              "exact_symbol:compute_alpha",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "bid_optimizer",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 39.6125,
+          "stage1_score": 31.76,
+          "excerpt": "...\n      9: \n     10:     target_cpa: float\n>>   11:     budget_ratio: float\n     12:     competition_level: float\n     13:     trace_id: str\n     14: \n     15: \n>>   16: def compute_alpha(*, budget_ratio: float, competition_level: float) -> float:\n>>   17:     \"\"\"根据预算进度与竞争强度计算调节因子 alpha。\"\"\"\n>>   18:     if budget_ratio > 1.05:\n>>   19:         # 预算超前消耗：下调 alpha，限制激进拿量。\n     20:         return 0.85\n>>   21:     if budget_ratio < 0.75:\n>>   22:         # 预算落后消耗：上调 alpha，提高竞争能力。\n     23:         return 1.15\n     24:     if competition_level > 0.8:\n     25:         return 1.05\n     26:     return 1.0\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 9,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "    target_cpa: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    budget_ratio: float",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    competition_level: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "def compute_alpha(*, budget_ratio: float, competition_level: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 17,
+              "content": "    \"\"\"根据预算进度与竞争强度计算调节因子 alpha。\"\"\"",
+              "is_hit": true
+            },
+            {
+              "line_no": 18,
+              "content": "    if budget_ratio > 1.05:",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "        # 预算超前消耗：下调 alpha，限制激进拿量。",
+              "is_hit": true
+            },
+            {
+              "line_no": 20,
+              "content": "        return 0.85",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "    if budget_ratio < 0.75:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "        # 预算落后消耗：上调 alpha，提高竞争能力。",
+              "is_hit": true
+            },
+            {
+              "line_no": 23,
+              "content": "        return 1.15",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    if competition_level > 0.8:",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "        return 1.05",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    return 1.0",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11,
+            16,
+            17,
+            18,
+            19,
+            21,
+            22
+          ],
+          "section": "file:bid_optimizer",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "bid_optimizer",
+          "signature": "bid_optimizer.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_alpha",
+              "budget_ratio",
+              "alpha"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RankItem",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 12.0125,
+          "stage1_score": 9.01,
+          "excerpt": ">>    8: class RankItem:\n      9:     \"\"\"精排候选项。\"\"\"\n     10: \n     11:     ad_id: str\n     12:     ecpm: float\n     13:     freq_penalty: float\n     14:     diversity_penalty: float\n     15:     feature_complete: bool",
+          "excerpt_lines": [
+            {
+              "line_no": 8,
+              "content": "class RankItem:",
+              "is_hit": true
+            },
+            {
+              "line_no": 9,
+              "content": "    \"\"\"精排候选项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    ad_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    ecpm: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    freq_penalty: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    diversity_penalty: float",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    feature_complete: bool",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            8
+          ],
+          "section": "class:RankItem",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RankItem",
+          "signature": "class RankItem",
+          "start_line": 8,
+          "end_line": 15,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "apply_diversity_penalty",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 10.8944,
+          "stage1_score": 8.1156,
+          "excerpt": ">>   18: def apply_diversity_penalty(item: RankItem) -> float:\n     19:     \"\"\"多样性惩罚项。\"\"\"\n     20:     return item.diversity_penalty * 0.6",
+          "excerpt_lines": [
+            {
+              "line_no": 18,
+              "content": "def apply_diversity_penalty(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "    \"\"\"多样性惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    return item.diversity_penalty * 0.6",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            18
+          ],
+          "section": "function:apply_diversity_penalty",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "apply_diversity_penalty",
+          "signature": "def apply_diversity_penalty(item)",
+          "start_line": 18,
+          "end_line": 20,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "recall_service",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 8.0981,
+          "stage1_score": 5.9138,
+          "excerpt": ">>    1: \"\"\"在线召回 mock 代码语料。\n      2: \n      3: 该文件用于检索评测，不参与生产逻辑。\n      4: \"\"\"\n      5: \n      6: from dataclasses import dataclass\n      7: from typing import Any\n      8: \n      9: \n     10: @dataclass\n     11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 1,
+              "content": "\"\"\"在线召回 mock 代码语料。",
+              "is_hit": true
+            },
+            {
+              "line_no": 2,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 3,
+              "content": "该文件用于检索评测，不参与生产逻辑。",
+              "is_hit": false
+            },
+            {
+              "line_no": 4,
+              "content": "\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 5,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 6,
+              "content": "from dataclasses import dataclass",
+              "is_hit": false
+            },
+            {
+              "line_no": 7,
+              "content": "from typing import Any",
+              "is_hit": false
+            },
+            {
+              "line_no": 8,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 9,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "@dataclass",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            1
+          ],
+          "section": "file:recall_service",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "recall_service",
+          "signature": "recall_service.py",
+          "start_line": 1,
+          "end_line": 47,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.35,
+      "intent": "issue_analysis",
+      "note": "pacing 调节函数",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_bid_003",
+      "query": "请求级出价入口函数是哪个",
+      "retrieval_queries": [
+        "compute_bid_for_request"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "gold_symbols": [
+        "compute_bid_for_request"
+      ],
+      "expected_patterns": [
+        "compute_ocpc_bid"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/bid/bid_optimizer.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "compute_bid_for_request",
+          "path": "codes/ad_engine/bid/bid_optimizer.py",
+          "score": 32.4161,
+          "stage1_score": 19.3329,
+          "excerpt": ">>   40: def compute_bid_for_request(context: BidContext, pcvr: float) -> float:\n     41:     \"\"\"请求级出价入口。\"\"\"\n     42:     alpha = compute_alpha(\n     43:         budget_ratio=context.budget_ratio,\n     44:         competition_level=context.competition_level,\n     45:     )\n     46:     return compute_ocpc_bid(\n     47:         target_cpa=context.target_cpa,\n     48:         pcvr=pcvr,\n     49:         alpha=alpha,\n     50:     )",
+          "excerpt_lines": [
+            {
+              "line_no": 40,
+              "content": "def compute_bid_for_request(context: BidContext, pcvr: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 41,
+              "content": "    \"\"\"请求级出价入口。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "    alpha = compute_alpha(",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "        budget_ratio=context.budget_ratio,",
+              "is_hit": false
+            },
+            {
+              "line_no": 44,
+              "content": "        competition_level=context.competition_level,",
+              "is_hit": false
+            },
+            {
+              "line_no": 45,
+              "content": "    )",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    return compute_ocpc_bid(",
+              "is_hit": false
+            },
+            {
+              "line_no": 47,
+              "content": "        target_cpa=context.target_cpa,",
+              "is_hit": false
+            },
+            {
+              "line_no": 48,
+              "content": "        pcvr=pcvr,",
+              "is_hit": false
+            },
+            {
+              "line_no": 49,
+              "content": "        alpha=alpha,",
+              "is_hit": false
+            },
+            {
+              "line_no": 50,
+              "content": "    )",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            40
+          ],
+          "section": "function:compute_bid_for_request",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_bid_for_request",
+          "signature": "def compute_bid_for_request(context, pcvr)",
+          "start_line": 40,
+          "end_line": 50,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_bid_for_request"
+            ],
+            "matched_patterns": [
+              "exact_symbol:compute_bid_for_request",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rank_topn",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 24.7,
+          "stage1_score": 19.16,
+          "excerpt": ">>   44: def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:\n     45:     \"\"\"返回最终 TopN。\"\"\"\n     46:     scored = []\n     47:     for item in items:\n     48:         scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})\n     49:     scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)\n     50:     return scored[:top_n]",
+          "excerpt_lines": [
+            {
+              "line_no": 44,
+              "content": "def rank_topn(items: list[RankItem], *, top_n: int) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 45,
+              "content": "    \"\"\"返回最终 TopN。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 46,
+              "content": "    scored = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 47,
+              "content": "    for item in items:",
+              "is_hit": false
+            },
+            {
+              "line_no": 48,
+              "content": "        scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})",
+              "is_hit": false
+            },
+            {
+              "line_no": 49,
+              "content": "    scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)",
+              "is_hit": false
+            },
+            {
+              "line_no": 50,
+              "content": "    return scored[:top_n]",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            44
+          ],
+          "section": "function:rank_topn",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "rank_topn",
+          "signature": "def rank_topn(items, top_n)",
+          "start_line": 44,
+          "end_line": 50,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "apply_diversity_penalty",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 18.05,
+          "stage1_score": 13.84,
+          "excerpt": ">>   18: def apply_diversity_penalty(item: RankItem) -> float:\n     19:     \"\"\"多样性惩罚项。\"\"\"\n     20:     return item.diversity_penalty * 0.6",
+          "excerpt_lines": [
+            {
+              "line_no": 18,
+              "content": "def apply_diversity_penalty(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "    \"\"\"多样性惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    return item.diversity_penalty * 0.6",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            18
+          ],
+          "section": "function:apply_diversity_penalty",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "apply_diversity_penalty",
+          "signature": "def apply_diversity_penalty(item)",
+          "start_line": 18,
+          "end_line": 20,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "select_recall_candidates",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.8944,
+          "stage1_score": 8.1156,
+          "excerpt": ">>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n     32:         \"user_id\": context.user_id,\n     33:     }\n     34:     raw_candidates = index_client.search(filter_query, top_n=800)\n     35:     results: list[dict[str, Any]] = []\n     36:     for item in raw_candidates:\n     37:         if item.get(\"creative_status\") != \"online\":\n     38:             continue\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "        \"user_id\": context.user_id,",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    }",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    raw_candidates = index_client.search(filter_query, top_n=800)",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    results: list[dict[str, Any]] = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    for item in raw_candidates:",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "        if item.get(\"creative_status\") != \"online\":",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "            continue",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            21
+          ],
+          "section": "function:select_recall_candidates",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "select_recall_candidates",
+          "signature": "def select_recall_candidates(context, index_client)",
+          "start_line": 21,
+          "end_line": 46,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.0,
+          "stage1_score": 7.4,
+          "excerpt": ">>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 0.0,
+      "latency_ms": 2.03,
+      "intent": "issue_analysis",
+      "note": "出价入口",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_rerank_001",
+      "query": "高ecpm广告未进最终位的惩罚逻辑在哪",
+      "retrieval_queries": [
+        "compute_rank_score diversity_penalty freq_penalty"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_symbols": [
+        "compute_rank_score"
+      ],
+      "expected_patterns": [
+        "feature_complete",
+        "diversity_penalty"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "compute_rank_score",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 51.0917,
+          "stage1_score": 33.4733,
+          "excerpt": ">>   28: def compute_rank_score(item: RankItem) -> float:\n     29:     \"\"\"最终排序分。\n     30: \n>>   31:     该逻辑解释了“高 eCPM 广告为何未进最终位”：\n     32:     - 频控惩罚\n     33:     - 多样性惩罚\n     34:     - 特征缺失降级\n     35:     \"\"\"\n>>   36:     score = item.ecpm\n     37:     score -= apply_safety_penalty(item)\n>>   38:     score -= apply_diversity_penalty(item)\n     39:     if not item.feature_complete:\n     40:         score *= 0.75\n     41:     return score",
+          "excerpt_lines": [
+            {
+              "line_no": 28,
+              "content": "def compute_rank_score(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 29,
+              "content": "    \"\"\"最终排序分。",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "    该逻辑解释了“高 eCPM 广告为何未进最终位”：",
+              "is_hit": true
+            },
+            {
+              "line_no": 32,
+              "content": "    - 频控惩罚",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    - 多样性惩罚",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    - 特征缺失降级",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    score = item.ecpm",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    score -= apply_safety_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    score -= apply_diversity_penalty(item)",
+              "is_hit": true
+            },
+            {
+              "line_no": 39,
+              "content": "    if not item.feature_complete:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        score *= 0.75",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    return score",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            28,
+            31,
+            36,
+            38
+          ],
+          "section": "function:compute_rank_score",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_rank_score",
+          "signature": "def compute_rank_score(item)",
+          "start_line": 28,
+          "end_line": 41,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_rank_score",
+              "diversity_penalty",
+              "ecpm"
+            ],
+            "matched_patterns": [
+              "exact_symbol:compute_rank_score",
+              "compute_rank_score",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 7.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rerank_engine",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 34.8813,
+          "stage1_score": 27.49,
+          "excerpt": "...\n     10: \n     11:     ad_id: str\n>>   12:     ecpm: float\n>>   13:     freq_penalty: float\n>>   14:     diversity_penalty: float\n     15:     feature_complete: bool\n     16: \n     17: \n>>   18: def apply_diversity_penalty(item: RankItem) -> float:\n     19:     \"\"\"多样性惩罚项。\"\"\"\n>>   20:     return item.diversity_penalty * 0.6\n     21: \n     22: \n     23: def apply_safety_penalty(item: RankItem) -> float:\n     24:     \"\"\"频控/风控惩罚项。\"\"\"\n>>   25:     return item.freq_penalty * 0.8\n     26: \n     27: \n...",
+          "excerpt_lines": [
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    ad_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 12,
+              "content": "    ecpm: float",
+              "is_hit": true
+            },
+            {
+              "line_no": 13,
+              "content": "    freq_penalty: float",
+              "is_hit": true
+            },
+            {
+              "line_no": 14,
+              "content": "    diversity_penalty: float",
+              "is_hit": true
+            },
+            {
+              "line_no": 15,
+              "content": "    feature_complete: bool",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "def apply_diversity_penalty(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "    \"\"\"多样性惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    return item.diversity_penalty * 0.6",
+              "is_hit": true
+            },
+            {
+              "line_no": 21,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "def apply_safety_penalty(item: RankItem) -> float:",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    \"\"\"频控/风控惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    return item.freq_penalty * 0.8",
+              "is_hit": true
+            },
+            {
+              "line_no": 26,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            12,
+            13,
+            14,
+            18,
+            20,
+            25
+          ],
+          "section": "file:rerank_engine",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rerank_engine",
+          "signature": "rerank_engine.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "compute_rank_score",
+              "diversity_penalty",
+              "freq_penalty",
+              "ecpm"
+            ],
+            "matched_patterns": [
+              "compute_rank_score",
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 1.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "select_recall_candidates",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.8944,
+          "stage1_score": 8.1156,
+          "excerpt": ">>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n     32:         \"user_id\": context.user_id,\n     33:     }\n     34:     raw_candidates = index_client.search(filter_query, top_n=800)\n     35:     results: list[dict[str, Any]] = []\n     36:     for item in raw_candidates:\n     37:         if item.get(\"creative_status\") != \"online\":\n     38:             continue\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "        \"user_id\": context.user_id,",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    }",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    raw_candidates = index_client.search(filter_query, top_n=800)",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    results: list[dict[str, Any]] = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    for item in raw_candidates:",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "        if item.get(\"creative_status\") != \"online\":",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "            continue",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            21
+          ],
+          "section": "function:select_recall_candidates",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "select_recall_candidates",
+          "signature": "def select_recall_candidates(context, index_client)",
+          "start_line": 21,
+          "end_line": 46,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.0,
+          "stage1_score": 7.4,
+          "excerpt": ">>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "calibrate_probability",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 8.1423,
+          "stage1_score": 5.9138,
+          "excerpt": ">>   36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n     38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            36
+          ],
+          "section": "function:calibrate_probability",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "calibrate_probability",
+          "signature": "def calibrate_probability(value, slope, bias)",
+          "start_line": 36,
+          "end_line": 43,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.35,
+      "intent": "issue_analysis",
+      "note": "精排原因定位",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_rerank_002",
+      "query": "多样性惩罚函数在哪里",
+      "retrieval_queries": [
+        "apply_diversity_penalty"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_symbols": [
+        "apply_diversity_penalty"
+      ],
+      "expected_patterns": [
+        "diversity_penalty"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "apply_diversity_penalty",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 46.175,
+          "stage1_score": 30.34,
+          "excerpt": ">>   18: def apply_diversity_penalty(item: RankItem) -> float:\n     19:     \"\"\"多样性惩罚项。\"\"\"\n     20:     return item.diversity_penalty * 0.6",
+          "excerpt_lines": [
+            {
+              "line_no": 18,
+              "content": "def apply_diversity_penalty(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "    \"\"\"多样性惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "    return item.diversity_penalty * 0.6",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            18
+          ],
+          "section": "function:apply_diversity_penalty",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "apply_diversity_penalty",
+          "signature": "def apply_diversity_penalty(item)",
+          "start_line": 18,
+          "end_line": 20,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "apply_diversity_penalty"
+            ],
+            "matched_patterns": [
+              "exact_symbol:apply_diversity_penalty",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "compute_rank_score",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 31.0333,
+          "stage1_score": 24.2267,
+          "excerpt": "...\n     36:     score = item.ecpm\n     37:     score -= apply_safety_penalty(item)\n>>   38:     score -= apply_diversity_penalty(item)\n     39:     if not item.feature_complete:\n     40:         score *= 0.75\n     41:     return score",
+          "excerpt_lines": [
+            {
+              "line_no": 36,
+              "content": "    score = item.ecpm",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    score -= apply_safety_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    score -= apply_diversity_penalty(item)",
+              "is_hit": true
+            },
+            {
+              "line_no": 39,
+              "content": "    if not item.feature_complete:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        score *= 0.75",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    return score",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            38
+          ],
+          "section": "function:compute_rank_score",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_rank_score",
+          "signature": "def compute_rank_score(item)",
+          "start_line": 28,
+          "end_line": 41,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "apply_diversity_penalty"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "select_recall_candidates",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.8944,
+          "stage1_score": 8.1156,
+          "excerpt": ">>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n     32:         \"user_id\": context.user_id,\n     33:     }\n     34:     raw_candidates = index_client.search(filter_query, top_n=800)\n     35:     results: list[dict[str, Any]] = []\n     36:     for item in raw_candidates:\n     37:         if item.get(\"creative_status\") != \"online\":\n     38:             continue\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "        \"user_id\": context.user_id,",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    }",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    raw_candidates = index_client.search(filter_query, top_n=800)",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    results: list[dict[str, Any]] = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    for item in raw_candidates:",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "        if item.get(\"creative_status\") != \"online\":",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "            continue",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            21
+          ],
+          "section": "function:select_recall_candidates",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "select_recall_candidates",
+          "signature": "def select_recall_candidates(context, index_client)",
+          "start_line": 21,
+          "end_line": 46,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.0,
+          "stage1_score": 7.4,
+          "excerpt": ">>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "calibrate_probability",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 8.1423,
+          "stage1_score": 5.9138,
+          "excerpt": ">>   36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n     38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            36
+          ],
+          "section": "function:calibrate_probability",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "calibrate_probability",
+          "signature": "def calibrate_probability(value, slope, bias)",
+          "start_line": 36,
+          "end_line": 43,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.04,
+      "intent": "issue_analysis",
+      "note": "精排惩罚函数",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_rerank_003",
+      "query": "频控风控惩罚项实现在哪",
+      "retrieval_queries": [
+        "apply_safety_penalty freq_penalty"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py"
+      ],
+      "gold_symbols": [
+        "apply_safety_penalty"
+      ],
+      "expected_patterns": [
+        "freq_penalty"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "apply_safety_penalty",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 66.45,
+          "stage1_score": 46.56,
+          "excerpt": ">>   23: def apply_safety_penalty(item: RankItem) -> float:\n     24:     \"\"\"频控/风控惩罚项。\"\"\"\n>>   25:     return item.freq_penalty * 0.8",
+          "excerpt_lines": [
+            {
+              "line_no": 23,
+              "content": "def apply_safety_penalty(item: RankItem) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 24,
+              "content": "    \"\"\"频控/风控惩罚项。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    return item.freq_penalty * 0.8",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            23,
+            25
+          ],
+          "section": "function:apply_safety_penalty",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "apply_safety_penalty",
+          "signature": "def apply_safety_penalty(item)",
+          "start_line": 23,
+          "end_line": 25,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "apply_safety_penalty",
+              "freq_penalty"
+            ],
+            "matched_patterns": [
+              "exact_symbol:apply_safety_penalty",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "compute_rank_score",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 21.7,
+          "stage1_score": 16.76,
+          "excerpt": "...\n     35:     \"\"\"\n     36:     score = item.ecpm\n>>   37:     score -= apply_safety_penalty(item)\n     38:     score -= apply_diversity_penalty(item)\n     39:     if not item.feature_complete:\n     40:         score *= 0.75\n     41:     return score",
+          "excerpt_lines": [
+            {
+              "line_no": 35,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    score = item.ecpm",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "    score -= apply_safety_penalty(item)",
+              "is_hit": true
+            },
+            {
+              "line_no": 38,
+              "content": "    score -= apply_diversity_penalty(item)",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if not item.feature_complete:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        score *= 0.75",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    return score",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            37
+          ],
+          "section": "function:compute_rank_score",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "compute_rank_score",
+          "signature": "def compute_rank_score(item)",
+          "start_line": 28,
+          "end_line": 41,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "apply_safety_penalty"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "select_recall_candidates",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.8944,
+          "stage1_score": 8.1156,
+          "excerpt": ">>   21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n     32:         \"user_id\": context.user_id,\n     33:     }\n     34:     raw_candidates = index_client.search(filter_query, top_n=800)\n     35:     results: list[dict[str, Any]] = []\n     36:     for item in raw_candidates:\n     37:         if item.get(\"creative_status\") != \"online\":\n     38:             continue\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": true
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            },
+            {
+              "line_no": 32,
+              "content": "        \"user_id\": context.user_id,",
+              "is_hit": false
+            },
+            {
+              "line_no": 33,
+              "content": "    }",
+              "is_hit": false
+            },
+            {
+              "line_no": 34,
+              "content": "    raw_candidates = index_client.search(filter_query, top_n=800)",
+              "is_hit": false
+            },
+            {
+              "line_no": 35,
+              "content": "    results: list[dict[str, Any]] = []",
+              "is_hit": false
+            },
+            {
+              "line_no": 36,
+              "content": "    for item in raw_candidates:",
+              "is_hit": false
+            },
+            {
+              "line_no": 37,
+              "content": "        if item.get(\"creative_status\") != \"online\":",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "            continue",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            21
+          ],
+          "section": "function:select_recall_candidates",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "select_recall_candidates",
+          "signature": "def select_recall_candidates(context, index_client)",
+          "start_line": 21,
+          "end_line": 46,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.0,
+          "stage1_score": 7.4,
+          "excerpt": ">>   11: class RecallContext:\n     12:     \"\"\"召回上下文。\"\"\"\n     13: \n     14:     user_id: str\n     15:     request_id: str\n     16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 11,
+              "content": "class RecallContext:",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    \"\"\"召回上下文。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            11
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "calibrate_probability",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 8.1423,
+          "stage1_score": 5.9138,
+          "excerpt": ">>   36: def calibrate_probability(value: float, *, slope: float, bias: float) -> float:\n     37:     \"\"\"概率校准函数。\"\"\"\n     38:     calibrated = value * slope + bias\n     39:     if calibrated < 0:\n     40:         return 0.0\n     41:     if calibrated > 1:\n     42:         return 1.0\n     43:     return calibrated",
+          "excerpt_lines": [
+            {
+              "line_no": 36,
+              "content": "def calibrate_probability(value: float, *, slope: float, bias: float) -> float:",
+              "is_hit": true
+            },
+            {
+              "line_no": 37,
+              "content": "    \"\"\"概率校准函数。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 38,
+              "content": "    calibrated = value * slope + bias",
+              "is_hit": false
+            },
+            {
+              "line_no": 39,
+              "content": "    if calibrated < 0:",
+              "is_hit": false
+            },
+            {
+              "line_no": 40,
+              "content": "        return 0.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 41,
+              "content": "    if calibrated > 1:",
+              "is_hit": false
+            },
+            {
+              "line_no": 42,
+              "content": "        return 1.0",
+              "is_hit": false
+            },
+            {
+              "line_no": 43,
+              "content": "    return calibrated",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            36
+          ],
+          "section": "function:calibrate_probability",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "calibrate_probability",
+          "signature": "def calibrate_probability(value, slope, bias)",
+          "start_line": 36,
+          "end_line": 43,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 1.96,
+      "intent": "issue_analysis",
+      "note": "安全惩罚函数",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_trace_001",
+      "query": "trace_id 记录结构体定义在哪",
+      "retrieval_queries": [
+        "TraceRecord trace_id"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "gold_symbols": [
+        "TraceRecord"
+      ],
+      "expected_patterns": [
+        "module_name",
+        "event"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/bid/bid_optimizer.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "TraceRecord",
+          "path": "codes/ad_engine/common/tracing.py",
+          "score": 36.0676,
+          "stage1_score": 21.4541,
+          "excerpt": ">>    8: class TraceRecord:\n      9:     \"\"\"请求级 trace 记录。\"\"\"\n     10: \n>>   11:     trace_id: str\n     12:     module_name: str\n     13:     event: str\n     14:     timestamp: str",
+          "excerpt_lines": [
+            {
+              "line_no": 8,
+              "content": "class TraceRecord:",
+              "is_hit": true
+            },
+            {
+              "line_no": 9,
+              "content": "    \"\"\"请求级 trace 记录。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    trace_id: str",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    module_name: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    event: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    timestamp: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            8,
+            11
+          ],
+          "section": "class:TraceRecord",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "TraceRecord",
+          "signature": "class TraceRecord",
+          "start_line": 8,
+          "end_line": 14,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "tracerecord",
+              "trace_id"
+            ],
+            "matched_patterns": [
+              "exact_symbol:tracerecord",
+              "location_intent",
+              "trace_id"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 7.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "build_trace_record",
+          "path": "codes/ad_engine/common/tracing.py",
+          "score": 23.8413,
+          "stage1_score": 17.673,
+          "excerpt": ">>   17: def build_trace_record(*, trace_id: str, module_name: str, event: str) -> TraceRecord:\n     18:     \"\"\"构造 trace 记录。\"\"\"\n>>   19:     return TraceRecord(\n>>   20:         trace_id=trace_id,\n     21:         module_name=module_name,\n     22:         event=event,\n     23:         timestamp=datetime.utcnow().isoformat(timespec=\"seconds\"),\n     24:     )",
+          "excerpt_lines": [
+            {
+              "line_no": 17,
+              "content": "def build_trace_record(*, trace_id: str, module_name: str, event: str) -> TraceRecord:",
+              "is_hit": true
+            },
+            {
+              "line_no": 18,
+              "content": "    \"\"\"构造 trace 记录。\"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 19,
+              "content": "    return TraceRecord(",
+              "is_hit": true
+            },
+            {
+              "line_no": 20,
+              "content": "        trace_id=trace_id,",
+              "is_hit": true
+            },
+            {
+              "line_no": 21,
+              "content": "        module_name=module_name,",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "        event=event,",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "        timestamp=datetime.utcnow().isoformat(timespec=\"seconds\"),",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    )",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            17,
+            19,
+            20
+          ],
+          "section": "function:build_trace_record",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "build_trace_record",
+          "signature": "def build_trace_record(trace_id, module_name, event)",
+          "start_line": 17,
+          "end_line": 24,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "tracerecord",
+              "trace_id"
+            ],
+            "matched_patterns": [
+              "location_intent",
+              "trace_id"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 1.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "RecallContext",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 16.6,
+          "stage1_score": 11.88,
+          "excerpt": "...\n     14:     user_id: str\n     15:     request_id: str\n>>   16:     trace_id: str\n     17:     region: str\n     18:     scene: str",
+          "excerpt_lines": [
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": true
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            16
+          ],
+          "section": "class:RecallContext",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "RecallContext",
+          "signature": "class RecallContext",
+          "start_line": 11,
+          "end_line": 18,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [
+              "trace_id"
+            ],
+            "matched_patterns": [
+              "location_intent",
+              "trace_id"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 1.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "recall_service",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 12.9464,
+          "stage1_score": 9.4067,
+          "excerpt": "...\n     14:     user_id: str\n     15:     request_id: str\n>>   16:     trace_id: str\n     17:     region: str\n     18:     scene: str\n     19: \n     20: \n     21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": true
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            16
+          ],
+          "section": "file:recall_service",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "recall_service",
+          "signature": "recall_service.py",
+          "start_line": 1,
+          "end_line": 47,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [
+              "trace_id"
+            ],
+            "matched_patterns": [
+              "location_intent",
+              "trace_id"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 1.4
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "PredictFeatures",
+          "path": "codes/ad_engine/rate/rate_predictor.py",
+          "score": 12.5,
+          "stage1_score": 8.6,
+          "excerpt": "...\n     12:     ad_vector: list[float]\n     13:     context_vector: list[float]\n>>   14:     trace_id: str",
+          "excerpt_lines": [
+            {
+              "line_no": 12,
+              "content": "    ad_vector: list[float]",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    context_vector: list[float]",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    trace_id: str",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            14
+          ],
+          "section": "class:PredictFeatures",
+          "language": "python",
+          "chunk_type": "class",
+          "symbol_name": "PredictFeatures",
+          "signature": "class PredictFeatures",
+          "start_line": 8,
+          "end_line": 14,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [
+              "trace_id"
+            ],
+            "matched_patterns": [
+              "location_intent",
+              "trace_id"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 1.4
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.08,
+      "intent": "issue_analysis",
+      "note": "trace 结构体",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    },
+    {
+      "id": "code_trace_002",
+      "query": "trace key 的格式化函数在哪",
+      "retrieval_queries": [
+        "format_trace_key"
+      ],
+      "gold_paths": [
+        "codes/ad_engine/common/tracing.py"
+      ],
+      "gold_symbols": [
+        "format_trace_key"
+      ],
+      "expected_patterns": [
+        "module_name:trace_id"
+      ],
+      "retrieved_paths": [
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/common/tracing.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/rerank/rerank_engine.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/recall/recall_service.py",
+        "codes/ad_engine/rate/rate_predictor.py",
+        "codes/ad_engine/rate/rate_predictor.py"
+      ],
+      "top_hits": [
+        {
+          "source_type": "code",
+          "title": "format_trace_key",
+          "path": "codes/ad_engine/common/tracing.py",
+          "score": 68.4083,
+          "stage1_score": 48.1267,
+          "excerpt": ">>   27: def format_trace_key(trace_id: str, module_name: str) -> str:\n>>   28:     \"\"\"trace key 格式化函数。\"\"\"\n>>   29:     return f\"{module_name}:{trace_id}\"",
+          "excerpt_lines": [
+            {
+              "line_no": 27,
+              "content": "def format_trace_key(trace_id: str, module_name: str) -> str:",
+              "is_hit": true
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"trace key 格式化函数。\"\"\"",
+              "is_hit": true
+            },
+            {
+              "line_no": 29,
+              "content": "    return f\"{module_name}:{trace_id}\"",
+              "is_hit": true
+            }
+          ],
+          "highlight_lines": [
+            27,
+            28,
+            29
+          ],
+          "section": "function:format_trace_key",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "format_trace_key",
+          "signature": "def format_trace_key(trace_id, module_name)",
+          "start_line": 27,
+          "end_line": 29,
+          "rank": 1,
+          "retrieval_debug": {
+            "matched_terms": [
+              "format_trace_key",
+              "trace",
+              "key"
+            ],
+            "matched_patterns": [
+              "exact_symbol:format_trace_key",
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 6.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "tracing",
+          "path": "codes/ad_engine/common/tracing.py",
+          "score": 38.6159,
+          "stage1_score": 33.0267,
+          "excerpt": "...\n      6: \n      7: @dataclass\n>>    8: class TraceRecord:\n>>    9:     \"\"\"请求级 trace 记录。\"\"\"\n     10: \n>>   11:     trace_id: str\n     12:     module_name: str\n     13:     event: str\n     14:     timestamp: str\n     15: \n     16: \n>>   17: def build_trace_record(*, trace_id: str, module_name: str, event: str) -> TraceRecord:\n>>   18:     \"\"\"构造 trace 记录。\"\"\"\n>>   19:     return TraceRecord(\n>>   20:         trace_id=trace_id,\n     21:         module_name=module_name,\n     22:         event=event,\n     23:         timestamp=datetime.utcnow().isoformat(timespec=\"seconds\"),\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 6,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 7,
+              "content": "@dataclass",
+              "is_hit": false
+            },
+            {
+              "line_no": 8,
+              "content": "class TraceRecord:",
+              "is_hit": true
+            },
+            {
+              "line_no": 9,
+              "content": "    \"\"\"请求级 trace 记录。\"\"\"",
+              "is_hit": true
+            },
+            {
+              "line_no": 10,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 11,
+              "content": "    trace_id: str",
+              "is_hit": true
+            },
+            {
+              "line_no": 12,
+              "content": "    module_name: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 13,
+              "content": "    event: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 14,
+              "content": "    timestamp: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 17,
+              "content": "def build_trace_record(*, trace_id: str, module_name: str, event: str) -> TraceRecord:",
+              "is_hit": true
+            },
+            {
+              "line_no": 18,
+              "content": "    \"\"\"构造 trace 记录。\"\"\"",
+              "is_hit": true
+            },
+            {
+              "line_no": 19,
+              "content": "    return TraceRecord(",
+              "is_hit": true
+            },
+            {
+              "line_no": 20,
+              "content": "        trace_id=trace_id,",
+              "is_hit": true
+            },
+            {
+              "line_no": 21,
+              "content": "        module_name=module_name,",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "        event=event,",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "        timestamp=datetime.utcnow().isoformat(timespec=\"seconds\"),",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            8,
+            9,
+            11,
+            17,
+            18,
+            19,
+            20
+          ],
+          "section": "file:tracing",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "tracing",
+          "signature": "tracing.py",
+          "start_line": 1,
+          "end_line": 30,
+          "rank": 2,
+          "retrieval_debug": {
+            "matched_terms": [
+              "format_trace_key",
+              "trace",
+              "key"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rerank_engine",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 14.4313,
+          "stage1_score": 11.16,
+          "excerpt": "...\n     47:     for item in items:\n     48:         scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})\n>>   49:     scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)\n     50:     return scored[:top_n]",
+          "excerpt_lines": [
+            {
+              "line_no": 47,
+              "content": "    for item in items:",
+              "is_hit": false
+            },
+            {
+              "line_no": 48,
+              "content": "        scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})",
+              "is_hit": false
+            },
+            {
+              "line_no": 49,
+              "content": "    scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)",
+              "is_hit": true
+            },
+            {
+              "line_no": 50,
+              "content": "    return scored[:top_n]",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            49
+          ],
+          "section": "file:rerank_engine",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "rerank_engine",
+          "signature": "rerank_engine.py",
+          "start_line": 1,
+          "end_line": 51,
+          "rank": 3,
+          "retrieval_debug": {
+            "matched_terms": [
+              "key"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "rank_topn",
+          "path": "codes/ad_engine/rerank/rerank_engine.py",
+          "score": 12.0278,
+          "stage1_score": 9.0222,
+          "excerpt": "...\n     47:     for item in items:\n     48:         scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})\n>>   49:     scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)\n     50:     return scored[:top_n]",
+          "excerpt_lines": [
+            {
+              "line_no": 47,
+              "content": "    for item in items:",
+              "is_hit": false
+            },
+            {
+              "line_no": 48,
+              "content": "        scored.append({\"ad_id\": item.ad_id, \"rank_score\": compute_rank_score(item)})",
+              "is_hit": false
+            },
+            {
+              "line_no": 49,
+              "content": "    scored.sort(key=lambda record: record[\"rank_score\"], reverse=True)",
+              "is_hit": true
+            },
+            {
+              "line_no": 50,
+              "content": "    return scored[:top_n]",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            49
+          ],
+          "section": "function:rank_topn",
+          "language": "python",
+          "chunk_type": "function",
+          "symbol_name": "rank_topn",
+          "signature": "def rank_topn(items, top_n)",
+          "start_line": 44,
+          "end_line": 50,
+          "rank": 4,
+          "retrieval_debug": {
+            "matched_terms": [
+              "key"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 1,
+            "pattern_score": 0.6
+          }
+        },
+        {
+          "source_type": "code",
+          "title": "recall_service",
+          "path": "codes/ad_engine/recall/recall_service.py",
+          "score": 10.1231,
+          "stage1_score": 7.7138,
+          "excerpt": "...\n     14:     user_id: str\n     15:     request_id: str\n>>   16:     trace_id: str\n     17:     region: str\n     18:     scene: str\n     19: \n     20: \n     21: def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:\n     22:     \"\"\"根据用户上下文选取候选广告。\n     23: \n     24:     关键点：\n     25:     - 先按 region/scene 做预过滤；\n     26:     - 再按用户标签拉取人群包；\n     27:     - 最后按 source_tag 打标，给精排做多样性约束。\n     28:     \"\"\"\n     29:     filter_query = {\n     30:         \"region\": context.region,\n     31:         \"scene\": context.scene,\n...",
+          "excerpt_lines": [
+            {
+              "line_no": 14,
+              "content": "    user_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 15,
+              "content": "    request_id: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 16,
+              "content": "    trace_id: str",
+              "is_hit": true
+            },
+            {
+              "line_no": 17,
+              "content": "    region: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 18,
+              "content": "    scene: str",
+              "is_hit": false
+            },
+            {
+              "line_no": 19,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 20,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 21,
+              "content": "def select_recall_candidates(context: RecallContext, index_client: Any) -> list[dict[str, Any]]:",
+              "is_hit": false
+            },
+            {
+              "line_no": 22,
+              "content": "    \"\"\"根据用户上下文选取候选广告。",
+              "is_hit": false
+            },
+            {
+              "line_no": 23,
+              "content": "",
+              "is_hit": false
+            },
+            {
+              "line_no": 24,
+              "content": "    关键点：",
+              "is_hit": false
+            },
+            {
+              "line_no": 25,
+              "content": "    - 先按 region/scene 做预过滤；",
+              "is_hit": false
+            },
+            {
+              "line_no": 26,
+              "content": "    - 再按用户标签拉取人群包；",
+              "is_hit": false
+            },
+            {
+              "line_no": 27,
+              "content": "    - 最后按 source_tag 打标，给精排做多样性约束。",
+              "is_hit": false
+            },
+            {
+              "line_no": 28,
+              "content": "    \"\"\"",
+              "is_hit": false
+            },
+            {
+              "line_no": 29,
+              "content": "    filter_query = {",
+              "is_hit": false
+            },
+            {
+              "line_no": 30,
+              "content": "        \"region\": context.region,",
+              "is_hit": false
+            },
+            {
+              "line_no": 31,
+              "content": "        \"scene\": context.scene,",
+              "is_hit": false
+            }
+          ],
+          "highlight_lines": [
+            16
+          ],
+          "section": "file:recall_service",
+          "language": "python",
+          "chunk_type": "file",
+          "symbol_name": "recall_service",
+          "signature": "recall_service.py",
+          "start_line": 1,
+          "end_line": 47,
+          "rank": 5,
+          "retrieval_debug": {
+            "matched_terms": [
+              "trace"
+            ],
+            "matched_patterns": [
+              "location_intent"
+            ],
+            "parent_hit_count": 2,
+            "pattern_score": 0.6
+          }
+        }
+      ],
+      "mrr": 1.0,
+      "top1_path_hit": 1.0,
+      "symbol_hit@3": 1.0,
+      "pattern_hit@1": 1.0,
+      "pattern_hit@3": 1.0,
+      "highlight_hit@3": 1.0,
+      "latency_ms": 2.51,
+      "intent": "issue_analysis",
+      "note": "trace key 生成",
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{"id":"arch_001","query":"广告在线投放的核心链路有哪些阶段","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["2. 在线链路"],"intent":"knowledge_qa","note":"总体架构-在线链路"}
+{"id":"arch_002","query":"广告引擎常见关键指标有哪些","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["3. 关键指标"],"intent":"knowledge_qa","note":"总体架构-关键指标"}
+{"id":"arch_003","query":"预算和风控约束一般包括哪些内容","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md"],"gold_sections":["4. 常见策略约束"],"intent":"knowledge_qa","note":"总体架构-策略约束"}
+{"id":"arch_004","query":"召回不足时应该优先看什么","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md","domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["5. 线上问题定位建议"],"intent":"knowledge_qa","note":"总体架构-问题定位"}
+{"id":"arch_005","query":"两率波动排查重点是什么","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md","domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["5. 线上问题定位建议"],"intent":"knowledge_qa","note":"总体架构-问题定位"}
+{"id":"arch_006","query":"精排抖动一般先检查哪些点","gold_paths":["domain/ad_engine/wiki/00-广告引擎总体架构.md","domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["5. 线上问题定位建议"],"intent":"knowledge_qa","note":"总体架构-问题定位"}
+{"id":"recall_001","query":"在线召回在广告链路中的职责是什么","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["1. 职责"],"intent":"knowledge_qa","note":"在线召回-职责"}
+{"id":"recall_002","query":"召回阶段常见有哪些召回路","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["2. 常见召回路"],"intent":"knowledge_qa","note":"在线召回-召回路"}
+{"id":"recall_003","query":"Recall@N 和 CandidateCount 是什么","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["3. 召回质量指标"],"intent":"knowledge_qa","note":"在线召回-指标"}
+{"id":"recall_004","query":"候选量骤降通常怎么排查","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["4.1 候选量骤降"],"intent":"knowledge_qa","note":"在线召回-候选骤降"}
+{"id":"recall_005","query":"召回时延高的常见原因和建议","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["4.2 召回时延高"],"intent":"knowledge_qa","note":"在线召回-时延"}
+{"id":"recall_006","query":"召回结果为什么要带 source_tag","gold_paths":["domain/ad_engine/wiki/01-在线召回.md"],"gold_sections":["5. 推荐实践"],"intent":"knowledge_qa","note":"在线召回-实践"}
+{"id":"rate_001","query":"两率预估的核心职责是什么","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["1. 职责"],"intent":"knowledge_qa","note":"两率预估-职责"}
+{"id":"rate_002","query":"pCTR pCVR 多任务模型有什么区别","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["2. 常见模型形态"],"intent":"knowledge_qa","note":"两率预估-模型"}
+{"id":"rate_003","query":"两率模型常用哪些用户广告上下文特征","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["3. 特征体系"],"intent":"knowledge_qa","note":"两率预估-特征"}
+{"id":"rate_004","query":"AUC LogLoss Calibration Error 分别评估什么","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["4. 关键指标"],"intent":"knowledge_qa","note":"两率预估-指标"}
+{"id":"rate_005","query":"pCTR和pCVR整体偏高偏低先排查什么","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["5.1 pCTR/pCVR 集体偏高或偏低"],"intent":"knowledge_qa","note":"两率预估-偏差排查"}
+{"id":"rate_006","query":"冷启动广告无量怎么处理","gold_paths":["domain/ad_engine/wiki/02-两率预估.md"],"gold_sections":["5.2 冷启动广告无量"],"intent":"knowledge_qa","note":"两率预估-冷启动"}
+{"id":"rate_007","query":"eCPM和两率出价之间是什么关系","gold_paths":["domain/ad_engine/wiki/02-两率预估.md","domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["6. 与出价联动"],"intent":"knowledge_qa","note":"两率预估-与出价联动"}
+{"id":"bid_001","query":"出价策略要把哪些目标映射为实时出价","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["1. 目标"],"intent":"knowledge_qa","note":"出价策略-目标"}
+{"id":"bid_002","query":"广告常见出价模式有哪些","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["2. 常见模式"],"intent":"knowledge_qa","note":"出价策略-模式"}
+{"id":"bid_003","query":"实时出价依赖哪些核心要素","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["3. 实时出价核心要素"],"intent":"knowledge_qa","note":"出价策略-要素"}
+{"id":"bid_004","query":"target_cpa 和 pCVR 的出价公式是什么","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["4. 常见公式示意"],"intent":"knowledge_qa","note":"出价策略-公式"}
+{"id":"bid_005","query":"预算超前消耗时 pacing 怎么调","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["5. 预算与节奏（Pacing）"],"intent":"knowledge_qa","note":"出价策略-pacing"}
+{"id":"bid_006","query":"胜率下降一般怎么排查","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["6.1 胜率下降"],"intent":"knowledge_qa","note":"出价策略-胜率"}
+{"id":"bid_007","query":"成本超标通常检查哪些配置或回传","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["6.2 成本超标"],"intent":"knowledge_qa","note":"出价策略-成本"}
+{"id":"bid_008","query":"出价模块日志应该记录哪些字段","gold_paths":["domain/ad_engine/wiki/03-出价策略.md"],"gold_sections":["7. 工程实践"],"intent":"knowledge_qa","note":"出价策略-工程实践"}
+{"id":"rerank_001","query":"精排的职责是什么","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["1. 职责"],"intent":"knowledge_qa","note":"精排-职责"}
+{"id":"rerank_002","query":"精排通常会用到哪些输入信号","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["2. 典型输入"],"intent":"knowledge_qa","note":"精排-输入"}
+{"id":"rerank_003","query":"精排有哪些常见排序目标","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["3. 常见排序目标"],"intent":"knowledge_qa","note":"精排-目标"}
+{"id":"rerank_004","query":"约束重排和探索策略一般怎么做","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["4. 常见重排策略"],"intent":"knowledge_qa","note":"精排-重排策略"}
+{"id":"rerank_005","query":"精排链路要监控哪些指标","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["5. 关键监控"],"intent":"knowledge_qa","note":"精排-监控"}
+{"id":"rerank_006","query":"精排结果抖动大怎么定位","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["6.1 精排结果抖动大"],"intent":"knowledge_qa","note":"精排-抖动"}
+{"id":"rerank_007","query":"为什么高eCPM广告没有进入最终位","gold_paths":["domain/ad_engine/wiki/04-精排策略.md"],"gold_sections":["6.2 高 eCPM 广告未进最终位"],"intent":"knowledge_qa","note":"精排-高分未进"}
+{"id":"trouble_001","query":"联调排障时最小信息集有哪些","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["2. 一次完整排障最小信息"],"intent":"knowledge_qa","note":"排障-最小信息"}
+{"id":"trouble_002","query":"广告链路标准排查顺序是什么","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["3. 标准排查顺序"],"intent":"knowledge_qa","note":"排障-顺序"}
+{"id":"trouble_003","query":"无量问题怎么快速判断","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["4.1 无量问题"],"intent":"knowledge_qa","note":"排障-无量"}
+{"id":"trouble_004","query":"成本问题怎么快速判断","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["4.2 成本问题"],"intent":"knowledge_qa","note":"排障-成本"}
+{"id":"trouble_005","query":"排障日志建议保留哪些字段","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["5. 日志建议字段"],"intent":"knowledge_qa","note":"排障-日志字段"}
+{"id":"trouble_006","query":"联调阶段有哪些实践建议","gold_paths":["domain/ad_engine/wiki/05-联调排障手册.md"],"gold_sections":["6. 联调建议"],"intent":"knowledge_qa","note":"排障-联调建议"}
+

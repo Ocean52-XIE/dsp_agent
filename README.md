@@ -386,9 +386,9 @@ flowchart LR
 
 当前仓库已打通“真实 Wiki 检索”链路，面向广告引擎业务（召回、两率预估、出价、精排）：
 
-- Wiki 语料目录：`docs/wiki/ad_engine/`
-- 检索实现：`workflow/nodes/retrieve_wiki/wiki_retriever.py`
-- 工作流接入点：`workflow/engine.py` 的 `retrieve_wiki` 节点
+- Wiki 语料目录：`domain/ad_engine/wiki/`
+- 检索实现：`src/workflow/nodes/retrieve_wiki/wiki_retriever.py`
+- 工作流接入点：`src/workflow/engine.py` 的 `retrieve_wiki` 节点
 
 ### 16.1 已接入能力
 
@@ -411,9 +411,9 @@ flowchart LR
 
 当前 `knowledge_answer` 节点已支持“LLM 优先 + 规则降级”：
 
-- LLM 实现：`workflow/nodes/knowledge_answer/llm_qa.py`
-- 节点实现：`workflow/nodes/knowledge_answer/__init__.py`
-- 详细配置：`workflow/QA_LLM.md`
+- LLM 实现：`src/workflow/nodes/knowledge_answer/llm_qa.py`
+- 节点实现：`src/workflow/nodes/knowledge_answer/__init__.py`
+- 详细配置：`src/workflow/QA_LLM.md`
 - 启动脚本：`start_agent.ps1`（可在脚本中直接设置 LLM 参数并启动服务）
 
 若未配置 `WORKFLOW_QA_LLM_API_KEY` 或调用失败，系统会自动回退到规则模板回答，不影响主链路可用性。
@@ -422,24 +422,38 @@ flowchart LR
 
 仓库已提供检索评测包（Recall@K、MRR、引用命中率）：
 
-- 配置模板：`workflow/eval/config.template.json`
-- 评测脚本：`workflow/eval/run_retrieval_eval.py`
-- 启动脚本：`workflow/eval/run_retrieval_eval.ps1`
-- 用例数据：`workflow/eval/datasets/ad_engine_retrieval_eval.jsonl`
-- 使用说明：`workflow/eval/README.md`
+- 配置模板：`src/workflow/eval/config.template.json`
+- 评测脚本：`src/workflow/eval/run_retrieval_eval.py`
+- 启动脚本：`src/workflow/eval/run_retrieval_eval.ps1`
+- 用例数据：`domain/ad_engine/eval/datasets/ad_engine_retrieval_eval.jsonl`
+- 使用说明：`src/workflow/eval/README.md`
 
 ### 16.5 代码检索（retrieve_code v1）
 
 当前 `retrieve_code` 节点已接入第一版真实代码检索：
 
-- 检索器实现：`workflow/nodes/retrieve_code/code_retriever.py`
-- 节点接入：`workflow/nodes/retrieve_code/__init__.py`
-- 设计说明：`workflow/retrieve_code_v1.md`
+- 检索器实现：`src/workflow/nodes/retrieve_code/code_retriever.py`
+- 节点接入：`src/workflow/nodes/retrieve_code/__init__.py`
+- 设计说明：`src/workflow/retrieve_code_v1.md`
 
 代码检索评测脚本与数据：
 
-- 配置模板：`workflow/eval/config.code.template.json`
-- 评测脚本：`workflow/eval/run_code_retrieval_eval.py`
-- 启动脚本：`workflow/eval/run_code_retrieval_eval.ps1`
-- 评测数据：`workflow/eval/datasets/ad_engine_code_retrieval_eval.jsonl`
-- Mock 语料：`codes/`
+- 配置模板：`src/workflow/eval/config.code.template.json`
+- 评测脚本：`src/workflow/eval/run_code_retrieval_eval.py`
+- 启动脚本：`src/workflow/eval/run_code_retrieval_eval.ps1`
+- 评测数据：`domain/ad_engine/eval/datasets/ad_engine_code_retrieval_eval.jsonl`
+- Mock 语料：`domain/ad_engine/codes/`
+
+## 17. Domain Profile Update
+
+- Doc: `domain/DOMAIN_PROFILE.md`
+- Domain root: `domain/`
+- Default domain: `domain/ad_engine/profile.json`
+- Logistics example: `domain/logistics/profile.json`
+- API entry: `src/api/main.py` (`$env:PYTHONPATH='src'; python -m uvicorn api.main:app ...`)
+
+Domain selection env vars:
+
+- `WORKFLOW_DOMAIN_DIR`
+- `WORKFLOW_DOMAIN_PROFILE_DIR`
+- `WORKFLOW_DOMAIN_PROFILE_PATH`
