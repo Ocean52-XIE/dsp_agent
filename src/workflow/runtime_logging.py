@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现`runtime_logging` 相关能力与辅助逻辑。
+"""
 from __future__ import annotations
 
 import json
@@ -11,9 +15,20 @@ from workflow.utils import env_bool, env_int
 
 
 class WorkflowFileLogger:
-    """Minimal file logger for workflow runtime events."""
+    """
+    定义`WorkflowFileLogger`，用于封装相关数据结构与处理行为。
+    """
 
     def __init__(self, *, project_root: Path) -> None:
+        """
+        内部辅助函数，负责` init  ` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         self.project_root = Path(project_root)
         self.enabled = env_bool("WORKFLOW_FILE_LOG_ENABLED", True)
         self.level_name = str(os.getenv("WORKFLOW_FILE_LOG_LEVEL", "INFO") or "INFO").upper()
@@ -29,6 +44,15 @@ class WorkflowFileLogger:
         self._configure()
 
     def _configure(self) -> None:
+        """
+        内部辅助函数，负责`configure` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         if not self.enabled:
             return
         if self._logger.handlers:
@@ -53,9 +77,27 @@ class WorkflowFileLogger:
 
     @property
     def is_active(self) -> bool:
+        """
+        判断输入是否满足特定条件，并返回布尔结果。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `bool` 的处理结果。
+        """
         return self.enabled and self._configured and not self.init_error
 
     def status(self) -> dict[str, Any]:
+        """
+        执行`status` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         return {
             "enabled": self.enabled,
             "active": self.is_active,
@@ -65,6 +107,18 @@ class WorkflowFileLogger:
         }
 
     def _emit(self, level: str, event: str, **payload: Any) -> None:
+        """
+        内部辅助函数，负责`emit` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            level: 输入参数，用于控制当前处理逻辑。
+            event: 输入参数，用于控制当前处理逻辑。
+            **payload: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             return
         log_fn = getattr(self._logger, level, self._logger.info)
@@ -75,18 +129,73 @@ class WorkflowFileLogger:
         log_fn(message)
 
     def debug(self, event: str, **payload: Any) -> None:
+        """
+        执行`debug` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            event: 输入参数，用于控制当前处理逻辑。
+            **payload: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self._emit("debug", event, **payload)
 
     def info(self, event: str, **payload: Any) -> None:
+        """
+        执行`info` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            event: 输入参数，用于控制当前处理逻辑。
+            **payload: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self._emit("info", event, **payload)
 
     def warning(self, event: str, **payload: Any) -> None:
+        """
+        执行`warning` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            event: 输入参数，用于控制当前处理逻辑。
+            **payload: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self._emit("warning", event, **payload)
 
     def error(self, event: str, **payload: Any) -> None:
+        """
+        执行`error` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            event: 输入参数，用于控制当前处理逻辑。
+            **payload: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self._emit("error", event, **payload)
 
     def exception(self, event: str, **payload: Any) -> None:
+        """
+        执行`exception` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            event: 输入参数，用于控制当前处理逻辑。
+            **payload: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             return
         message = f"{event} | {json.dumps(payload, ensure_ascii=False, default=str, separators=(',', ':'))}" if payload else event
@@ -97,6 +206,12 @@ _LOGGER_SINGLETON: WorkflowFileLogger | None = None
 
 
 def get_file_logger(*, project_root: Path) -> WorkflowFileLogger:
+    """
+    执行`get file logger` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `WorkflowFileLogger` 的处理结果。
+    """
     global _LOGGER_SINGLETON
     if _LOGGER_SINGLETON is None:
         _LOGGER_SINGLETON = WorkflowFileLogger(project_root=project_root)

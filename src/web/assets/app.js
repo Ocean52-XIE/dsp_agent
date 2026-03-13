@@ -4,10 +4,10 @@ const state = {
   selectedMessageId: null,
   inlineCitationSelection: {},
   inlinePanelExpanded: {},
+  debugVerboseEnabled: false,
   composerHintTimer: null,
   sending: false,
   sidebarCollapsed: false,
-  inspectorCollapsed: false,
 };
 
 const SESSION_LIST_LIMIT = 20;
@@ -35,19 +35,10 @@ const elements = {
   composerInput: document.getElementById("composerInput"),
   composerHint: document.getElementById("composerHint"),
   sendButton: document.getElementById("sendButton"),
-  inspectorShell: document.getElementById("inspectorShell"),
-  inspectorBody: document.getElementById("inspectorBody"),
-  inspectorToggleBtn: document.getElementById("inspectorToggleBtn"),
-  inspectorToggleMiniBtn: document.getElementById("inspectorToggleMiniBtn"),
-  analysisPanel: document.getElementById("analysisPanel"),
-  citationPanel: document.getElementById("citationPanel"),
-  debugPanel: document.getElementById("debugPanel"),
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   restoreSidebarState();
-  restoreInspectorState();
-  normalizeStaticLabels();
   bindEvents();
   bootstrap().catch(handleError);
 });
@@ -62,18 +53,6 @@ function bindEvents() {
   if (elements.sidebarToggleMiniBtn) {
     elements.sidebarToggleMiniBtn.addEventListener("click", () => {
       setSidebarCollapsed(!state.sidebarCollapsed);
-    });
-  }
-
-  if (elements.inspectorToggleBtn) {
-    elements.inspectorToggleBtn.addEventListener("click", () => {
-      setInspectorCollapsed(!state.inspectorCollapsed);
-    });
-  }
-
-  if (elements.inspectorToggleMiniBtn) {
-    elements.inspectorToggleMiniBtn.addEventListener("click", () => {
-      setInspectorCollapsed(!state.inspectorCollapsed);
     });
   }
 
@@ -451,49 +430,22 @@ function setSidebarCollapsed(collapsed) {
   }
 }
 
-function restoreInspectorState() {
-  try {
-    const cached = window.localStorage.getItem("inspector_collapsed");
-    setInspectorCollapsed(cached === "1");
-  } catch (_error) {
-    setInspectorCollapsed(false);
-  }
-}
-
-function setInspectorCollapsed(collapsed) {
-  state.inspectorCollapsed = Boolean(collapsed);
-
-  if (elements.inspectorShell) {
-    elements.inspectorShell.classList.toggle("inspector-collapsed", state.inspectorCollapsed);
-  }
-  if (elements.contentGrid) {
-    elements.contentGrid.classList.toggle("inspector-collapsed", state.inspectorCollapsed);
-  }
-  if (elements.inspectorBody) {
-    elements.inspectorBody.setAttribute("aria-hidden", state.inspectorCollapsed ? "true" : "false");
-  }
-  if (elements.inspectorToggleBtn) {
-    elements.inspectorToggleBtn.setAttribute("aria-label", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
-    elements.inspectorToggleBtn.setAttribute("title", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
-  }
-  if (elements.inspectorToggleMiniBtn) {
-    elements.inspectorToggleMiniBtn.setAttribute("aria-label", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
-    elements.inspectorToggleMiniBtn.setAttribute("title", state.inspectorCollapsed ? "展开详情面板" : "收起详情面板");
-  }
-
-  try {
-    window.localStorage.setItem("inspector_collapsed", state.inspectorCollapsed ? "1" : "0");
-  } catch (_error) {
-    // ignore
-  }
-}
-
 async function bootstrap() {
   if (elements.messageList) {
     elements.messageList.innerHTML = `<div class="loading-shell">正在加载会话数据...</div>`;
   }
+  await refreshHealth();
   await refreshSessions();
   beginDraftSession();
+}
+
+async function refreshHealth() {
+  try {
+    const payload = await api("/api/health");
+    state.debugVerboseEnabled = Boolean(payload?.debug_verbose_enabled);
+  } catch (_error) {
+    state.debugVerboseEnabled = false;
+  }
 }
 
 async function api(path, options = {}) {
@@ -631,7 +583,6 @@ function renderAll() {
   renderSessionList();
   renderWorkspace();
   renderMessages();
-  renderSelectedPanels();
 }
 
 function isDraftComposerMode() {
@@ -766,13 +717,6 @@ function renderMessages() {
 
   elements.messageList.innerHTML = visibleMessages.map((message) => renderMessageCard(message)).join("");
   normalizeInlineDebugLabels();
-}
-
-function normalizeStaticLabels() {
-  const inspectorDebugTitle = document.querySelector("#debugPanel")?.closest(".panel-block")?.querySelector(".panel-block-header h4");
-  if (inspectorDebugTitle) {
-    inspectorDebugTitle.textContent = "调试信息";
-  }
 }
 
 function normalizeInlineDebugLabels() {
@@ -985,30 +929,95 @@ function getInlineCitationSelectionIndex(messageId, citationCount) {
   return 0;
 }
 
+function formatLatencyMs(value) {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+    return `${value} ms`;
+  }
+  return "--";
+}
+
+function asYesNoUnknown(value) {
+  if (typeof value !== "boolean") {
+    return "--";
+  }
+  return value ? "yes" : "no";
+}
+
+function resolveLLMCallStatus(message, debug) {
+  if (!state.debugVerboseEnabled) {
+    return null;
+  }
+  const fromDebug = debug?.llm_call_status;
+  if (fromDebug && typeof fromDebug === "object" && Object.keys(fromDebug).length > 0) {
+    return fromDebug;
+  }
+  const fromAnalysis = message?.analysis?.llm_call_status;
+  if (fromAnalysis && typeof fromAnalysis === "object" && Object.keys(fromAnalysis).length > 0) {
+    return fromAnalysis;
+  }
+  return null;
+}
+
+function renderLLMDebugCards(llmCallStatus) {
+  if (!llmCallStatus) {
+    return "";
+  }
+  return [
+    renderDebugCard("llm_status", llmCallStatus.status || "--"),
+    renderDebugCard("llm_success", llmCallStatus.status === "success" ? "yes" : llmCallStatus.status ? "no" : "--"),
+    renderDebugCard("llm_latency", formatLatencyMs(llmCallStatus.latency_ms)),
+    renderDebugCard("llm_attempts", llmCallStatus.attempts ?? "--"),
+    renderDebugCard("llm_request_sent", asYesNoUnknown(llmCallStatus.request_sent)),
+    renderDebugCard("llm_reason", llmCallStatus.reason || "--"),
+    renderDebugCard("llm_model", llmCallStatus.model || "--"),
+  ].join("");
+}
+
 function buildInlineDebugPanel(message) {
-  const debug = message.debug;
-  if (!debug || typeof debug !== "object" || Object.keys(debug).length === 0) {
+  const rawDebug = message?.debug;
+  const debug = rawDebug && typeof rawDebug === "object" ? rawDebug : {};
+  const hasDebugPayload = Object.keys(debug).length > 0;
+  const shouldRenderDebugPanel =
+    hasDebugPayload || state.debugVerboseEnabled || Boolean(message.trace_id) || message.role === "assistant";
+  if (!shouldRenderDebugPanel) {
     return "";
   }
   const expanded = isInlinePanelExpanded(message.id, "debug");
   const collapsedClass = expanded ? "" : " is-collapsed";
+  const latencyValue = formatLatencyMs(debug.latency_ms);
+  const llmCallStatus = resolveLLMCallStatus(message, debug);
   const gridItems = [
     renderDebugCard("message_id", message.id || "--"),
     renderDebugCard("trace_id", message.trace_id || "--"),
     renderDebugCard("route", debug.route || message.intent || "--"),
     renderDebugCard("status", message.status || "--"),
     renderDebugCard("domain", stringifyMetric(debug.domain_relevance)),
-    renderDebugCard("latency", debug.latency_ms ? `${debug.latency_ms} ms` : "--"),
+    renderDebugCard("latency", latencyValue),
     renderDebugCard("backend", debug.graph_backend || "--"),
     renderDebugCard("next_action", debug.next_action || "--"),
   ];
+  if (llmCallStatus) {
+    gridItems.push(renderDebugCard("llm_status", llmCallStatus.status || "--"));
+    gridItems.push(
+      renderDebugCard("llm_success", llmCallStatus.status === "success" ? "yes" : llmCallStatus.status ? "no" : "--")
+    );
+    gridItems.push(renderDebugCard("llm_latency", formatLatencyMs(llmCallStatus.latency_ms)));
+    gridItems.push(renderDebugCard("llm_attempts", llmCallStatus.attempts ?? "--"));
+    gridItems.push(renderDebugCard("llm_request_sent", asYesNoUnknown(llmCallStatus.request_sent)));
+    gridItems.push(renderDebugCard("llm_reason", llmCallStatus.reason || "--"));
+    gridItems.push(renderDebugCard("llm_model", llmCallStatus.model || "--"));
+  }
 
   const hasAnyDebug =
+    Boolean(message.trace_id) ||
+    Boolean(message.intent) ||
+    Boolean(message.status) ||
     Boolean(debug.route) ||
     Boolean(debug.graph_backend) ||
     Boolean(debug.next_action) ||
     typeof debug.latency_ms === "number" ||
-    typeof debug.domain_relevance === "number";
+    typeof debug.domain_relevance === "number" ||
+    Boolean(llmCallStatus);
 
   const content = hasAnyDebug
     ? `
@@ -1038,27 +1047,6 @@ function buildInlineDebugPanel(message) {
       <div class="message-inline-panel-body">${content}</div>
     </section>
   `;
-}
-
-function renderSelectedPanels() {
-  const selectedMessage = getSelectedMessage();
-  renderAnalysisPanel(selectedMessage);
-  renderCitationPanel(selectedMessage);
-  renderDebugPanel(selectedMessage);
-}
-
-function getSelectedMessage() {
-  if (!state.currentSession) {
-    return null;
-  }
-
-  const visibleMessages = getVisibleMessages(state.currentSession.messages);
-  return (
-    visibleMessages.find((message) => message.id === state.selectedMessageId) ||
-    [...visibleMessages].reverse().find((message) => message.role === "assistant") ||
-    visibleMessages.at(-1) ||
-    null
-  );
 }
 
 function isSystemBootstrapMessage(message) {
@@ -1093,112 +1081,6 @@ function resolveSelectedMessageId(session, preferredMessageId = null) {
   return latestAssistant?.id || visibleMessages.at(-1)?.id || null;
 }
 
-function renderAnalysisPanel(message) {
-  if (!elements.analysisPanel) {
-    return;
-  }
-  if (!message?.analysis) {
-    elements.analysisPanel.innerHTML = `<div class="empty-state">选中一条助手消息后，这里会显示问答摘要、关联模块和补充说明。</div>`;
-    return;
-  }
-
-  const analysis = message.analysis;
-  const metrics = [];
-  if (analysis.module) {
-    metrics.push(renderMetricCard("目标模块", analysis.module));
-  }
-  if (analysis.confidence) {
-    metrics.push(renderMetricCard("置信度", analysis.confidence));
-  }
-  if (analysis.summary) {
-    metrics.push(renderMetricCard("摘要", analysis.summary));
-  }
-
-  const sections = [];
-  if (analysis.root_cause) {
-    sections.push(renderListCard("根因判断", [analysis.root_cause]));
-  }
-  if (Array.isArray(analysis.fix_plan)) {
-    sections.push(renderListCard("修复建议", analysis.fix_plan));
-  }
-  if (Array.isArray(analysis.risks)) {
-    sections.push(renderListCard("风险提示", analysis.risks));
-  }
-  if (Array.isArray(analysis.verification_steps)) {
-    sections.push(renderListCard("验证步骤", analysis.verification_steps));
-  }
-  if (Array.isArray(analysis.patch_summary)) {
-    sections.push(renderListCard("补丁摘要", analysis.patch_summary));
-  }
-  if (Array.isArray(analysis.test_plan)) {
-    sections.push(renderListCard("测试建议", analysis.test_plan));
-  }
-  if (Array.isArray(analysis.highlights)) {
-    sections.push(renderListCard("补充说明", analysis.highlights));
-  }
-  if (Array.isArray(analysis.files)) {
-    sections.push(renderListCard("涉及文件", analysis.files));
-  }
-  if (analysis.snippet) {
-    sections.push(`
-      <div class="snippet-card">
-        <div class="citation-title">代码片段建议</div>
-        <pre>${escapeHtml(analysis.snippet)}</pre>
-      </div>
-    `);
-  }
-
-  elements.analysisPanel.innerHTML = `
-    <div class="inline-grid">${metrics.join("")}</div>
-    <div class="analysis-list">${sections.join("")}</div>
-  `;
-}
-
-function renderCitationPanel(message) {
-  if (!elements.citationPanel) {
-    return;
-  }
-  if (!Array.isArray(message?.citations) || message.citations.length === 0) {
-    elements.citationPanel.innerHTML = `<div class="empty-state">当前还没有引用证据。</div>`;
-    return;
-  }
-
-  elements.citationPanel.innerHTML = `
-    <div class="citation-list">
-      ${message.citations.map((citation) => renderCitationCard(citation)).join("")}
-    </div>
-  `;
-}
-
-function renderDebugPanel(message) {
-  if (!elements.debugPanel) {
-    return;
-  }
-  if (!message) {
-    elements.debugPanel.innerHTML = `<div class="empty-state">等待本轮 trace、路由与耗时信息。</div>`;
-    return;
-  }
-
-  const debug = message.debug;
-  if (!debug || typeof debug !== "object" || Object.keys(debug).length === 0) {
-    elements.debugPanel.innerHTML = `<div class="empty-state">当前未返回调试信息（可能未开启系统调试开关）。</div>`;
-    return;
-  }
-  elements.debugPanel.innerHTML = `
-    <div class="debug-grid">
-      ${renderDebugCard("message_id", message.id)}
-      ${renderDebugCard("trace_id", message.trace_id || "--")}
-      ${renderDebugCard("route", debug.route || message.intent || "--")}
-      ${renderDebugCard("status", message.status || "--")}
-      ${renderDebugCard("domain", stringifyMetric(debug.domain_relevance))}
-      ${renderDebugCard("latency", debug.latency_ms ? `${debug.latency_ms} ms` : "--")}
-      ${renderDebugCard("backend", debug.graph_backend || "--")}
-      ${renderDebugCard("next_action", debug.next_action || "--")}
-    </div>
-    ${renderPathCard(debug.graph_path)}
-  `;
-}
-
 function updateBadges(route, status) {
   if (!elements.routeBadge || !elements.statusBadge) {
     return;
@@ -1228,12 +1110,6 @@ function setPending(pending) {
   if (elements.sidebarToggleMiniBtn) {
     elements.sidebarToggleMiniBtn.disabled = pending;
   }
-  if (elements.inspectorToggleBtn) {
-    elements.inspectorToggleBtn.disabled = pending;
-  }
-  if (elements.inspectorToggleMiniBtn) {
-    elements.inspectorToggleMiniBtn.disabled = pending;
-  }
 }
 
 function scrollMessagesToBottom() {
@@ -1261,37 +1137,7 @@ function scrollMessagesToBottom() {
 
 function handleError(error) {
   updateBadges("error", "error");
-  if (elements.debugPanel) {
-    elements.debugPanel.innerHTML = `
-      <div class="debug-card">
-        <div class="debug-label">error</div>
-        <div class="debug-value">${escapeHtml(error.message || String(error))}</div>
-      </div>
-    `;
-  }
-}
-
-function renderMetricCard(label, value) {
-  return `
-    <div class="metric-card">
-      <div class="metric-label">${escapeHtml(label)}</div>
-      <div class="metric-value">${escapeHtml(value)}</div>
-    </div>
-  `;
-}
-
-function renderListCard(label, items) {
-  if (!items || items.length === 0) {
-    return "";
-  }
-  return `
-    <div class="list-card">
-      <div class="citation-title">${escapeHtml(label)}</div>
-      <ul>
-        ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-      </ul>
-    </div>
-  `;
+  console.error(error);
 }
 
 function detectCitationLanguage(citation) {

@@ -26,14 +26,14 @@ param(
 # LLM CONFIG (EDIT THIS BLOCK)
 # ============================
 $QA_LLM_ENABLED = "true"
-$QA_LLM_BASE_URL = "-"
-$QA_LLM_API_KEY = "-"
+$QA_LLM_BASE_URL = "https://api.deepseek.com/v1"
+$QA_LLM_API_KEY = "sk-e6d6c6e197834f538d7cd40021f382c2"
 $QA_LLM_MODEL = "deepseek-chat"
 $QA_LLM_TIMEOUT_SECONDS = "120"
 $QA_LLM_TEMPERATURE = "0.2"
 $QA_LLM_MAX_TOKENS = "1600"
 $WORKFLOW_DOMAIN_DIR = $DomainDir
-$WORKFLOW_DEBUG_VERBOSE = "false"
+$WORKFLOW_DEBUG_VERBOSE = "true"
 # Runtime file logging config
 $WORKFLOW_FILE_LOG_ENABLED = "true"
 $WORKFLOW_FILE_LOG_LEVEL = "INFO"

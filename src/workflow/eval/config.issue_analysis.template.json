@@ -1,0 +1,7 @@
+{
+  "dataset_path": "domain/ad_engine/eval/datasets/ad_engine_issue_analysis_eval.jsonl",
+  "output_path": "src/workflow/eval/results/latest_issue_analysis_eval_report.json",
+  "session_id_prefix": "issue_eval_sess",
+  "trace_id_prefix": "issue_eval_trace",
+  "save_per_case": true
+}

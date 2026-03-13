@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现`postgres_bootstrap` 相关能力与辅助逻辑。
+"""
 from __future__ import annotations
 
 """PostgreSQL 启动引导工具。
@@ -16,14 +20,31 @@ from urllib.parse import urlsplit, urlunsplit
 
 
 def _extract_db_name_from_dsn(dsn: str) -> str:
-    """从 DSN 中提取目标数据库名称。"""
+    """
+    内部辅助函数，负责`extract db name from dsn` 相关处理。
+    
+    参数:
+        dsn: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     parsed = urlsplit(dsn)
     db_name = (parsed.path or "").lstrip("/")
     return db_name
 
 
 def _build_bootstrap_dsn(target_dsn: str, bootstrap_db: str) -> str:
-    """把目标 DSN 替换为 bootstrap 数据库 DSN。"""
+    """
+    构建当前步骤所需的数据结构或文本内容。
+    
+    参数:
+        target_dsn: 输入参数，用于控制当前处理逻辑。
+        bootstrap_db: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     parsed = urlsplit(target_dsn)
     bootstrap_path = f"/{bootstrap_db.strip()}"
     return urlunsplit((parsed.scheme, parsed.netloc, bootstrap_path, parsed.query, parsed.fragment))
@@ -35,15 +56,11 @@ def ensure_database_exists(
     dsn: str,
     connect_timeout_seconds: int,
 ) -> None:
-    """确保目标数据库存在。
-
-    参数：
-    - psycopg_module: 已导入的 psycopg 模块对象。
-    - dsn: 业务目标数据库 DSN。
-    - connect_timeout_seconds: 连接超时秒数。
-
-    环境变量：
-    - WORKFLOW_PG_BOOTSTRAP_DB: bootstrap 数据库名（默认 `postgres`）。
+    """
+    执行`ensure database exists` 相关处理逻辑。
+    
+    返回:
+        无返回值。
     """
     normalized_dsn = (dsn or "").strip()
     if not normalized_dsn:

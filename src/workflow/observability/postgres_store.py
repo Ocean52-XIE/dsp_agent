@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现可观测性能力，负责日志、追踪或持久化记录。
+"""
 from __future__ import annotations
 
 """PostgreSQL 可观测性存储模块。
@@ -29,9 +33,15 @@ from workflow.utils import normalize_source_type, to_bool, to_float, to_int
 
 
 def _sanitize_identifier(value: str, default: str) -> str:
-    """校验 SQL 标识符（schema/table/column）。
-
-    仅允许字母数字下划线，避免将用户输入直接拼接到 DDL 中。
+    """
+    内部辅助函数，负责`sanitize identifier` 相关处理。
+    
+    参数:
+        value: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
     """
     normalized = (value or "").strip()
     if not normalized:
@@ -43,7 +53,9 @@ def _sanitize_identifier(value: str, default: str) -> str:
 
 @dataclass
 class PostgresObservabilityConfig:
-    """PostgreSQL 可观测性配置。"""
+    """
+    定义`PostgresObservabilityConfig`，用于封装相关数据结构与处理行为。
+    """
 
     enabled: bool
     dsn: str
@@ -60,7 +72,15 @@ class PostgresObservabilityConfig:
 
     @classmethod
     def from_env(cls) -> "PostgresObservabilityConfig":
-        """从环境变量读取配置。"""
+        """
+        执行`from env` 相关处理逻辑。
+        
+        参数:
+            cls: 当前类对象。
+        
+        返回:
+            返回类型为 `'PostgresObservabilityConfig'` 的处理结果。
+        """
         dsn = os.getenv("WORKFLOW_OBS_PG_DSN", "").strip()
         enabled_default = bool(dsn)
         return cls(
@@ -95,9 +115,21 @@ class PostgresObservabilityConfig:
 
 
 class PostgresObservabilityStore:
-    """PostgreSQL 可观测性存储实现。"""
+    """
+    定义`PostgresObservabilityStore`，用于封装相关数据结构与处理行为。
+    """
 
     def __init__(self, config: PostgresObservabilityConfig) -> None:
+        """
+        内部辅助函数，负责` init  ` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            config: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self.config = config
         self._init_error: str | None = None
         self._psycopg: Any | None = None
@@ -142,16 +174,40 @@ class PostgresObservabilityStore:
 
     @classmethod
     def from_env(cls) -> "PostgresObservabilityStore":
-        """从环境变量创建存储对象。"""
+        """
+        执行`from env` 相关处理逻辑。
+        
+        参数:
+            cls: 当前类对象。
+        
+        返回:
+            返回类型为 `'PostgresObservabilityStore'` 的处理结果。
+        """
         return cls(PostgresObservabilityConfig.from_env())
 
     @property
     def is_active(self) -> bool:
-        """当前是否已激活可写数据库状态。"""
+        """
+        判断输入是否满足特定条件，并返回布尔结果。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `bool` 的处理结果。
+        """
         return bool(self.config.enabled and self._psycopg is not None)
 
     def status(self) -> dict[str, Any]:
-        """返回可观测模块状态，供 health 接口直接透出。"""
+        """
+        执行`status` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         return {
             "enabled": self.config.enabled,
             "active": self.is_active,
@@ -161,7 +217,15 @@ class PostgresObservabilityStore:
         }
 
     def _connect(self) -> Any:
-        """创建数据库连接（调用方负责 with 关闭）。"""
+        """
+        内部辅助函数，负责`connect` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `Any` 的处理结果。
+        """
         if self._psycopg is None:
             raise RuntimeError("psycopg_unavailable")
         return self._psycopg.connect(
@@ -171,14 +235,28 @@ class PostgresObservabilityStore:
         )
 
     def _table(self, name: str) -> str:
-        """拼接带 schema 的表名。"""
+        """
+        内部辅助函数，负责`table` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            name: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            返回类型为 `str` 的处理结果。
+        """
         safe_name = _sanitize_identifier(name, name)
         return f"{self.config.schema}.{safe_name}"
 
     def ensure_schema(self) -> None:
-        """创建可观测性所需表与索引。
-
-        为了降低部署门槛，这里采用“应用启动自动建表”。
+        """
+        执行`ensure schema` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
         """
         if not self.is_active:
             return
@@ -318,7 +396,15 @@ class PostgresObservabilityStore:
         user_query: str,
         assistant_message: dict[str, Any],
     ) -> None:
-        """记录一条问答明细，并触发窗口告警计算。"""
+        """
+        执行`record turn` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             self._logger.debug("observability.store.record_turn.skipped", reason="inactive_store")
             return
@@ -477,7 +563,15 @@ class PostgresObservabilityStore:
         comment: str,
         payload: dict[str, Any] | None = None,
     ) -> None:
-        """记录人工反馈。"""
+        """
+        执行`record feedback` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             self._logger.debug("observability.store.record_feedback.skipped", reason="inactive_store")
             return
@@ -523,7 +617,15 @@ class PostgresObservabilityStore:
             return
 
     def get_summary(self, *, window_minutes: int) -> dict[str, Any]:
-        """查询最近窗口指标摘要。"""
+        """
+        执行`get summary` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         if not self.is_active:
             self._logger.debug(
                 "observability.store.get_summary.skipped",
@@ -583,7 +685,15 @@ class PostgresObservabilityStore:
             return self._empty_summary(window_minutes=window_minutes)
 
     def list_alerts(self, *, limit: int = 50) -> list[dict[str, Any]]:
-        """查询最近告警事件。"""
+        """
+        执行`list alerts` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `list[dict[str, Any]]` 的处理结果。
+        """
         if not self.is_active:
             self._logger.debug("observability.store.list_alerts.skipped", reason="inactive_store", limit=int(limit))
             return []
@@ -634,7 +744,15 @@ class PostgresObservabilityStore:
             return []
 
     def _empty_summary(self, *, window_minutes: int) -> dict[str, Any]:
-        """数据库不可用时的空摘要。"""
+        """
+        内部辅助函数，负责`empty summary` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         return {
             "window_minutes": int(window_minutes),
             "sample_size": 0,
@@ -648,7 +766,15 @@ class PostgresObservabilityStore:
         }
 
     def _get_top_failed_queries(self, *, window_minutes: int, limit: int) -> list[dict[str, Any]]:
-        """统计最近窗口 exact_like 失败最多的 query。"""
+        """
+        内部辅助函数，负责`get top failed queries` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `list[dict[str, Any]]` 的处理结果。
+        """
         sql = f"""
         SELECT
             user_query,
@@ -683,7 +809,15 @@ class PostgresObservabilityStore:
         return items
 
     def _evaluate_alerts(self) -> None:
-        """基于窗口指标执行阈值告警。"""
+        """
+        内部辅助函数，负责`evaluate alerts` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             return
         summary = self.get_summary(window_minutes=self.config.alert_window_minutes)
@@ -752,7 +886,15 @@ class PostgresObservabilityStore:
         self._insert_snapshot(summary=summary)
 
     def _has_recent_alert(self, *, alert_type: str, within_minutes: int) -> bool:
-        """判断近期是否已有同类型告警，用于告警抑制。"""
+        """
+        内部辅助函数，负责`has recent alert` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `bool` 的处理结果。
+        """
         sql = f"""
         SELECT 1
         FROM {self._table("qa_alert_event")}
@@ -777,7 +919,15 @@ class PostgresObservabilityStore:
         sample_size: int,
         summary: dict[str, Any],
     ) -> None:
-        """写入告警事件。"""
+        """
+        内部辅助函数，负责`insert alert` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         sql = f"""
         INSERT INTO {self._table("qa_alert_event")} (
             alert_type, severity, metric_name, metric_value, threshold, window_minutes, sample_size, status, detail
@@ -804,7 +954,15 @@ class PostgresObservabilityStore:
                 )
 
     def _insert_snapshot(self, *, summary: dict[str, Any]) -> None:
-        """写入窗口指标快照，便于做趋势图。"""
+        """
+        内部辅助函数，负责`insert snapshot` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         sql = f"""
         INSERT INTO {self._table("qa_metric_snapshot")} (
             window_minutes, sample_size, empty_response_rate, fallback_rate, insufficient_rate,

@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现`utils` 相关能力与辅助逻辑。
+"""
 from __future__ import annotations
 
 import os
@@ -9,7 +13,16 @@ _FALSE_VALUES = {"0", "false", "no", "n", "off"}
 
 
 def to_bool(raw_value: str | None, default: bool) -> bool:
-    """Convert a raw string value to bool with a default fallback."""
+    """
+    执行`to bool` 相关处理逻辑。
+    
+    参数:
+        raw_value: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `bool` 的处理结果。
+    """
     if raw_value is None:
         return default
     normalized = raw_value.strip().lower()
@@ -21,7 +34,16 @@ def to_bool(raw_value: str | None, default: bool) -> bool:
 
 
 def to_int(raw_value: str | None, default: int) -> int:
-    """Convert a raw string value to int with a default fallback."""
+    """
+    执行`to int` 相关处理逻辑。
+    
+    参数:
+        raw_value: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     if raw_value is None:
         return default
     try:
@@ -31,7 +53,16 @@ def to_int(raw_value: str | None, default: int) -> int:
 
 
 def to_float(raw_value: str | None, default: float) -> float:
-    """Convert a raw string value to float with a default fallback."""
+    """
+    执行`to float` 相关处理逻辑。
+    
+    参数:
+        raw_value: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     if raw_value is None:
         return default
     try:
@@ -41,12 +72,31 @@ def to_float(raw_value: str | None, default: float) -> float:
 
 
 def env_bool(name: str, default: bool) -> bool:
-    """Read an environment variable and parse it as bool."""
+    """
+    执行`env bool` 相关处理逻辑。
+    
+    参数:
+        name: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `bool` 的处理结果。
+    """
     return to_bool(os.getenv(name), default)
 
 
 def env_int(name: str, default: int, minimum: int | None = None) -> int:
-    """Read an environment variable and parse it as int."""
+    """
+    执行`env int` 相关处理逻辑。
+    
+    参数:
+        name: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+        minimum: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     value = to_int(os.getenv(name), default)
     if minimum is not None:
         return max(value, minimum)
@@ -54,7 +104,17 @@ def env_int(name: str, default: int, minimum: int | None = None) -> int:
 
 
 def env_float(name: str, default: float, minimum: float | None = None) -> float:
-    """Read an environment variable and parse it as float."""
+    """
+    执行`env float` 相关处理逻辑。
+    
+    参数:
+        name: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+        minimum: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     value = to_float(os.getenv(name), default)
     if minimum is not None:
         return max(value, minimum)
@@ -62,7 +122,15 @@ def env_float(name: str, default: float, minimum: float | None = None) -> float:
 
 
 def normalize_source_type(raw_source: Any) -> str:
-    """Normalize evidence source type to a stable enum value."""
+    """
+    执行`normalize source type` 相关处理逻辑。
+    
+    参数:
+        raw_source: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     normalized = str(raw_source or "").strip().lower()
     if normalized.startswith("wiki"):
         return "wiki"

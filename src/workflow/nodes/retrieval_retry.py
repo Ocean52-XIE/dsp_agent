@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现工作流节点`nodes` 的处理逻辑，负责读取状态并输出增量结果。
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,6 +14,9 @@ _GRADE_RANK = {"high": 4, "medium": 3, "low": 2, "insufficient": 1, "disabled": 
 
 @dataclass
 class RetrySearchResult:
+    """
+    定义`RetrySearchResult`，用于封装相关数据结构与处理行为。
+    """
     first_items: list[dict[str, Any]]
     final_items: list[dict[str, Any]]
     first_grade: str
@@ -22,7 +29,15 @@ class RetrySearchResult:
 
 
 def dedupe_normalized_queries(queries: list[str], *, limit: int | None = None) -> list[str]:
-    """Normalize whitespace, drop empty rows, and dedupe case-insensitively."""
+    """
+    执行`dedupe normalized queries` 相关处理逻辑。
+    
+    参数:
+        queries: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `list[str]` 的处理结果。
+    """
     deduped: list[str] = []
     seen: set[str] = set()
     for query in queries:
@@ -50,7 +65,12 @@ def run_with_retry(
     grade: Callable[[list[dict[str, Any]]], str],
     should_retry: Callable[[str, float], bool],
 ) -> RetrySearchResult:
-    """Run retrieval once, optionally retry with expanded queries, and pick best result."""
+    """
+    执行对应子流程并返回执行结果。
+    
+    返回:
+        返回类型为 `RetrySearchResult` 的处理结果。
+    """
     started = perf_counter()
     first_items = search(top_k, base_queries)
     first_grade = grade(first_items)

@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现评测流程，负责样本执行、指标统计与结果输出。
+"""
 from __future__ import annotations
 
 """Wiki 切片导出工具。
@@ -22,10 +26,19 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from workflow.nodes.retrieve_wiki.wiki_retriever import MarkdownWikiRetriever  # noqa: E402
+from workflow.nodes.retrieval_flow.retrieve_wiki.wiki_retriever import MarkdownWikiRetriever  # noqa: E402
 
 
 def _display_path(path: Path) -> str:
+    """
+    内部辅助函数，负责`display path` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     try:
         return path.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
@@ -38,6 +51,12 @@ def _build_export_payload(
     default_top_k: int,
     max_content_chars: int,
 ) -> dict[str, Any]:
+    """
+    构建当前步骤所需的数据结构或文本内容。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     retriever = MarkdownWikiRetriever(
         wiki_dir=wiki_dir,
         project_root=PROJECT_ROOT,
@@ -89,6 +108,15 @@ def _build_export_payload(
 
 
 def _render_markdown(payload: dict[str, Any]) -> str:
+    """
+    内部辅助函数，负责`render markdown` 相关处理。
+    
+    参数:
+        payload: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     lines: list[str] = []
     lines.append("# Wiki 切片导出结果")
     lines.append("")
@@ -119,6 +147,12 @@ def _render_markdown(payload: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    """
+    执行`main` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     parser = argparse.ArgumentParser(description="Export wiki chunk snapshot per document.")
     parser.add_argument(
         "--wiki-dir",

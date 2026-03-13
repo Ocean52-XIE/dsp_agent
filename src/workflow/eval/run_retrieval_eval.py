@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现评测流程，负责样本执行、指标统计与结果输出。
+"""
 from __future__ import annotations
 
 """检索评测脚本。
@@ -32,7 +36,9 @@ from workflow.engine import WorkflowService  # noqa: E402
 
 @dataclass
 class EvalCase:
-    """单条评测样本。"""
+    """
+    定义`EvalCase`，用于封装相关数据结构与处理行为。
+    """
 
     case_id: str
     query: str
@@ -43,12 +49,29 @@ class EvalCase:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    """
+    内部辅助函数，负责`load json` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def _display_path(path: Path) -> str:
-    """优先返回相对项目根目录路径，失败时回退绝对路径。"""
+    """
+    内部辅助函数，负责`display path` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     try:
         return path.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
@@ -56,7 +79,15 @@ def _display_path(path: Path) -> str:
 
 
 def _load_dataset(path: Path) -> list[EvalCase]:
-    """读取 JSONL 评测集。"""
+    """
+    内部辅助函数，负责`load dataset` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `list[EvalCase]` 的处理结果。
+    """
     items: list[EvalCase] = []
     with path.open("r", encoding="utf-8") as file:
         for line_number, raw_line in enumerate(file, start=1):
@@ -86,7 +117,16 @@ def _load_dataset(path: Path) -> list[EvalCase]:
 
 
 def _reciprocal_rank(retrieved_paths: list[str], gold_paths: set[str]) -> float:
-    """计算首个命中的倒数排名（MRR 核心）。"""
+    """
+    内部辅助函数，负责`reciprocal rank` 相关处理。
+    
+    参数:
+        retrieved_paths: 列表参数，用于承载批量输入数据。
+        gold_paths: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     for index, path in enumerate(retrieved_paths, start=1):
         if path in gold_paths:
             return 1.0 / index
@@ -94,13 +134,32 @@ def _reciprocal_rank(retrieved_paths: list[str], gold_paths: set[str]) -> float:
 
 
 def _compute_recall_at_k(retrieved_paths: list[str], gold_paths: set[str], k: int) -> float:
-    """计算单条样本的 Recall@K（命中为 1，否则为 0）。"""
+    """
+    内部辅助函数，负责`compute recall at k` 相关处理。
+    
+    参数:
+        retrieved_paths: 列表参数，用于承载批量输入数据。
+        gold_paths: 列表参数，用于承载批量输入数据。
+        k: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     top_k = retrieved_paths[:k]
     return 1.0 if any(path in gold_paths for path in top_k) else 0.0
 
 
 def _build_retrieval_queries(service: WorkflowService, query: str) -> tuple[str, str, list[str]]:
-    """复用现有 workflow 逻辑生成检索语句。"""
+    """
+    构建当前步骤所需的数据结构或文本内容。
+    
+    参数:
+        service: 工作流服务对象，提供检索、路由、日志与配置能力。
+        query: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `tuple[str, str, list[str]]` 的处理结果。
+    """
     module_name, module_hint = service._infer_module(query)
     rewritten = service._query_rewriter(  # 这里直接调用节点方法，保持与线上链路一致。
         {
@@ -115,6 +174,15 @@ def _build_retrieval_queries(service: WorkflowService, query: str) -> tuple[str,
 
 
 def run_eval(config_path: Path) -> dict[str, Any]:
+    """
+    执行对应子流程并返回执行结果。
+    
+    参数:
+        config_path: 路径参数，用于定位文件或目录。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     config = _load_json(config_path)
     dataset_path = (PROJECT_ROOT / config["dataset_path"]).resolve()
     output_path = (PROJECT_ROOT / config["output_path"]).resolve()
@@ -226,6 +294,12 @@ def run_eval(config_path: Path) -> dict[str, Any]:
 
 
 def main() -> int:
+    """
+    执行`main` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     parser = argparse.ArgumentParser(description="Run retrieval evaluation (Recall@K, MRR, citation hit rate).")
     parser.add_argument(
         "--config",

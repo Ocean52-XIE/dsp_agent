@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现评测流程，负责样本执行、指标统计与结果输出。
+"""
 from __future__ import annotations
 
 """代码检索评测脚本（retrieve_code 第一版本）。
@@ -30,12 +34,14 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from workflow.nodes.retrieve_code.code_retriever import LocalCodeRetriever  # noqa: E402
+from workflow.nodes.retrieval_flow.retrieve_code.code_retriever import LocalCodeRetriever  # noqa: E402
 
 
 @dataclass
 class CodeEvalCase:
-    """单条代码检索评测样本。"""
+    """
+    定义`CodeEvalCase`，用于封装相关数据结构与处理行为。
+    """
 
     case_id: str
     query: str
@@ -48,11 +54,29 @@ class CodeEvalCase:
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    """
+    内部辅助函数，负责`load json` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def _display_path(path: Path) -> str:
+    """
+    内部辅助函数，负责`display path` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     try:
         return path.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
@@ -60,12 +84,31 @@ def _display_path(path: Path) -> str:
 
 
 def _normalize_text(text: str) -> str:
+    """
+    内部辅助函数，负责`normalize text` 相关处理。
+    
+    参数:
+        text: 待处理的文本内容。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     lowered = text.lower()
     no_spaces = re.sub(r"\s+", "", lowered)
     return re.sub(r"[`~!@#$%^&*()\-_=+\[\]{}\\|;:'\",.<>/?，。！？；：、“”‘’（）【】《》]", "", no_spaces)
 
 
 def _contains_text(haystack: str, needle: str) -> bool:
+    """
+    内部辅助函数，负责`contains text` 相关处理。
+    
+    参数:
+        haystack: 输入参数，用于控制当前处理逻辑。
+        needle: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `bool` 的处理结果。
+    """
     normalized_haystack = _normalize_text(haystack)
     normalized_needle = _normalize_text(needle)
     if not normalized_needle:
@@ -74,6 +117,15 @@ def _contains_text(haystack: str, needle: str) -> bool:
 
 
 def _load_dataset(path: Path) -> list[CodeEvalCase]:
+    """
+    内部辅助函数，负责`load dataset` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `list[CodeEvalCase]` 的处理结果。
+    """
     items: list[CodeEvalCase] = []
     with path.open("r", encoding="utf-8") as file:
         for line_number, raw_line in enumerate(file, start=1):
@@ -107,11 +159,32 @@ def _load_dataset(path: Path) -> list[CodeEvalCase]:
 
 
 def _compute_recall_at_k(retrieved_paths: list[str], gold_paths: set[str], k: int) -> float:
+    """
+    内部辅助函数，负责`compute recall at k` 相关处理。
+    
+    参数:
+        retrieved_paths: 列表参数，用于承载批量输入数据。
+        gold_paths: 列表参数，用于承载批量输入数据。
+        k: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     top_k_paths = retrieved_paths[:k]
     return 1.0 if any(path in gold_paths for path in top_k_paths) else 0.0
 
 
 def _reciprocal_rank(retrieved_paths: list[str], gold_paths: set[str]) -> float:
+    """
+    内部辅助函数，负责`reciprocal rank` 相关处理。
+    
+    参数:
+        retrieved_paths: 列表参数，用于承载批量输入数据。
+        gold_paths: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     for index, path in enumerate(retrieved_paths, start=1):
         if path in gold_paths:
             return 1.0 / index
@@ -119,7 +192,17 @@ def _reciprocal_rank(retrieved_paths: list[str], gold_paths: set[str]) -> float:
 
 
 def _compute_symbol_hit_at_k(hits: list[dict[str, Any]], gold_symbols: list[str], k: int) -> float:
-    """判断 TopK 内是否命中任一 gold symbol。"""
+    """
+    内部辅助函数，负责`compute symbol hit at k` 相关处理。
+    
+    参数:
+        hits: 列表参数，用于承载批量输入数据。
+        gold_symbols: 列表参数，用于承载批量输入数据。
+        k: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     if not gold_symbols:
         return 1.0
     top_hits = hits[:k]
@@ -133,7 +216,17 @@ def _compute_symbol_hit_at_k(hits: list[dict[str, Any]], gold_symbols: list[str]
 
 
 def _compute_pattern_hit_at_k(hits: list[dict[str, Any]], expected_patterns: list[str], k: int) -> float:
-    """判断 TopK 内结果是否覆盖期望片段。"""
+    """
+    内部辅助函数，负责`compute pattern hit at k` 相关处理。
+    
+    参数:
+        hits: 列表参数，用于承载批量输入数据。
+        expected_patterns: 列表参数，用于承载批量输入数据。
+        k: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
+    """
     if not expected_patterns:
         return 1.0
     top_hits = hits[:k]
@@ -152,12 +245,16 @@ def _compute_pattern_hit_at_k(hits: list[dict[str, Any]], expected_patterns: lis
 
 
 def _compute_highlight_hit_at_k(hits: list[dict[str, Any]], expected_patterns: list[str], k: int) -> float:
-    """判断 TopK 结果中，高亮行是否覆盖预期 pattern。
-
-    规则：
-    1. 优先读取 `excerpt_lines` 中 `is_hit=true` 的行内容；
-    2. 若没有结构化字段，则回退到 `excerpt` 文本中以 `>>` 开头的高亮行；
-    3. 任意一条高亮行命中任意 expected pattern 即计 1。
+    """
+    内部辅助函数，负责`compute highlight hit at k` 相关处理。
+    
+    参数:
+        hits: 列表参数，用于承载批量输入数据。
+        expected_patterns: 列表参数，用于承载批量输入数据。
+        k: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
     """
     if not expected_patterns:
         return 1.0
@@ -185,6 +282,15 @@ def _compute_highlight_hit_at_k(hits: list[dict[str, Any]], expected_patterns: l
 
 
 def run_eval(config_path: Path) -> dict[str, Any]:
+    """
+    执行对应子流程并返回执行结果。
+    
+    参数:
+        config_path: 路径参数，用于定位文件或目录。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     config = _load_json(config_path)
     dataset_path = (PROJECT_ROOT / config["dataset_path"]).resolve()
     output_path = (PROJECT_ROOT / config["output_path"]).resolve()
@@ -314,6 +420,12 @@ def run_eval(config_path: Path) -> dict[str, Any]:
 
 
 def main() -> int:
+    """
+    执行`main` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     parser = argparse.ArgumentParser(description="Run code retrieval evaluation.")
     parser.add_argument(
         "--config",

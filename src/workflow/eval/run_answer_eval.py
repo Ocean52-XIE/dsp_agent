@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现评测流程，负责样本执行、指标统计与结果输出。
+"""
 from __future__ import annotations
 
 """答案质量评测脚本。
@@ -41,7 +45,9 @@ from workflow.utils import normalize_source_type, to_bool, to_float, to_int  # n
 
 @dataclass
 class AnswerEvalCase:
-    """单条答案评测样本。"""
+    """
+    定义`AnswerEvalCase`，用于封装相关数据结构与处理行为。
+    """
 
     case_id: str
     query: str
@@ -60,7 +66,9 @@ class AnswerEvalCase:
 
 @dataclass
 class EvalJudgeLLMConfig:
-    """答案评测中 LLM 评审器的配置。"""
+    """
+    定义`EvalJudgeLLMConfig`，用于封装相关数据结构与处理行为。
+    """
 
     enabled: bool
     base_url: str
@@ -72,9 +80,14 @@ class EvalJudgeLLMConfig:
 
     @classmethod
     def from_env(cls) -> "EvalJudgeLLMConfig":
-        """从环境变量读取评审器配置。
-
-        环境变量前缀统一使用 `WORKFLOW_EVAL_JUDGE_LLM_`，避免和业务问答 LLM 配置混淆。
+        """
+        执行`from env` 相关处理逻辑。
+        
+        参数:
+            cls: 当前类对象。
+        
+        返回:
+            返回类型为 `'EvalJudgeLLMConfig'` 的处理结果。
         """
         return cls(
             enabled=to_bool(os.getenv("WORKFLOW_EVAL_JUDGE_LLM_ENABLED"), False),
@@ -88,7 +101,9 @@ class EvalJudgeLLMConfig:
 
 
 class AnswerJudgeLLMClient:
-    """用于答案质量评测的可选 LLM 评审器。"""
+    """
+    定义`AnswerJudgeLLMClient`，用于封装相关数据结构与处理行为。
+    """
 
     SYSTEM_PROMPT = """你是一个严谨的问答评测器。
 你的任务是根据输入的“问题、预期要点、禁忌结论、模型回答、引用路径”做质量评估。
@@ -128,11 +143,29 @@ JSON 字段要求：
 """
 
     def __init__(self, config: EvalJudgeLLMConfig) -> None:
+        """
+        内部辅助函数，负责` init  ` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            config: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self.config = config
 
     @property
     def is_available(self) -> bool:
-        """判断当前是否可调用 LLM 评审器。"""
+        """
+        判断输入是否满足特定条件，并返回布尔结果。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `bool` 的处理结果。
+        """
         if not self.config.enabled:
             return False
         if not self.config.api_key:
@@ -143,7 +176,15 @@ JSON 字段要求：
 
     @classmethod
     def from_env(cls) -> "AnswerJudgeLLMClient":
-        """基于环境变量构建评审器实例。"""
+        """
+        执行`from env` 相关处理逻辑。
+        
+        参数:
+            cls: 当前类对象。
+        
+        返回:
+            返回类型为 `'AnswerJudgeLLMClient'` 的处理结果。
+        """
         return cls(EvalJudgeLLMConfig.from_env())
 
     def evaluate(
@@ -157,11 +198,14 @@ JSON 字段要求：
         answer: str,
         citation_paths: list[str],
     ) -> tuple[dict[str, Any] | None, str | None]:
-        """执行 LLM 评审。
-
-        返回：
-        - 评审结果 dict；失败时为 None
-        - 失败原因；成功时为 None
+        """
+        执行`evaluate` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `tuple[dict[str, Any] | None, str | None]` 的处理结果。
         """
         if not self.is_available:
             return None, "llm_judge_unavailable"
@@ -192,7 +236,15 @@ JSON 字段要求：
             return None, "unknown_error"
 
     def _chat_completion(self, *, system_prompt: str, user_prompt: str) -> str:
-        """调用 OpenAI 兼容接口。"""
+        """
+        内部辅助函数，负责`chat completion` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `str` 的处理结果。
+        """
         payload = {
             "model": self.config.model,
             "temperature": self.config.temperature,
@@ -235,11 +287,15 @@ JSON 字段要求：
         return str(content)
 
     def _parse_json_result(self, raw_text: str) -> dict[str, Any]:
-        """解析评审器返回 JSON。
-
-        兼容场景：
-        - 模型返回纯 JSON
-        - 模型在 JSON 外包裹了少量文本（会尝试提取首个 `{...}`）
+        """
+        解析输入内容并转换为结构化数据。
+        
+        参数:
+            self: 当前对象实例。
+            raw_text: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
         """
         text = raw_text.strip()
         if not text:
@@ -265,12 +321,29 @@ JSON 字段要求：
 
 
 def _load_json(path: Path) -> dict[str, Any]:
+    """
+    内部辅助函数，负责`load json` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
 
 def _display_path(path: Path) -> str:
-    """优先返回相对项目根目录路径，失败时回退绝对路径。"""
+    """
+    内部辅助函数，负责`display path` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     try:
         return path.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
@@ -278,14 +351,31 @@ def _display_path(path: Path) -> str:
 
 
 def _normalize_text(text: str) -> str:
-    """文本归一化：统一小写并移除空白和常见标点。"""
+    """
+    内部辅助函数，负责`normalize text` 相关处理。
+    
+    参数:
+        text: 待处理的文本内容。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     lowered = text.lower()
     no_spaces = re.sub(r"\s+", "", lowered)
     return re.sub(r"[`~!@#$%^&*()\-_=+\[\]{}\\|;:'\",.<>/?，。！？；：、“”‘’（）【】《》]", "", no_spaces)
 
 
 def _contains_text(haystack: str, needle: str) -> bool:
-    """判断归一化后的 haystack 是否包含 needle。"""
+    """
+    内部辅助函数，负责`contains text` 相关处理。
+    
+    参数:
+        haystack: 输入参数，用于控制当前处理逻辑。
+        needle: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `bool` 的处理结果。
+    """
     normalized_haystack = _normalize_text(haystack)
     normalized_needle = _normalize_text(needle)
     if not normalized_needle:
@@ -294,11 +384,14 @@ def _contains_text(haystack: str, needle: str) -> bool:
 
 
 def _parse_required_facts(raw_required_facts: list[Any]) -> list[list[str]]:
-    """将 required_facts 解析为“同义词组”结构。
-
-    支持两种输入：
-    - 字符串：表示单个要点
-    - 字符串列表：表示同义词/等价表达组（命中任意一个即算命中该要点）
+    """
+    解析输入内容并转换为结构化数据。
+    
+    参数:
+        raw_required_facts: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `list[list[str]]` 的处理结果。
     """
     groups: list[list[str]] = []
     for item in raw_required_facts:
@@ -315,7 +408,15 @@ def _parse_required_facts(raw_required_facts: list[Any]) -> list[list[str]]:
 
 
 def _dedupe_non_empty(items: list[str]) -> list[str]:
-    """对字符串列表做去重并保持原始顺序。"""
+    """
+    内部辅助函数，负责`dedupe non empty` 相关处理。
+    
+    参数:
+        items: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `list[str]` 的处理结果。
+    """
     deduped: list[str] = []
     seen: set[str] = set()
     for item in items:
@@ -330,7 +431,15 @@ def _dedupe_non_empty(items: list[str]) -> list[str]:
 
 
 def _normalize_hybrid_type(raw_type: str) -> str:
-    """归一化 hybrid 题型标签。"""
+    """
+    内部辅助函数，负责`normalize hybrid type` 相关处理。
+    
+    参数:
+        raw_type: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     normalized = str(raw_type).strip().lower()
     mapping = {
         "formula": "formula",
@@ -344,7 +453,15 @@ def _normalize_hybrid_type(raw_type: str) -> str:
 
 
 def _load_dataset(path: Path) -> list[AnswerEvalCase]:
-    """读取答案评测数据集（JSONL）。"""
+    """
+    内部辅助函数，负责`load dataset` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `list[AnswerEvalCase]` 的处理结果。
+    """
     items: list[AnswerEvalCase] = []
     with path.open("r", encoding="utf-8") as file:
         for line_number, raw_line in enumerate(file, start=1):
@@ -418,9 +535,15 @@ def _load_dataset(path: Path) -> list[AnswerEvalCase]:
 
 
 def _weighted_average(scores: dict[str, float], weights: dict[str, float]) -> float:
-    """按权重计算加权平均分。
-
-    仅对同时出现在 `scores` 与 `weights` 且权重 > 0 的项参与计算。
+    """
+    内部辅助函数，负责`weighted average` 相关处理。
+    
+    参数:
+        scores: 列表参数，用于承载批量输入数据。
+        weights: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
     """
     numerator = 0.0
     denominator = 0.0
@@ -436,11 +559,11 @@ def _weighted_average(scores: dict[str, float], weights: dict[str, float]) -> fl
 
 
 def _compute_backoff_seconds(*, base_delay_ms: int, retry_index: int) -> float:
-    """计算指数退避时间（秒）。
-
-    参数说明：
-    - base_delay_ms: 基础退避时长（毫秒）
-    - retry_index: 从 1 开始，表示第几次重试
+    """
+    内部辅助函数，负责`compute backoff seconds` 相关处理。
+    
+    返回:
+        返回类型为 `float` 的处理结果。
     """
     delay_ms = max(base_delay_ms, 0) * (2 ** max(retry_index - 1, 0))
     return delay_ms / 1000.0
@@ -452,12 +575,11 @@ def _should_retry_qa_response(
     qa_llm_enabled: bool,
     qa_llm_available: bool,
 ) -> bool:
-    """判断 QA 结果是否需要重试。
-
-    仅在以下条件触发：
-    1. QA LLM 处于启用且可用状态；
-    2. 当前回答走了 fallback_rule；
-    3. fallback 原因为网络/超时类波动。
+    """
+    内部辅助函数，负责`should retry qa response` 相关处理。
+    
+    返回:
+        返回类型为 `bool` 的处理结果。
     """
     if not (qa_llm_enabled and qa_llm_available):
         return False
@@ -471,7 +593,15 @@ def _should_retry_qa_response(
 
 
 def run_eval(config_path: Path) -> dict[str, Any]:
-    """执行答案质量评测并输出结构化报告。"""
+    """
+    执行对应子流程并返回执行结果。
+    
+    参数:
+        config_path: 路径参数，用于定位文件或目录。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     config = _load_json(config_path)
     dataset_path = (PROJECT_ROOT / config["dataset_path"]).resolve()
     output_path = (PROJECT_ROOT / config["output_path"]).resolve()
@@ -927,6 +1057,12 @@ def run_eval(config_path: Path) -> dict[str, Any]:
 
 
 def main() -> int:
+    """
+    执行`main` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     parser = argparse.ArgumentParser(description="Run answer-quality evaluation for workflow QA responses.")
     parser.add_argument(
         "--config",

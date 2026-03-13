@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现评测流程，负责样本执行、指标统计与结果输出。
+"""
 from __future__ import annotations
 
 import argparse
@@ -22,6 +26,15 @@ STRATEGIES = ("rg_first", "rg_only", "no_rg")
 
 
 def _display_path(path: Path) -> str:
+    """
+    内部辅助函数，负责`display path` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     try:
         return path.relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
@@ -29,6 +42,16 @@ def _display_path(path: Path) -> str:
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    """
+    内部辅助函数，负责`write json` 相关处理。
+    
+    参数:
+        path: 文件或目录路径。
+        payload: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        无返回值。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
@@ -40,6 +63,12 @@ def run_compare(
     results_dir: Path,
     max_candidates: int,
 ) -> dict[str, Any]:
+    """
+    执行对应子流程并返回执行结果。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     config_dir = results_dir / "rg_strategy_compare_configs"
     config_dir.mkdir(parents=True, exist_ok=True)
 
@@ -99,6 +128,15 @@ def run_compare(
 
 
 def _build_markdown(summary: dict[str, Any]) -> str:
+    """
+    构建当前步骤所需的数据结构或文本内容。
+    
+    参数:
+        summary: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     lines: list[str] = []
     lines.append("# RG Strategy Compare (30 Cases)")
     lines.append("")
@@ -139,6 +177,12 @@ def _build_markdown(summary: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    """
+    执行`main` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `int` 的处理结果。
+    """
     parser = argparse.ArgumentParser(description="Run wiki/code retrieval eval across rg strategies and compare metrics.")
     parser.add_argument(
         "--wiki-dataset",

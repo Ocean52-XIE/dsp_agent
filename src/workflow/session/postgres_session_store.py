@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现会话存储与会话状态管理能力。
+"""
 from __future__ import annotations
 
 """PostgreSQL 会话存储模块。
@@ -28,9 +32,15 @@ from workflow.utils import to_bool, to_int
 
 
 def _sanitize_identifier(value: str, default: str) -> str:
-    """校验 SQL 标识符（schema/table）。
-
-    仅允许字母、数字、下划线，避免将不可信输入拼接进 SQL DDL。
+    """
+    内部辅助函数，负责`sanitize identifier` 相关处理。
+    
+    参数:
+        value: 输入参数，用于控制当前处理逻辑。
+        default: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
     """
     normalized = (value or "").strip()
     if not normalized:
@@ -41,7 +51,15 @@ def _sanitize_identifier(value: str, default: str) -> str:
 
 
 def _to_iso(value: Any) -> str:
-    """将时间值统一为 ISO 字符串（秒级）。"""
+    """
+    内部辅助函数，负责`to iso` 相关处理。
+    
+    参数:
+        value: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     if isinstance(value, datetime):
         return value.isoformat(timespec="seconds")
     text = str(value or "").strip()
@@ -56,7 +74,9 @@ def _to_iso(value: Any) -> str:
 
 @dataclass
 class PostgresSessionConfig:
-    """PostgreSQL 会话存储配置。"""
+    """
+    定义`PostgresSessionConfig`，用于封装相关数据结构与处理行为。
+    """
 
     enabled: bool
     dsn: str
@@ -65,11 +85,14 @@ class PostgresSessionConfig:
 
     @classmethod
     def from_env(cls) -> "PostgresSessionConfig":
-        """从环境变量读取配置。
-
-        读取优先级：
-        1. `WORKFLOW_SESSION_PG_*`（会话专用配置）
-        2. `WORKFLOW_OBS_PG_*`（复用可观测数据库配置）
+        """
+        执行`from env` 相关处理逻辑。
+        
+        参数:
+            cls: 当前类对象。
+        
+        返回:
+            返回类型为 `'PostgresSessionConfig'` 的处理结果。
         """
         explicit_dsn = os.getenv("WORKFLOW_SESSION_PG_DSN", "").strip()
         fallback_dsn = os.getenv("WORKFLOW_OBS_PG_DSN", "").strip()
@@ -97,9 +120,21 @@ class PostgresSessionConfig:
 
 
 class PostgresSessionStore:
-    """基于 PostgreSQL 的会话存储实现。"""
+    """
+    定义`PostgresSessionStore`，用于封装相关数据结构与处理行为。
+    """
 
     def __init__(self, config: PostgresSessionConfig) -> None:
+        """
+        内部辅助函数，负责` init  ` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            config: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         self.config = config
         self._psycopg: Any | None = None
         self._init_error: str | None = None
@@ -145,16 +180,40 @@ class PostgresSessionStore:
 
     @classmethod
     def from_env(cls) -> "PostgresSessionStore":
-        """基于环境变量创建实例。"""
+        """
+        执行`from env` 相关处理逻辑。
+        
+        参数:
+            cls: 当前类对象。
+        
+        返回:
+            返回类型为 `'PostgresSessionStore'` 的处理结果。
+        """
         return cls(PostgresSessionConfig.from_env())
 
     @property
     def is_active(self) -> bool:
-        """当前存储是否可用。"""
+        """
+        判断输入是否满足特定条件，并返回布尔结果。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `bool` 的处理结果。
+        """
         return bool(self.config.enabled and self._psycopg is not None)
 
     def status(self) -> dict[str, Any]:
-        """返回存储状态，便于 health 接口透出。"""
+        """
+        执行`status` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         return {
             "enabled": self.config.enabled,
             "active": self.is_active,
@@ -164,12 +223,29 @@ class PostgresSessionStore:
         }
 
     def _table(self, name: str) -> str:
-        """拼接 schema.table。"""
+        """
+        内部辅助函数，负责`table` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            name: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            返回类型为 `str` 的处理结果。
+        """
         safe_name = _sanitize_identifier(name, name)
         return f"{self.config.schema}.{safe_name}"
 
     def _connect(self) -> Any:
-        """创建数据库连接。"""
+        """
+        内部辅助函数，负责`connect` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `Any` 的处理结果。
+        """
         if self._psycopg is None:
             raise RuntimeError("psycopg_unavailable")
         return self._psycopg.connect(
@@ -179,7 +255,15 @@ class PostgresSessionStore:
         )
 
     def ensure_schema(self) -> None:
-        """自动建表与索引。"""
+        """
+        执行`ensure schema` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             return
         session_table = self._table("qa_session")
@@ -210,7 +294,16 @@ class PostgresSessionStore:
         )
 
     def _normalize_session(self, session: dict[str, Any]) -> dict[str, Any]:
-        """归一化会话结构，避免脏数据落库。"""
+        """
+        内部辅助函数，负责`normalize session` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            session: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         session_id = str(session.get("id", "") or "").strip()
         if not session_id:
             raise ValueError("session_id_required")
@@ -236,7 +329,16 @@ class PostgresSessionStore:
         }
 
     def save_session(self, session: dict[str, Any]) -> None:
-        """保存会话（不存在则插入，存在则更新）。"""
+        """
+        执行`save session` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            session: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            无返回值。
+        """
         if not self.is_active:
             self._logger.debug("session.store.save.skipped", reason="inactive_store")
             return
@@ -286,7 +388,16 @@ class PostgresSessionStore:
             raise
 
     def _deserialize_session_row(self, row: tuple[Any, ...]) -> dict[str, Any]:
-        """将 SQL 行反序列化为 API 侧会话结构。"""
+        """
+        内部辅助函数，负责`deserialize session row` 相关处理。
+        
+        参数:
+            self: 当前对象实例。
+            row: 输入参数，用于控制当前处理逻辑。
+        
+        返回:
+            返回类型为 `dict[str, Any]` 的处理结果。
+        """
         session_id, title, created_at, updated_at, status, messages, payload = row
         parsed_messages = messages
         if isinstance(parsed_messages, str):
@@ -318,7 +429,16 @@ class PostgresSessionStore:
         return result
 
     def get_session(self, session_id: str) -> dict[str, Any] | None:
-        """按 ID 获取完整会话。"""
+        """
+        执行`get session` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            session_id: 会话标识。
+        
+        返回:
+            返回类型为 `dict[str, Any] | None` 的处理结果。
+        """
         if not self.is_active:
             self._logger.debug("session.store.get.skipped", reason="inactive_store")
             return None
@@ -357,7 +477,15 @@ class PostgresSessionStore:
         return self._deserialize_session_row(row)
 
     def list_sessions(self, *, limit: int = 200) -> list[dict[str, Any]]:
-        """按更新时间倒序返回会话列表（包含消息体）。"""
+        """
+        执行`list sessions` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+        
+        返回:
+            返回类型为 `list[dict[str, Any]]` 的处理结果。
+        """
         if not self.is_active:
             self._logger.debug("session.store.list.skipped", reason="inactive_store")
             return []
@@ -392,7 +520,16 @@ class PostgresSessionStore:
         return sessions
 
     def find_message(self, message_id: str) -> tuple[dict[str, Any], dict[str, Any]] | None:
-        """按 message_id 反查所属会话与消息体。"""
+        """
+        执行`find message` 相关处理逻辑。
+        
+        参数:
+            self: 当前对象实例。
+            message_id: 标识参数，用于定位上下文对象。
+        
+        返回:
+            返回类型为 `tuple[dict[str, Any], dict[str, Any]] | None` 的处理结果。
+        """
         if not self.is_active:
             self._logger.debug("session.store.find_message.skipped", reason="inactive_store")
             return None

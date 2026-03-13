@@ -239,3 +239,40 @@ python src/workflow/eval/run_answer_eval.py --config src/workflow/eval/config.an
 - `hybrid_type_metrics`（按 `formula/reason/function_location/mixed_followup` 分桶）
 
 建议结合 `per_case[].hybrid_type` 与 `per_case[].code_anchor_hit` 一起看，便于快速定位是“内容覆盖问题”还是“代码锚点表达问题”。
+
+## Context Regression (Minimal)
+
+Added a minimal regression check for multi-turn context continuity and out-of-scope state isolation.
+
+- Python:
+
+```powershell
+python src/workflow/eval/run_context_regression.py --debug-verbose
+```
+
+- PowerShell wrapper:
+
+```powershell
+.\src\workflow\eval\run_context_regression.ps1 -DebugVerbose
+```
+
+Default report output:
+
+- `src/workflow/eval/results/latest_context_regression_report.json`
+
+## Issue Analysis Eval
+
+Added a dedicated issue-analysis routing evaluation set and runner.
+
+- Dataset:
+  - `domain/ad_engine/eval/datasets/ad_engine_issue_analysis_eval.jsonl`
+- Config template:
+  - `src/workflow/eval/config.issue_analysis.template.json`
+- Runner:
+  - `python src/workflow/eval/run_issue_analysis_eval.py --config src/workflow/eval/config.issue_analysis.template.json`
+- PowerShell:
+  - `.\src\workflow\eval\run_issue_analysis_eval.ps1 -ConfigPath src/workflow/eval/config.issue_analysis.template.json`
+
+Default report output:
+
+- `src/workflow/eval/results/latest_issue_analysis_eval_report.json`

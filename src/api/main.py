@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+该模块实现 API 层逻辑，负责请求处理、参数校验与响应组装。
+"""
 from __future__ import annotations
 
 """FastAPI 接入层。
@@ -61,32 +65,33 @@ APP_LOGGER.info(
 
 
 class SessionCreateRequest(BaseModel):
-    """创建会话请求。"""
+    """
+    定义`SessionCreateRequest`，用于封装相关数据结构与处理行为。
+    """
 
     title: str | None = None
 
 
 class MessageCreateRequest(BaseModel):
-    """发送消息请求。"""
+    """
+    定义`MessageCreateRequest`，用于封装相关数据结构与处理行为。
+    """
 
     session_id: str
     content: str = Field(min_length=1, max_length=4000)
 
 
 class CodeConfirmRequest(BaseModel):
-    """代码实现确认请求。"""
+    """
+    定义`CodeConfirmRequest`，用于封装相关数据结构与处理行为。
+    """
 
     approved: bool = True
 
 
 class MessageFeedbackRequest(BaseModel):
-    """问答反馈请求。
-
-    字段说明：
-    - helpful: 是否有帮助（必填）。
-    - reason_tag: 反馈标签（可选），例如“事实错误/证据不足/回答不完整”。
-    - rating: 1~5 分主观评分（可选）。
-    - comment: 自由文本说明（可选）。
+    """
+    定义`MessageFeedbackRequest`，用于封装相关数据结构与处理行为。
     """
 
     helpful: bool
@@ -96,11 +101,25 @@ class MessageFeedbackRequest(BaseModel):
 
 
 def now_iso() -> str:
-    """统一生成秒级时间戳字符串，便于前端直接展示。"""
+    """
+    执行`now iso` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     return datetime.now().isoformat(timespec="seconds")
 
 
 def text_preview(value: Any, *, max_chars: int = 120) -> str:
+    """
+    执行`text preview` 相关处理逻辑。
+    
+    参数:
+        value: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     text = str(value or "").strip()
     if len(text) <= max_chars:
         return text
@@ -108,12 +127,25 @@ def text_preview(value: Any, *, max_chars: int = 120) -> str:
 
 
 def next_id(prefix: str) -> str:
-    """生成全局唯一 ID，避免服务重启后出现主键冲突。"""
+    """
+    执行`next id` 相关处理逻辑。
+    
+    参数:
+        prefix: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `str` 的处理结果。
+    """
     return f"{prefix}_{uuid4().hex}"
 
 
 def build_welcome_message() -> dict[str, Any]:
-    """新会话默认插入一条欢迎消息，说明当前版本能力范围。"""
+    """
+    执行`build welcome message` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     return {
         "id": next_id("msg"),
         "role": "assistant",
@@ -138,11 +170,14 @@ def build_welcome_message() -> dict[str, Any]:
 
 
 def create_session_record(title: str | None = None) -> dict[str, Any]:
-    """创建会话对象并写入存储层。
-
-    存储策略：
-    - PostgreSQL 会话存储可用时：写库，支持重启后恢复。
-    - PostgreSQL 不可用时：回退到内存，保障本地开发可用性。
+    """
+    执行`create session record` 相关处理逻辑。
+    
+    参数:
+        title: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
     """
     session_id = next_id("sess")
     created_at = now_iso()
@@ -164,7 +199,15 @@ def create_session_record(title: str | None = None) -> dict[str, Any]:
 
 
 def ensure_session(session_id: str) -> dict[str, Any]:
-    """按 ID 读取会话，不存在时直接返回 404。"""
+    """
+    执行`ensure session` 相关处理逻辑。
+    
+    参数:
+        session_id: 会话标识。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     session: dict[str, Any] | None = None
     if SESSION_STORE.is_active:
         session = SESSION_STORE.get_session(session_id)
@@ -177,9 +220,14 @@ def ensure_session(session_id: str) -> dict[str, Any]:
 
 
 def list_session_records(limit: int = 20) -> list[dict[str, Any]]:
-    """列出会话记录。
-
-    返回完整会话结构，便于上层复用同一套 summarize 逻辑。
+    """
+    执行`list session records` 相关处理逻辑。
+    
+    参数:
+        limit: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `list[dict[str, Any]]` 的处理结果。
     """
     safe_limit = max(1, min(int(limit), 200))
     if SESSION_STORE.is_active:
@@ -188,7 +236,15 @@ def list_session_records(limit: int = 20) -> list[dict[str, Any]]:
 
 
 def persist_session_record(session: dict[str, Any]) -> None:
-    """持久化会话对象。"""
+    """
+    执行`persist session record` 相关处理逻辑。
+    
+    参数:
+        session: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        无返回值。
+    """
     if SESSION_STORE.is_active:
         SESSION_STORE.save_session(session)
         return
@@ -196,7 +252,15 @@ def persist_session_record(session: dict[str, Any]) -> None:
 
 
 def summarize_session(session: dict[str, Any]) -> dict[str, Any]:
-    """生成会话摘要，供左侧列表展示。"""
+    """
+    执行`summarize session` 相关处理逻辑。
+    
+    参数:
+        session: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     preview = ""
     for message in reversed(session["messages"]):
         if message["role"] == "user":
@@ -213,7 +277,15 @@ def summarize_session(session: dict[str, Any]) -> dict[str, Any]:
 
 
 def serialize_session(session: dict[str, Any]) -> dict[str, Any]:
-    """把内部会话对象整理成可返回给前端的结构。"""
+    """
+    执行`serialize session` 相关处理逻辑。
+    
+    参数:
+        session: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     return {
         "id": session["id"],
         "title": session["title"],
@@ -225,7 +297,15 @@ def serialize_session(session: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_user_message(content: str) -> dict[str, Any]:
-    """把前端输入包装成统一的用户消息结构。"""
+    """
+    执行`build user message` 相关处理逻辑。
+    
+    参数:
+        content: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     return {
         "id": next_id("msg"),
         "role": "user",
@@ -243,7 +323,15 @@ def build_user_message(content: str) -> dict[str, Any]:
 
 
 def materialize_assistant_message(payload: dict[str, Any]) -> dict[str, Any]:
-    """给工作流产物补齐消息 ID 和时间戳。"""
+    """
+    执行`materialize assistant message` 相关处理逻辑。
+    
+    参数:
+        payload: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     message = dict(payload)
     message["id"] = next_id("msg")
     message["created_at"] = now_iso()
@@ -257,9 +345,11 @@ def persist_observability_turn(
     user_query: str,
     assistant_message: dict[str, Any],
 ) -> None:
-    """将一轮请求/响应写入可观测数据库。
-
-    这个函数只负责“尽力落库”，不向上抛错，避免数据库问题影响主链路。
+    """
+    执行`persist observability turn` 相关处理逻辑。
+    
+    返回:
+        无返回值。
     """
     try:
         OBS_STORE.record_turn(
@@ -282,16 +372,14 @@ def persist_observability_turn(
 
 
 def close_open_code_confirmation(session: dict[str, Any]) -> None:
-    """关闭会话里最近一个仍处于等待确认状态的代码生成动作。
-
-    多轮阶段式工作流下，用户可能不会点击按钮，而是直接继续发文字消息，例如：
-
-    - “先不用代码”
-    - “给我代码实现”
-    - “那我们换个问题”
-
-    一旦新一轮响应已经产出，就不应该让旧的确认按钮继续悬挂，否则前端会出现过期动作。
-    这里选择只关闭最近一个等待确认的助手消息，保持行为可解释且范围最小。
+    """
+    执行`close open code confirmation` 相关处理逻辑。
+    
+    参数:
+        session: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        无返回值。
     """
     for message in reversed(session["messages"]):
         if message.get("role") == "assistant" and message.get("status") == "confirm_code":
@@ -301,7 +389,15 @@ def close_open_code_confirmation(session: dict[str, Any]) -> None:
 
 
 def find_message(message_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    """在所有会话中查找指定消息，同时返回所属会话。"""
+    """
+    执行`find message` 相关处理逻辑。
+    
+    参数:
+        message_id: 标识参数，用于定位上下文对象。
+    
+    返回:
+        返回类型为 `tuple[dict[str, Any], dict[str, Any]]` 的处理结果。
+    """
     if SESSION_STORE.is_active:
         result = SESSION_STORE.find_message(message_id)
         if result is not None:
@@ -316,13 +412,23 @@ def find_message(message_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
 
 @app.get("/")
 def root() -> FileResponse:
-    """返回前端页面入口。"""
+    """
+    执行`root` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `FileResponse` 的处理结果。
+    """
     return FileResponse(WEB_DIR / "index.html")
 
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    """健康检查，同时暴露当前工作流后端类型。"""
+    """
+    执行`health` 相关处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.debug("api.health.checked")
     return {
         "status": "ok",
@@ -336,7 +442,15 @@ def health() -> dict[str, Any]:
 
 @app.get("/api/sessions")
 def list_sessions(limit: int = 20) -> dict[str, list[dict[str, Any]]]:
-    """返回会话列表，供左侧会话区渲染。"""
+    """
+    执行`list sessions` 相关处理逻辑。
+    
+    参数:
+        limit: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, list[dict[str, Any]]]` 的处理结果。
+    """
     safe_limit = max(1, min(int(limit), 200))
     items = sorted(
         (summarize_session(session) for session in list_session_records(limit=safe_limit)),
@@ -349,7 +463,15 @@ def list_sessions(limit: int = 20) -> dict[str, list[dict[str, Any]]]:
 
 @app.post("/api/sessions")
 def create_session(request: SessionCreateRequest) -> dict[str, Any]:
-    """创建新会话。"""
+    """
+    执行`create session` 相关处理逻辑。
+    
+    参数:
+        request: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.info("api.session.create.requested", title=text_preview(request.title or "", max_chars=80))
     session = create_session_record(request.title)
     return {"session": serialize_session(session), "summary": summarize_session(session)}
@@ -357,7 +479,15 @@ def create_session(request: SessionCreateRequest) -> dict[str, Any]:
 
 @app.get("/api/sessions/{session_id}")
 def get_session(session_id: str) -> dict[str, Any]:
-    """获取指定会话的完整消息列表。"""
+    """
+    执行`get session` 相关处理逻辑。
+    
+    参数:
+        session_id: 会话标识。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.debug("api.session.get", session_id=session_id)
     session = ensure_session(session_id)
     return {"session": serialize_session(session)}
@@ -365,13 +495,14 @@ def get_session(session_id: str) -> dict[str, Any]:
 
 @app.post("/api/messages")
 def create_message(request: MessageCreateRequest) -> dict[str, Any]:
-    """处理用户输入的主入口。
-
-    接口层只负责：
-    1. 把用户消息入会话；
-    2. 生成 trace_id；
-    3. 调用 WorkflowService；
-    4. 把工作流结果落回会话。
+    """
+    执行`create message` 相关处理逻辑。
+    
+    参数:
+        request: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
     """
     APP_LOGGER.info(
         "api.message.create.requested",
@@ -439,7 +570,16 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
 
 @app.post("/api/messages/{message_id}/confirm-code")
 def confirm_code_generation(message_id: str, request: CodeConfirmRequest) -> dict[str, Any]:
-    """处理“是否需要代码实现”的确认动作。"""
+    """
+    执行`confirm code generation` 相关处理逻辑。
+    
+    参数:
+        message_id: 标识参数，用于定位上下文对象。
+        request: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.info(
         "api.confirm_code.requested",
         message_id=message_id,
@@ -520,7 +660,15 @@ def confirm_code_generation(message_id: str, request: CodeConfirmRequest) -> dic
 
 @app.get("/api/references/{trace_id}")
 def get_references(trace_id: str) -> dict[str, Any]:
-    """根据 trace_id 查询本轮工作流实际返回的引用证据。"""
+    """
+    执行`get references` 相关处理逻辑。
+    
+    参数:
+        trace_id: 请求追踪标识。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     references = TRACE_REFERENCES.get(trace_id)
     if references is None:
         APP_LOGGER.warning("api.references.not_found", trace_id=trace_id)
@@ -531,7 +679,16 @@ def get_references(trace_id: str) -> dict[str, Any]:
 
 @app.post("/api/messages/{message_id}/feedback")
 def create_message_feedback(message_id: str, request: MessageFeedbackRequest) -> dict[str, Any]:
-    """记录用户对单条 assistant 消息的反馈。"""
+    """
+    执行`create message feedback` 相关处理逻辑。
+    
+    参数:
+        message_id: 标识参数，用于定位上下文对象。
+        request: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.info(
         "api.feedback.requested",
         message_id=message_id,
@@ -578,7 +735,15 @@ def create_message_feedback(message_id: str, request: MessageFeedbackRequest) ->
 
 @app.get("/api/observability/summary")
 def get_observability_summary(window_minutes: int = 60) -> dict[str, Any]:
-    """查询窗口级质量指标摘要。"""
+    """
+    执行`get observability summary` 相关处理逻辑。
+    
+    参数:
+        window_minutes: 列表参数，用于承载批量输入数据。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.debug("api.observability.summary.requested", window_minutes=max(1, int(window_minutes)))
     summary = OBS_STORE.get_summary(window_minutes=max(1, int(window_minutes)))
     return {
@@ -589,7 +754,15 @@ def get_observability_summary(window_minutes: int = 60) -> dict[str, Any]:
 
 @app.get("/api/observability/alerts")
 def get_observability_alerts(limit: int = 50) -> dict[str, Any]:
-    """查询最近告警事件列表。"""
+    """
+    执行`get observability alerts` 相关处理逻辑。
+    
+    参数:
+        limit: 输入参数，用于控制当前处理逻辑。
+    
+    返回:
+        返回类型为 `dict[str, Any]` 的处理结果。
+    """
     APP_LOGGER.debug("api.observability.alerts.requested", limit=max(1, min(int(limit), 200)))
     return {
         "observability": OBS_STORE.status(),
