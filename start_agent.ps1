@@ -104,7 +104,7 @@ try {
         $env:PYTHONPATH = "$SourceRoot;$($env:PYTHONPATH)"
     }
 
-    # Export env vars used by workflow/nodes/knowledge_answer/llm_qa.py
+    # Export env vars used by workflow/common/llm_client.py
     $env:WORKFLOW_QA_LLM_ENABLED = $QA_LLM_ENABLED
     $env:WORKFLOW_QA_LLM_BASE_URL = $QA_LLM_BASE_URL
     $env:WORKFLOW_QA_LLM_API_KEY = $QA_LLM_API_KEY

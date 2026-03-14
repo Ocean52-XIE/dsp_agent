@@ -33,6 +33,7 @@ class CommonLLMConfig:
     max_tokens: int
     retry_count: int
     retry_base_delay_ms: int
+    debug_verbose: bool = False
 
     @classmethod
     def from_env(cls, *, prefix: str = "WORKFLOW_QA_LLM") -> "CommonLLMConfig":
@@ -47,6 +48,7 @@ class CommonLLMConfig:
             max_tokens=to_int(os.getenv(env("MAX_TOKENS")), 600),
             retry_count=max(0, to_int(os.getenv(env("RETRY_COUNT")), 2)),
             retry_base_delay_ms=max(100, to_int(os.getenv(env("RETRY_BASE_DELAY_MS")), 400)),
+            debug_verbose=to_bool(os.getenv("WORKFLOW_DEBUG_VERBOSE"), False),
         )
 
 
@@ -144,19 +146,60 @@ class CommonLLMCapability:
         last_reason = "unknown_error"
         for attempt in range(1, max_attempts + 1):
             attempt_started = time.perf_counter()
+            self._log_debug_request(
+                request,
+                attempt=attempt,
+                max_attempts=max_attempts,
+            )
             try:
                 answer = self._chat_completion(
                     system_prompt=request.system_prompt,
                     user_prompt=request.user_prompt,
                 )
-            except TimeoutError:
+            except TimeoutError as exc:
                 last_reason = "timeout"
+                self._log_debug_response(
+                    request,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    response_text=None,
+                    reason=last_reason,
+                    error=exc,
+                )
             except ValueError as value_error:
                 reason_text = str(value_error).strip() or "empty_answer"
                 last_reason = reason_text if reason_text.startswith("empty_answer") else f"empty_answer:{reason_text}"
+                self._log_debug_response(
+                    request,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    response_text=None,
+                    reason=last_reason,
+                    error=value_error,
+                )
             except Exception as exc:  # pragma: no cover - defensive fallback
                 last_reason = self._map_exception_to_reason(exc)
+                self._log_debug_response(
+                    request,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    response_text=None,
+                    reason=last_reason,
+                    error=exc,
+                )
             else:
+                self._log_debug_response(
+                    request,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    response_text=answer,
+                    reason=None,
+                    error=None,
+                )
                 normalized = answer.strip()
                 if request.normalize_answer is not None:
                     normalized = request.normalize_answer(normalized)
@@ -313,6 +356,64 @@ class CommonLLMCapability:
         )
         self.last_call_status = dict(success_status)
         return success_status
+
+    def _log_debug_request(
+        self,
+        request: CommonLLMRequest,
+        *,
+        attempt: int,
+        max_attempts: int,
+    ) -> None:
+        if not self.config.debug_verbose:
+            return
+        self._logger.info(
+            f"{request.log_namespace}.debug_request",
+            **self._event_payload(
+                request,
+                {
+                    "model": self.config.model,
+                    "base_url": self.config.base_url,
+                    "attempt": attempt,
+                    "max_attempts": max_attempts,
+                    "timeout_seconds": self.config.timeout_seconds,
+                    "temperature": self.config.temperature,
+                    "max_tokens": self.config.max_tokens,
+                    "evidence_count": request.evidence_count,
+                    "system_prompt": request.system_prompt,
+                    "user_prompt": request.user_prompt,
+                },
+            ),
+        )
+
+    def _log_debug_response(
+        self,
+        request: CommonLLMRequest,
+        *,
+        attempt: int,
+        max_attempts: int,
+        latency_ms: int,
+        response_text: str | None,
+        reason: str | None,
+        error: Exception | None,
+    ) -> None:
+        if not self.config.debug_verbose:
+            return
+        payload: dict[str, Any] = {
+            "model": self.config.model,
+            "attempt": attempt,
+            "max_attempts": max_attempts,
+            "latency_ms": int(max(latency_ms, 0)),
+            "reason": reason,
+            "response_text": response_text or "",
+            "response_length": len((response_text or "").strip()),
+        }
+        if error is not None:
+            payload["error_type"] = type(error).__name__
+            payload["error_message"] = str(error)
+        self._logger.info(
+            f"{request.log_namespace}.debug_response",
+            **self._event_payload(request, payload),
+        )
 
     def _event_payload(self, request: CommonLLMRequest, payload: dict[str, Any]) -> dict[str, Any]:
         merged: dict[str, Any] = {"node_name": request.node_name}

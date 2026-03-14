@@ -32,7 +32,7 @@ try {
         $env:PYTHONPATH = "$SourceRoot;$($env:PYTHONPATH)"
     }
 
-    & $PythonCommand "src/workflow/eval/run_retrieval_eval.py" "--config" $ConfigPath
+    & $PythonCommand "src/workflow/eval/run_wiki_retrieval_eval.py" "--config" $ConfigPath
     exit $LASTEXITCODE
 }
 finally {

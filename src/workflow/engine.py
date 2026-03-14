@@ -105,7 +105,7 @@ class WorkflowService:
             code_dirs=code_dirs,
             default_top_k=4,
         )
-        self._knowledge_qa_llm = WorkflowLLMClient.from_env(prefix="WORKFLOW_QA_LLM")
+        self._llm_client = WorkflowLLMClient.from_env(prefix="WORKFLOW_QA_LLM")
 
         self._checkpointer = MemorySaver()
         self._graph = self._build_graph()

@@ -132,8 +132,8 @@ def _build_verbose_debug(state: dict[str, Any], graph_path: list[str], evidence_
 
 def _default_llm_call_status(service: Any, *, response_route: str) -> dict[str, Any]:
     llm_model = None
-    if hasattr(service, "_knowledge_qa_llm") and service._knowledge_qa_llm is not None:
-        llm_model = service._knowledge_qa_llm.config.model
+    if hasattr(service, "_llm_client") and service._llm_client is not None:
+        llm_model = service._llm_client.config.model
     reason = "no_llm_in_route" if response_route != "knowledge_qa" else "llm_status_missing"
     return {
         "status": "not_invoked",

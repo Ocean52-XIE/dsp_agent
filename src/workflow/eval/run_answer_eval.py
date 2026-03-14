@@ -640,18 +640,18 @@ def run_eval(config_path: Path) -> dict[str, Any]:
     service = WorkflowService()
     llm_judge_client = AnswerJudgeLLMClient.from_env()
     qa_llm_available = bool(
-        hasattr(service, "_knowledge_qa_llm")
-        and service._knowledge_qa_llm is not None
-        and service._knowledge_qa_llm.is_available
+        hasattr(service, "_llm_client")
+        and service._llm_client is not None
+        and service._llm_client.is_available
     )
     qa_llm_enabled = bool(
-        hasattr(service, "_knowledge_qa_llm")
-        and service._knowledge_qa_llm is not None
-        and service._knowledge_qa_llm.config.enabled
+        hasattr(service, "_llm_client")
+        and service._llm_client is not None
+        and service._llm_client.config.enabled
     )
     qa_llm_model = (
-        service._knowledge_qa_llm.config.model
-        if hasattr(service, "_knowledge_qa_llm") and service._knowledge_qa_llm is not None
+        service._llm_client.config.model
+        if hasattr(service, "_llm_client") and service._llm_client is not None
         else ""
     )
     # 评测稳定性参数（P0）：

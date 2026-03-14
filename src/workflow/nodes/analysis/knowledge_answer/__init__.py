@@ -266,7 +266,7 @@ def _run_llm_for_qa(
     retrieval_queries: list[str],
     evidence_hits: list[dict[str, Any]],
 ) -> tuple[str | None, str | None, dict[str, Any]]:
-    llm_client = getattr(service, "_knowledge_qa_llm", None)
+    llm_client = getattr(service, "_llm_client", None)
     if llm_client is None:
         return None, None, _default_llm_call_status()
 
@@ -356,7 +356,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         evidence_hits=evidence_hits,
     )
 
-    llm_client = getattr(service, "_knowledge_qa_llm", None)
+    llm_client = getattr(service, "_llm_client", None)
     llm_call_status.setdefault("model", getattr(getattr(llm_client, "config", None), "model", None))
     llm_call_status.setdefault("invoked", bool(llm_client is not None))
 

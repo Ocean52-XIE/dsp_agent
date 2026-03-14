@@ -185,7 +185,7 @@ def _run_llm_if_available(service: Any, state: dict[str, Any], analysis: dict[st
     llm_fallback_reason: str | None = None
     llm_call_status = _default_llm_call_status()
 
-    llm_client = getattr(service, "_knowledge_qa_llm", None)
+    llm_client = getattr(service, "_llm_client", None)
     if llm_client is not None:
         system_prompt = resolve_system_prompt(
             env_key="WORKFLOW_ISSUE_LLM_SYSTEM_PROMPT",
