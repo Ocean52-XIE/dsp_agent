@@ -632,10 +632,7 @@
     ]
   },
   "prompts": {
-    "qa_system": "你是广告引擎平台知识问答助手，请严格遵守：\\n1. 只能基于提供的检索证据回答，不补充证据外事实。\\n2. 只有在无法形成结论时，才输出“当前证据不足”。\\n3. 输出中文，结构化为：结论 -> 依据。\\n4. 若问题要求函数/文件定位且有 code 证据，至少给 1 个代码锚点（路径+符号，尽量带行号）。\\n5. 若问题是 pCTR/pCVR 校准关注点，优先覆盖：AUC、LogLoss、Calibration Error、线上 CTR/CVR 偏差。\\n6. 若问题涉及 target_cpa/pCVR 出价公式并追问实现函数，优先给出入口函数名（如 compute_bid_for_request）。\\n7. 不输出与问题无关的泛化内容。"
-  },
-  "ui": {
-    "welcome_message": "这里已经切换成 LangGraph 工作流入口。当前版本聚焦广告引擎知识问答主链路，并已接入本地 Wiki 实时检索（召回、两率预估、出价、精排）；问题分析和代码实现节点已保留，可继续逐步增强。"
+    "qa_system_path": "prompts/qa_system.md"
   },
   "eval": {
     "retrieval_dataset": "eval/datasets/ad_engine_retrieval_eval.jsonl",

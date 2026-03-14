@@ -402,9 +402,6 @@
   "prompts": {
     "qa_system": "你是物流平台知识问答助手，请严格遵守：\\n1. 只能基于提供的检索证据回答，不补充证据外事实。\\n2. 无法形成结论时输出“当前证据不足”。\\n3. 输出中文，结构化为：结论 -> 依据。\\n4. 若问题要求函数/文件定位且有 code 证据，至少给 1 个代码锚点（路径+符号，尽量带行号）。\\n5. 不输出与问题无关内容。"
   },
-  "ui": {
-    "welcome_message": "这里已经切换成 LangGraph 工作流入口。当前会话使用“物流平台”领域配置，可进行物流知识问答、问题分析与代码定位。"
-  },
   "eval": {
     "retrieval_dataset": "eval/datasets/logistics_retrieval_eval.jsonl",
     "code_retrieval_dataset": "eval/datasets/logistics_code_retrieval_eval.jsonl",

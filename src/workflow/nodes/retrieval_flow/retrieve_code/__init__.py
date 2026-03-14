@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from workflow.nodes.retrieval_retry import dedupe_normalized_queries, run_with_retry
-from workflow.utils import env_int
+from workflow.common.func_utils import env_int
 
 
 def _grade_code_hits(items: list[dict[str, Any]], *, high_threshold: float, medium_threshold: float) -> str:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from workflow.utils import normalize_source_type
+from workflow.common.func_utils import normalize_source_type
 
 
 def collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:

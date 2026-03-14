@@ -12,8 +12,8 @@ from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from workflow.runtime_logging import get_file_logger
-from workflow.utils import to_bool, to_float, to_int
+from workflow.common.runtime_logging import get_file_logger
+from workflow.common.func_utils import to_bool, to_float, to_int
 
 
 AnswerNormalizer = Callable[[str], str]

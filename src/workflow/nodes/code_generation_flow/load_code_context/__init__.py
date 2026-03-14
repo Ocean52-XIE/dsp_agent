@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from workflow.common.module_inference import infer_module
 from workflow.common.node_trace import append_node_trace
 
 
@@ -27,7 +26,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     module_name = analysis.get("module") or state.get("active_module_name") or state.get("module_name")
     if not module_name:
         module_name = service.domain_profile.default_module
-    module_hint = infer_module(module_name, domain_profile=service.domain_profile)[1]
+    module_hint = service.domain_profile.infer_module(module_name)[1]
     return {
         "route": "code_generation",
         "module_name": module_name,

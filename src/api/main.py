@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from workflow.engine import WorkflowService
 from workflow.observability import PostgresObservabilityStore
-from workflow.runtime_logging import get_file_logger
+from workflow.common.runtime_logging import get_file_logger
 from workflow.session import PostgresSessionStore
 BASE_DIR = Path(__file__).resolve().parents[2]
 SOURCE_DIR = BASE_DIR / 'src'
@@ -54,13 +54,10 @@ def text_preview(value: Any, *, max_chars: int=120) -> str:
 def next_id(prefix: str) -> str:
     return f'{prefix}_{uuid4().hex}'
 
-def build_welcome_message() -> dict[str, Any]:
-    return {'id': next_id('msg'), 'role': 'assistant', 'kind': 'welcome', 'intent': 'system', 'status': 'completed', 'content': WORKFLOW.domain_profile.welcome_message(), 'created_at': now_iso(), 'trace_id': None, 'citations': [], 'analysis': None, 'actions': [], 'debug': {'domain_relevance': 1.0, 'latency_ms': 0, 'route': 'welcome', 'graph_backend': WORKFLOW.backend_name, 'graph_path': ['welcome']}}
-
 def create_session_record(title: str | None=None) -> dict[str, Any]:
     session_id = next_id('sess')
     created_at = now_iso()
-    session = {'id': session_id, 'title': title or f"New Session {session_id.split('_')[-1]}", 'created_at': created_at, 'updated_at': created_at, 'status': 'idle', 'messages': [build_welcome_message()]}
+    session = {'id': session_id, 'title': title or f"New Session {session_id.split('_')[-1]}", 'created_at': created_at, 'updated_at': created_at, 'status': 'idle', 'messages': []}
     persist_session_record(session)
     APP_LOGGER.info('api.session.created', session_id=session_id, title=text_preview(session['title'], max_chars=80))
     return session

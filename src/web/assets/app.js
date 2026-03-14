@@ -666,7 +666,7 @@ function renderWorkspace() {
 
   const visibleMessages = getVisibleMessages(state.currentSession.messages);
   const latestMessage = visibleMessages.at(-1) || null;
-  const route = latestMessage?.intent && latestMessage.intent !== "system" ? latestMessage.intent : "等待输入";
+  const route = latestMessage?.intent || "等待输入";
   const status = state.currentSession.status || "idle";
   updateBadges(route, status);
 }
@@ -745,7 +745,7 @@ function buildMessageTags(message) {
   }
 
   const items = [];
-  if (message.intent && message.intent !== "system") {
+  if (message.intent) {
     items.push(renderTagBlock("路由", message.intent));
   }
   if (message.analysis?.module) {
@@ -1001,15 +1001,11 @@ function buildInlineDebugPanel(message) {
   `;
 }
 
-function isSystemBootstrapMessage(message) {
-  return Boolean(message && message.role === "assistant" && message.intent === "system");
-}
-
 function getVisibleMessages(messages) {
   if (!Array.isArray(messages)) {
     return [];
   }
-  return messages.filter((message) => !isSystemBootstrapMessage(message));
+  return messages;
 }
 
 function resolveSelectedMessageId(session, preferredMessageId = null) {

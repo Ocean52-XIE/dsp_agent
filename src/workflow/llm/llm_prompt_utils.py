@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from workflow.domain_profile import DomainProfile
-from workflow.utils import normalize_source_type
+from workflow.common.domain_profile import DomainProfile
+from workflow.common.func_utils import normalize_source_type
 
 
 def resolve_system_prompt(

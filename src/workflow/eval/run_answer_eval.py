@@ -40,7 +40,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from workflow.engine import WorkflowService  # noqa: E402
-from workflow.utils import normalize_source_type, to_bool, to_float, to_int  # noqa: E402
+from workflow.common.func_utils import normalize_source_type, to_bool, to_float, to_int  # noqa: E402
 
 
 @dataclass

@@ -44,6 +44,22 @@ def _as_dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
 
+def _build_prompts(payload: dict[str, Any], *, domain_dir: Path) -> dict[str, str]:
+    prompts = {_as_str(k): _as_str(v) for k, v in _as_dict(payload).items()}
+    qa_system_path = _as_str(prompts.get("qa_system_path"))
+    if not qa_system_path:
+        return prompts
+
+    path = Path(qa_system_path)
+    if not path.is_absolute():
+        path = (domain_dir / path).resolve()
+    try:
+        prompts["qa_system"] = path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        raise ValueError(f"Invalid qa_system_path: {qa_system_path}") from exc
+    return prompts
+
+
 @dataclass(frozen=True)
 class ModuleProfile:
     name: str
@@ -77,7 +93,7 @@ class DomainGateProfile:
     short_query_penalty: float = 0.25
     short_query_max_len: int = 4
     code_hint_regex: str = r"[A-Za-z_][A-Za-z0-9_]{2,}\s*(\(|\.py\b|/)"
-    laugh_like_regex: str = r"^[哈哈呵呵嘻嘻啊嗯哦嗨~\s!！?？,，。…]+$"
+    laugh_like_regex: str = r"^[鍝堝搱鍛靛懙鍢诲樆鍟婂棷鍝﹀棬~\s!锛?锛?锛屻€傗€+$"
     domain_terms: tuple[str, ...] = ()
     small_talk_exact: tuple[str, ...] = ()
     small_talk_substr: tuple[str, ...] = ()
@@ -94,7 +110,7 @@ class DomainGateProfile:
             short_query_penalty=_as_float(payload.get("short_query_penalty"), 0.25),
             short_query_max_len=_as_int(payload.get("short_query_max_len"), 4),
             code_hint_regex=_as_str(payload.get("code_hint_regex"), r"[A-Za-z_][A-Za-z0-9_]{2,}\s*(\(|\.py\b|/)"),
-            laugh_like_regex=_as_str(payload.get("laugh_like_regex"), r"^[哈哈呵呵嘻嘻啊嗯哦嗨~\s!！?？,，。…]+$"),
+            laugh_like_regex=_as_str(payload.get("laugh_like_regex"), r"^[鍝堝搱鍛靛懙鍢诲樆鍟婂棷鍝﹀棬~\s!锛?锛?锛屻€傗€+$"),
             domain_terms=_as_tuple(payload.get("domain_terms")),
             small_talk_exact=_as_tuple(payload.get("small_talk_exact")),
             small_talk_substr=_as_tuple(payload.get("small_talk_substr")),
@@ -203,7 +219,6 @@ class DomainProfile:
     answering: AnsweringProfile
     prompts: dict[str, str]
     code_generation: dict[str, Any]
-    ui: dict[str, str]
     eval: dict[str, str]
     domain_dir: Path
     raw: dict[str, Any]
@@ -229,9 +244,8 @@ class DomainProfile:
             query_rewrite=QueryRewriteProfile.from_dict(_as_dict(payload.get("query_rewrite"))),
             retrieval=RetrievalProfile.from_dict(_as_dict(payload.get("retrieval"))),
             answering=AnsweringProfile.from_dict(_as_dict(payload.get("answering"))),
-            prompts={_as_str(k): _as_str(v) for k, v in _as_dict(payload.get("prompts")).items()},
+            prompts=_build_prompts(_as_dict(payload.get("prompts")), domain_dir=domain_dir),
             code_generation=_as_dict(payload.get("code_generation")),
-            ui={_as_str(k): _as_str(v) for k, v in _as_dict(payload.get("ui")).items()},
             eval={_as_str(k): _as_str(v) for k, v in _as_dict(payload.get("eval")).items()},
             domain_dir=domain_dir,
             raw=dict(payload),
@@ -256,6 +270,81 @@ class DomainProfile:
     def module_hint(self, module_name: str) -> str:
         item = self.module_by_name(module_name)
         return item.hint if item else ""
+
+    def is_pronoun_followup(self, text: str) -> bool:
+        pronouns = (
+            "\u5b83",  # 它
+            "\u8fd9\u4e2a",  # 这个
+            "\u8fd9\u4e2a\u95ee\u9898",  # 这个问题
+            "\u90a3\u4e2a",  # 那个
+            "\u90a3\u8fd9\u4e2a",  # 那这个
+            "\u8fd9\u5757",  # 这块
+            "\u8fd9\u91cc",  # 这里
+            "\u4e0a\u9762\u8fd9\u4e2a",  # 上面这个
+            "it",
+            "that",
+            "this",
+        )
+        normalized = str(text or "").lower()
+        return any(token in normalized for token in pronouns)
+
+    def infer_module(self, text: str) -> tuple[str, str]:
+        """Infer target module name and hint from query text."""
+        default_module = self.default_module
+        default_hint = self.module_hint(default_module)
+        if not text:
+            return default_module, default_hint
+
+        lowered = text.lower()
+        modules = sorted(self.modules, key=lambda item: item.route_priority)
+
+        # Symbol-level routing takes precedence for code-location style queries.
+        for module in modules:
+            if module.symbol_keywords and any(token.lower() in lowered for token in module.symbol_keywords):
+                return module.name, module.hint
+
+        best_module_name = default_module
+        best_module_hint = default_hint
+        best_score = 0
+        best_priority = 10**9
+        for module in modules:
+            keyword_score = sum(1 for token in module.keywords if token and token.lower() in lowered)
+            alias_score = sum(1 for token in module.aliases if token and token.lower() in lowered)
+            score = keyword_score + alias_score
+            if score <= 0:
+                continue
+            if score > best_score or (score == best_score and module.route_priority < best_priority):
+                best_score = score
+                best_priority = module.route_priority
+                best_module_name = module.name
+                best_module_hint = module.hint
+
+        return best_module_name, best_module_hint
+
+    def looks_like_code_location_query(self, text: str) -> bool:
+        normalized = " ".join((text or "").strip().lower().split())
+        if not normalized:
+            return False
+
+        code_location_terms = self.query_rewrite.intent_terms.get("code_location", ())
+        if any(token and token.lower() in normalized for token in code_location_terms):
+            return True
+
+        fallback_terms = (
+            "代码在哪儿",
+            "代码在哪",
+            "代码位置",
+            "实现在哪",
+            "入口在哪",
+            "哪个文件",
+            "在哪个文件",
+            "路径在哪",
+            "哪一行",
+            "line",
+            "where is the code",
+            "where is code",
+        )
+        return any(token in normalized for token in fallback_terms)
 
     def module_alias_queries(self, module_name: str) -> list[str]:
         item = self.module_by_name(module_name)
@@ -323,12 +412,6 @@ class DomainProfile:
     def system_prompt(self) -> str:
         return _as_str(self.prompts.get("qa_system"))
 
-    def welcome_message(self) -> str:
-        message = _as_str(self.ui.get("welcome_message"))
-        if message:
-            return message
-        return f"这里已经切换成 LangGraph 工作流入口，当前会话使用“{self.display_name}”领域配置。"
-
 
 def _load_json_file(path: Path) -> dict[str, Any]:
     try:
@@ -371,7 +454,7 @@ def load_domain_profile(*, project_root: Path) -> DomainProfile:
 
 
 def _default_project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[3]
 
 
 def get_domain_profile(*, project_root: Path | None = None, force_reload: bool = False) -> DomainProfile:
@@ -398,3 +481,4 @@ def reset_domain_profile_singleton() -> None:
     with _PROFILE_SINGLETON_LOCK:
         _PROFILE_SINGLETON = None
         _PROFILE_SINGLETON_ROOT = None
+

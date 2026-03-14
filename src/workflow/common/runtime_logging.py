@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from workflow.utils import env_bool, env_int
+from workflow.common.func_utils import env_bool, env_int
 
 
 class WorkflowFileLogger:

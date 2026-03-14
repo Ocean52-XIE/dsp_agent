@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from workflow.common.module_inference import infer_module
-from workflow.domain_profile import DomainProfile
+from workflow.common.domain_profile import DomainProfile
 
 
 def build_history_summary(history: list[dict[str, Any]]) -> str:
@@ -36,5 +35,5 @@ def extract_module_from_message(
         return "", ""
     analysis = message.get("analysis") or {}
     module_name = analysis.get("module", "")
-    module_hint = infer_module(module_name, domain_profile=domain_profile)[1] if module_name else ""
+    module_hint = domain_profile.infer_module(module_name)[1] if module_name else ""
     return module_name, module_hint

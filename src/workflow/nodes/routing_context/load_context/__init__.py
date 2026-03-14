@@ -4,16 +4,49 @@ from __future__ import annotations
 
 from typing import Any
 
-from workflow.common.module_inference import infer_module
+from workflow.common.domain_profile import DomainProfile
 from workflow.common.node_trace import append_node_trace
-from workflow.common.query_followup import (
-    looks_like_code_location_query,
-    looks_like_context_dependent_followup,
-)
 from workflow.nodes.routing_context.load_context.helpers import (
     extract_module_from_message,
     latest_message_by,
 )
+
+
+def _looks_like_context_dependent_followup(text: str, *, domain_profile: DomainProfile) -> bool:
+    if domain_profile.is_pronoun_followup(text):
+        return True
+
+    normalized = " ".join((text or "").strip().lower().split())
+    compact = normalized.replace(" ", "")
+    if not compact:
+        return False
+
+    if domain_profile.looks_like_code_location_query(normalized):
+        return True
+
+    has_code_anchor = any(
+        token in normalized
+        for token in (
+            "\u4ee3\u7801",  # code
+            "\u51fd\u6570",  # function
+            "\u6587\u4ef6",  # file
+            "\u8def\u5f84",  # path
+            "\u5b9e\u73b0",  # implementation
+            "\u5165\u53e3",  # entrypoint
+            "\u884c\u53f7",  # line number
+        )
+    )
+    has_where_anchor = any(
+        token in normalized
+        for token in (
+            "\u54ea\u91cc",  # where
+            "\u5728\u54ea",  # at where
+            "\u54ea\u4e2a",  # which
+            "\u54ea\u4e00",  # which one
+            "\u4f4d\u7f6e",  # location
+        )
+    )
+    return has_code_anchor and has_where_anchor and len(compact) <= 16
 
 
 def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
@@ -36,13 +69,13 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         domain_profile=service.domain_profile,
     )
 
-    inferred_module_name, inferred_module_hint = infer_module(user_query, domain_profile=service.domain_profile)
+    inferred_module_name, inferred_module_hint = service.domain_profile.infer_module(user_query)
     reuse_history_topic = False
-    if active_module_name and looks_like_context_dependent_followup(user_query, domain_profile=service.domain_profile):
+    if active_module_name and _looks_like_context_dependent_followup(user_query, domain_profile=service.domain_profile):
         reuse_history_topic = True
     elif (
         active_module_name
-        and looks_like_code_location_query(user_query, domain_profile=service.domain_profile)
+        and service.domain_profile.looks_like_code_location_query(user_query)
         and inferred_module_name == service.domain_profile.default_module
     ):
         # Generic code-location query without module keywords should stay on active topic.

@@ -6,8 +6,8 @@ import re
 from typing import Any
 
 from workflow.common.evidence import collect_evidence_hits
-from workflow.common.llm_client import CommonLLMRequest
-from workflow.common.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump, resolve_system_prompt
+from workflow.llm.llm_client import CommonLLMRequest
+from workflow.llm.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump, resolve_system_prompt
 from workflow.common.node_trace import append_node_trace
 
 

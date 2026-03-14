@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from workflow.common.node_trace import append_node_trace
-from workflow.utils import normalize_source_type
+from workflow.common.func_utils import normalize_source_type
 
 
 SCENE_LABELS = {

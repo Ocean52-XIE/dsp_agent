@@ -90,9 +90,8 @@ domain/
 | `query_rewrite` | `object` | 否 | 内置默认 | 检索改写词典、意图词、符号别名。 |
 | `retrieval` | `object` | 否 | 内置默认 | 多源检索 TopK、权重、配额、开关。 |
 | `answering` | `object` | 否 | 内置默认 | 问答器领域词与默认入口符号。 |
-| `prompts` | `object` | 否 | `{}` | 领域 prompt，当前主要使用 `qa_system`。 |
+| `prompts` | `object` | 否 | `{}` | 领域 prompt，支持 `qa_system` 或 `qa_system_path`。 |
 | `code_generation` | `object` | 否 | `{}` | 代码生成上下文模板路径等。 |
-| `ui` | `object` | 否 | `{}` | UI 文案配置，当前主要使用 `welcome_message`。 |
 | `eval` | `object` | 否 | `{}` | 评测数据集路径映射（供 eval 脚本读取）。 |
 
 ### 4.2 `sources` 子字段
@@ -182,14 +181,13 @@ domain/
 | `bid_entry_terms` | `array<string>` | `[]` | “入口函数”类识别词。 |
 | `default_entry_symbol` | `string` | `main_entry` | 默认入口符号兜底。 |
 
-### 4.9 `prompts` / `code_generation` / `ui` / `eval`
+### 4.9 `prompts` / `code_generation` / `eval`
 
 - `prompts`
   - `qa_system`：**已生效**，用于问答系统提示词。
+  - `qa_system_path`：**已生效**，可指定外部 `.md` 文件路径加载系统提示词（相对 `domain/<domain_id>/`）。
 - `code_generation`
   - `file_templates`：**已生效**，用于构造代码上下文候选路径模板。
-- `ui`
-  - `welcome_message`：**已生效**，未配置时自动回退默认欢迎语。
 - `eval`
   - 常用键：`retrieval_dataset`、`code_retrieval_dataset`、`answer_dataset`、`hybrid_answer_dataset`。
   - 说明：运行评测脚本时可按键读取对应数据集路径。
@@ -202,7 +200,7 @@ domain/
 - `sources.code.roots`
 - `modules`（至少一个，含 `name`）
 - `routing.default_module`
-- `prompts.qa_system`
+- `prompts.qa_system`（或 `prompts.qa_system_path`）
 
 ## 5. 当前示例
 

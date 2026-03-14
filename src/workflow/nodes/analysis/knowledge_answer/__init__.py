@@ -6,9 +6,9 @@ import re
 from typing import Any
 
 from workflow.common.evidence import collect_evidence_hits
-from workflow.common.llm_client import CommonLLMRequest
-from workflow.common.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump, resolve_system_prompt
-from workflow.utils import normalize_source_type
+from workflow.llm.llm_client import CommonLLMRequest
+from workflow.llm.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump, resolve_system_prompt
+from workflow.common.func_utils import normalize_source_type
 
 
 QA_SYSTEM_PROMPT_TEMPLATE = (

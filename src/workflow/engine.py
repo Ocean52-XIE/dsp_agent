@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """LangGraph workflow engine."""
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from typing import Any, Callable, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from workflow.common.llm_client import WorkflowLLMClient
+from workflow.llm.llm_client import WorkflowLLMClient
+from workflow.common.domain_profile import DomainProfile, get_domain_profile
 from workflow.common.node_trace import append_node_trace
-from workflow.domain_profile import DomainProfile, get_domain_profile
 from workflow.nodes.analysis.issue_analysis import run as issue_analysis_node
 from workflow.nodes.analysis.knowledge_answer import run as knowledge_answer_node
 from workflow.nodes.code_generation_flow.code_generation import run as code_generation_node
@@ -29,8 +29,8 @@ from workflow.nodes.retrieval_flow.retrieve_wiki import run as retrieve_wiki_nod
 from workflow.nodes.retrieval_flow.retrieve_wiki.wiki_retriever import MarkdownWikiRetriever
 from workflow.nodes.routing_context.intent_routing import run as intent_routing_node
 from workflow.nodes.routing_context.load_context import run as load_context_node
-from workflow.runtime_logging import get_file_logger
-from workflow.utils import env_bool
+from workflow.common.runtime_logging import get_file_logger
+from workflow.common.func_utils import env_bool
 
 BACKEND_NAME = "langgraph"
 
@@ -38,41 +38,20 @@ BACKEND_NAME = "langgraph"
 class WorkflowState(TypedDict, total=False):
     """Shared state payload across graph nodes."""
 
-    trace_id: str  # 当前请求链路的追踪 ID
-    session_id: str  # 会话 ID，用于关联多轮对话
-    user_query: str  # 用户本轮输入问题
-    history: list[dict[str, Any]]  # 会话历史消息列表
+    trace_id: str  # 褰撳墠璇锋眰閾捐矾鐨勮拷韪?ID
+    session_id: str  # 浼氳瘽 ID锛岀敤浜庡叧鑱斿杞璇?    user_query: str  # 鐢ㄦ埛鏈疆杈撳叆闂
+    history: list[dict[str, Any]]  # 浼氳瘽鍘嗗彶娑堟伅鍒楄〃
 
-    route: str  # 意图路由结果（走哪条分支）
-    status: str  # 当前处理状态
-    response_kind: str  # 最终响应类型
-    domain_relevance: float  # 输入与领域的相关度分数
+    route: str  # 鎰忓浘璺敱缁撴灉锛堣蛋鍝潯鍒嗘敮锛?    status: str  # 褰撳墠澶勭悊鐘舵€?    response_kind: str  # 鏈€缁堝搷搴旂被鍨?    domain_relevance: float  # 杈撳叆涓庨鍩熺殑鐩稿叧搴﹀垎鏁?
+    module_name: str  # 褰撳墠璇嗗埆鍒扮殑妯″潡鍚?    module_hint: str  # 妯″潡鎻愮ず淇℃伅锛堢敤浜庤緟鍔╄矾鐢变笌妫€绱級
+    active_topic_source: str  # 褰撳墠娲昏穬涓婚鐨勬潵婧?    active_module_name: str  # 褰撳墠涓婁笅鏂囦腑鐨勬椿璺冩ā鍧楀悕
+    last_analysis_result: dict[str, Any] | None  # 鏈€杩戜竴娆″垎鏋愮粨鏋?    last_analysis_citations: list[dict[str, Any]]  # 鏈€杩戜竴娆″垎鏋愬紩鐢?
+    retrieval_queries: list[str]  # 妫€绱㈡敼鍐欏悗鏌ヨ璇嶅垪琛?    retrieval_plan: dict[str, Any]  # 妫€绱㈣鍒掞紙鏉ユ簮銆佺瓥鐣ョ瓑锛?    wiki_hits: list[dict[str, Any]]  # wiki 妫€绱㈠懡涓枃妗?    wiki_retrieval_grade: str  # wiki 妫€绱㈣川閲忚瘎绾?    wiki_retrieval_profile: dict[str, Any]  # wiki 妫€绱㈣繃绋嬬敾鍍?    case_hits: list[dict[str, Any]]  # case 妫€绱㈠懡涓枃妗?    case_retrieval_grade: str  # case 妫€绱㈣川閲忚瘎绾?    case_retrieval_profile: dict[str, Any]  # case 妫€绱㈣繃绋嬬敾鍍?    code_hits: list[dict[str, Any]]  # code 妫€绱㈠懡涓枃妗?    code_retrieval_grade: str  # code 妫€绱㈣川閲忚瘎绾?    code_retrieval_profile: dict[str, Any]  # code 妫€绱㈣繃绋嬬敾鍍?    citations: list[dict[str, Any]]  # 铻嶅悎鍚庣殑寮曠敤鍒楄〃
+    evidence_fusion_profile: dict[str, Any]  # 璇佹嵁铻嶅悎杩囩▼鐢诲儚
 
-    module_name: str  # 当前识别到的模块名
-    module_hint: str  # 模块提示信息（用于辅助路由与检索）
-    active_topic_source: str  # 当前活跃主题的来源
-    active_module_name: str  # 当前上下文中的活跃模块名
-    last_analysis_result: dict[str, Any] | None  # 最近一次分析结果
-    last_analysis_citations: list[dict[str, Any]]  # 最近一次分析引用
-
-    retrieval_queries: list[str]  # 检索改写后查询词列表
-    retrieval_plan: dict[str, Any]  # 检索计划（来源、策略等）
-    wiki_hits: list[dict[str, Any]]  # wiki 检索命中文档
-    wiki_retrieval_grade: str  # wiki 检索质量评级
-    wiki_retrieval_profile: dict[str, Any]  # wiki 检索过程画像
-    case_hits: list[dict[str, Any]]  # case 检索命中文档
-    case_retrieval_grade: str  # case 检索质量评级
-    case_retrieval_profile: dict[str, Any]  # case 检索过程画像
-    code_hits: list[dict[str, Any]]  # code 检索命中文档
-    code_retrieval_grade: str  # code 检索质量评级
-    code_retrieval_profile: dict[str, Any]  # code 检索过程画像
-    citations: list[dict[str, Any]]  # 融合后的引用列表
-    evidence_fusion_profile: dict[str, Any]  # 证据融合过程画像
-
-    analysis: dict[str, Any] | None  # 分析结果载荷
-    answer: str  # 面向用户的最终回答文本
-    node_trace: list[dict[str, str]]  # 节点执行轨迹
-    assistant_message: dict[str, Any]  # 最终输出的助手消息结构
+    analysis: dict[str, Any] | None  # 鍒嗘瀽缁撴灉杞借嵎
+    answer: str  # 闈㈠悜鐢ㄦ埛鐨勬渶缁堝洖绛旀枃鏈?    node_trace: list[dict[str, str]]  # 鑺傜偣鎵ц杞ㄨ抗
+    assistant_message: dict[str, Any]  # 鏈€缁堣緭鍑虹殑鍔╂墜娑堟伅缁撴瀯
 
 
 class WorkflowService:
@@ -389,3 +368,4 @@ class WorkflowService:
 
     def _trace(self, state: WorkflowState, node: str, summary: str) -> list[dict[str, str]]:
         return append_node_trace(state, node, summary)
+
