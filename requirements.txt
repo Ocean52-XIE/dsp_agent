@@ -5,6 +5,7 @@ langchain
 langchain-openai
 langchain-community
 langchain-text-splitters
+langgraph-checkpoint-postgres
 rank_bm25
 scikit-learn
 psycopg[binary]==3.2.12

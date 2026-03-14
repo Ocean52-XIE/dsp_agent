@@ -2,7 +2,6 @@
 """LLM-related shared utilities for workflow nodes."""
 
 from workflow.llm.llm_client import (
-    CommonLLMCapability,
     CommonLLMConfig,
     CommonLLMRequest,
     CommonLLMResult,
@@ -16,7 +15,6 @@ from workflow.llm.llm_prompt_utils import (
 )
 
 __all__ = [
-    "CommonLLMCapability",
     "CommonLLMConfig",
     "CommonLLMRequest",
     "CommonLLMResult",

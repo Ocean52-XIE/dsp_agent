@@ -20,18 +20,15 @@ QA_SYSTEM_PROMPT_TEMPLATE = (
 QA_USER_PROMPT_TEMPLATE = """【用户问题】
 {user_query}
 
-【当前模块】
+【当前主模块】
 - module_name: {module_name}
 - module_hint: {module_hint}
 
-【检索语句】
-{retrieval_queries}
+【相关模块】
+{related_modules_block}
 
 【检索证据（按相关性排序）】
 {evidence_block}
-
-【回答要求】
-{answer_style_requirement}
 """
 
 
@@ -195,32 +192,26 @@ def _is_reason_query(normalized_query: str) -> bool:
     return any(token in normalized_query for token in ("原因", "为什么", "为何", "导致", "怎么会", "why"))
 
 
-def _build_answer_style_requirement(service: Any, *, question_type: str, user_query: str) -> str:
-    base = "按结论 + 依据简洁作答。"
-    extras: list[str] = []
-    normalized_query = user_query.lower().strip()
+def _build_related_modules_block(related_modules: list[dict[str, Any]]) -> str:
+    """
+    构建相关模块展示文本。
 
-    if question_type == "list":
-        extras.append("优先给出 3-6 条要点，使用编号列表。")
-    elif question_type == "reason":
-        extras.append("优先列主要原因，并给出对应证据。")
-    elif question_type == "formula":
-        extras.append("给出公式与变量含义，确保符号和字段名一致。")
+    说明：
+        最终给 LLM 的提示词仍然保留“主模块”概念，
+        相关模块只作为辅助信息追加，帮助模型理解跨模块问题的上下文边界。
+    """
+    if not related_modules:
+        return "- 无"
 
-    if _is_code_location_query(service, normalized_query):
-        extras.append("至少给 1 个代码锚点：路径 + 函数/类名，最好带行号。")
-        extras.append("如果已给出代码锚点和依据，不要附加“当前证据不足”。")
-
-    if _is_calibration_query(service, normalized_query):
-        extras.append("优先覆盖校准指标关键词，例如 AUC、LogLoss、Calibration Error。")
-
-    if _is_bid_entry_query(service, normalized_query):
-        extras.append(f"若证据包含入口函数，请显式给出入口函数名（优先 {_default_entry_symbol(service)}）。")
-
-    if _is_reason_query(normalized_query):
-        extras.append("优先覆盖：特征分布漂移、模型版本切换、校准参数同步。")
-
-    return " ".join([base, *extras]).strip()
+    rows: list[str] = []
+    for item in related_modules[:3]:
+        module_name = str(item.get("module_name", "")).strip()
+        module_hint = str(item.get("module_hint", "")).strip() or "--"
+        if not module_name:
+            continue
+        rows.append(f"- module_name: {module_name}")
+        rows.append(f"  module_hint: {module_hint}")
+    return "\n".join(rows) if rows else "- 无"
 
 
 def _enforce_structured_output(answer: str, *, question_type: str) -> str:
@@ -263,7 +254,7 @@ def _run_llm_for_qa(
     question_type: str,
     module_name: str,
     module_hint: str,
-    retrieval_queries: list[str],
+    related_modules: list[dict[str, Any]],
     evidence_hits: list[dict[str, Any]],
 ) -> tuple[str | None, str | None, dict[str, Any]]:
     llm_client = getattr(service, "_llm_client", None)
@@ -275,7 +266,6 @@ def _run_llm_for_qa(
         default_prompt=QA_SYSTEM_PROMPT_TEMPLATE,
         domain_profile=getattr(service, "domain_profile", None),
     )
-    retrieval_text = "\n".join(f"- {item}" for item in retrieval_queries) if retrieval_queries else "- none"
 
     request = CommonLLMRequest(
         node_name="knowledge_answer",
@@ -284,13 +274,8 @@ def _run_llm_for_qa(
             user_query=user_query,
             module_name=module_name,
             module_hint=module_hint,
-            retrieval_queries=retrieval_text,
+            related_modules_block=_build_related_modules_block(related_modules),
             evidence_block=build_evidence_block(evidence_hits),
-            answer_style_requirement=_build_answer_style_requirement(
-                service,
-                question_type=question_type,
-                user_query=user_query,
-            ),
         ),
         evidence_count=len(evidence_hits),
         require_evidence=True,
@@ -298,7 +283,7 @@ def _run_llm_for_qa(
         metadata={
             "module_name": module_name,
             "question_type": question_type,
-            "retrieval_query_count": len(retrieval_queries),
+            "related_module_count": len(related_modules),
             "user_query_preview": user_query[:120],
         },
         normalize_answer=lambda text: _enforce_structured_output(text, question_type=question_type),
@@ -314,7 +299,7 @@ def _run_llm_for_qa(
             question_type=question_type,
             module_name=module_name,
             module_hint=module_hint,
-            retrieval_queries=retrieval_queries,
+            related_modules=related_modules,
             evidence_hits=evidence_hits,
         )
 
@@ -323,7 +308,7 @@ def _run_llm_for_qa(
         question_type=question_type,
         module_name=module_name,
         module_hint=module_hint,
-        retrieval_queries=retrieval_queries,
+        related_modules=related_modules,
         evidence_hits=evidence_hits,
     )
     status = getattr(llm_client, "last_call_status", {}) or {}
@@ -334,6 +319,7 @@ def _run_llm_for_qa(
 def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     module_name = state["module_name"]
     module_hint = state["module_hint"]
+    related_modules = list(state.get("related_modules", []) or [])
     user_query = str(state.get("user_query", ""))
     question_type = _infer_question_type(service, user_query)
 
@@ -352,7 +338,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         question_type=question_type,
         module_name=module_name,
         module_hint=module_hint,
-        retrieval_queries=list(state.get("retrieval_queries", []) or []),
+        related_modules=related_modules,
         evidence_hits=evidence_hits,
     )
 
@@ -361,7 +347,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     llm_call_status.setdefault("invoked", bool(llm_client is not None))
 
     if llm_answer_text:
-        if _is_code_location_query(service, user_query) and code_hits and not _answer_mentions_code_anchor(llm_answer_text, code_hits):
+        if service.domain_profile.is_code_location_query(user_query) and code_hits and not _answer_mentions_code_anchor(llm_answer_text, code_hits):
             llm_fallback_reason = "llm_missing_code_anchor"
             llm_call_status.update(
                 {
@@ -374,7 +360,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
             llm_mode = "llm"
             final_answer = llm_answer_text
     else:
-        if _is_code_location_query(service, user_query) and code_hits:
+        if service.domain_profile.is_code_location_query(user_query) and code_hits:
             final_answer = _build_code_location_fallback(module_name, module_hint, code_hits)
         else:
             final_answer = _build_general_fallback(
@@ -391,6 +377,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         "analysis": {
             "summary": "知识问答已完成",
             "module": module_name,
+            "related_modules": related_modules,
             "confidence": "medium",
             "generation_mode": llm_mode,
             "question_type": question_type,
@@ -408,5 +395,9 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
                 "最终 Markdown 三段式格式由 finalize_response 节点统一收口",
             ],
         },
-        "node_trace": service._trace(state, "knowledge_answer", f"module={module_name}"),
+        "node_trace": service._trace(
+            state,
+            "knowledge_answer",
+            f"module={module_name}, related={len(related_modules)}",
+        ),
     }

@@ -76,8 +76,8 @@ class CommonLLMResult:
     call_status: dict[str, Any]
 
 
-class CommonLLMCapability:
-    """A reusable LLM caller with retry, timeout mapping and status tracing."""
+class WorkflowLLMClient:
+    """Workflow-level LLM client with retry, timeout mapping and status tracing."""
 
     def __init__(self, config: CommonLLMConfig) -> None:
         self.config = config
@@ -110,7 +110,7 @@ class CommonLLMCapability:
             return False
         return self._chat_model is not None
 
-    def generate(self, request: CommonLLMRequest) -> CommonLLMResult:
+    def _generate_result(self, request: CommonLLMRequest) -> CommonLLMResult:
         started_status = self._build_status(
             status="started",
             invoked=True,
@@ -548,22 +548,6 @@ class CommonLLMCapability:
             return "http_error"
         return "unknown_error"
 
-
-WorkflowLLMConfig = CommonLLMConfig
-
-
-class WorkflowLLMClient:
-    """Workflow-level LLM client facade built on top of CommonLLMCapability."""
-
-    def __init__(self, config: WorkflowLLMConfig) -> None:
-        self.config = config
-        self._llm = CommonLLMCapability(config)
-        self.last_call_status: dict[str, Any] = dict(self._llm.last_call_status)
-
-    @property
-    def is_available(self) -> bool:
-        return self._llm.is_available
-
     @classmethod
     def from_env(cls, *, prefix: str = "WORKFLOW_QA_LLM", **_: Any) -> "WorkflowLLMClient":
         return cls(WorkflowLLMConfig.from_env(prefix=prefix))
@@ -573,8 +557,10 @@ class WorkflowLLMClient:
         return answer, fallback_reason
 
     def generate_with_status(self, request: CommonLLMRequest) -> tuple[str | None, str | None, dict[str, Any]]:
-        result: CommonLLMResult = self._llm.generate(request)
+        result: CommonLLMResult = self._generate_result(request)
         # Keep compatibility for legacy readers, but callers should consume returned status.
         self.last_call_status = dict(result.call_status)
         return result.answer, result.fallback_reason, dict(result.call_status)
 
+
+WorkflowLLMConfig = CommonLLMConfig

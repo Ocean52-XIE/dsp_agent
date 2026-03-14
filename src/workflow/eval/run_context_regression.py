@@ -112,6 +112,43 @@ def _verify_context_followup(turn_outputs: list[dict[str, Any]]) -> list[str]:
     return failures
 
 
+def _verify_cross_module_followup(turn_outputs: list[dict[str, Any]]) -> list[str]:
+    """
+    验证跨模块问题在短追问场景下仍能保留辅助模块上下文。
+
+    说明：
+        第一轮问题同时涉及“两率预估 + 出价”，第二轮仅追问“代码在哪里”。
+        期望系统不仅保留主模块，还能继续保留出价模块作为 related_modules。
+    """
+    failures: list[str] = []
+    if len(turn_outputs) != 2:
+        return ["expected 2 turns"]
+
+    second = turn_outputs[1]
+    second_kind = str(second.get("kind", "") or "")
+    second_analysis = second.get("analysis") or {}
+    second_module = str(second_analysis.get("module", "") or "")
+    related_modules = list(second_analysis.get("related_modules", []) or [])
+    related_module_names = {
+        str(item.get("module_name", "")).strip()
+        for item in related_modules
+        if isinstance(item, dict)
+    }
+    citation_paths = [str(item.get("path", "")).replace("\\", "/") for item in (second.get("citations") or [])]
+
+    if second_kind != "knowledge_qa":
+        failures.append(f"turn2 kind should be knowledge_qa, got: {second_kind or '<empty>'}")
+    if second_module != "rate-prediction":
+        failures.append(f"turn2 module should be rate-prediction, got: {second_module or '<empty>'}")
+    if "bid-optimizer" not in related_module_names:
+        failures.append("turn2 related_modules should keep bid-optimizer")
+    if not any("rate/rate_predictor.py" in path for path in citation_paths):
+        failures.append("turn2 citations should include rate/rate_predictor.py")
+    if not any("bid/bid_optimizer.py" in path for path in citation_paths):
+        failures.append("turn2 citations should include bid/bid_optimizer.py")
+    return failures
+
+
 def _verify_out_of_scope_no_leak(turn_outputs: list[dict[str, Any]]) -> list[str]:
     """
     内部辅助函数，负责`verify out of scope no leak` 相关处理。
@@ -200,6 +237,15 @@ def _build_cases() -> list[RegressionCase]:
                 "\u4eca\u5929\u5929\u6c14\u600e\u4e48\u6837",
             ],
             verify=_verify_out_of_scope_no_leak,
+        ),
+        RegressionCase(
+            case_id="cross_module_followup_code_location",
+            description="Cross-module question should keep related modules on short code-location follow-up.",
+            turns=[
+                "pCTR/pCVR \u4e0e\u51fa\u4ef7\u7684\u5173\u7cfb\u5728\u4e1a\u52a1\u4e0a\u5982\u4f55\u4f53\u73b0",
+                "\u4ee3\u7801\u5728\u54ea\u91cc",
+            ],
+            verify=_verify_cross_module_followup,
         ),
         RegressionCase(
             case_id="generic_troubleshoot_to_knowledge",

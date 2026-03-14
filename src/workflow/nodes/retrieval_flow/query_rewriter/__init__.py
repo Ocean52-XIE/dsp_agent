@@ -45,19 +45,8 @@ def _infer_query_flags(service: Any, user_query: str) -> dict[str, bool]:
     返回:
         返回类型为 `dict[str, bool]` 的处理结果。
     """
-    profile = service.domain_profile.query_rewrite
-    intent_terms = profile.intent_terms
-
-    normalized = user_query.lower().strip()
-    code_location_terms = intent_terms.get("code_location", ())
-    return {
-        "metric": _contains_any(normalized, intent_terms.get("metric", ())),
-        "pipeline": _contains_any(normalized, intent_terms.get("pipeline", ())),
-        "architecture": _contains_any(normalized, intent_terms.get("architecture", ())),
-        "troubleshoot": _contains_any(normalized, intent_terms.get("troubleshoot", ())),
-        "code": _contains_any(normalized, intent_terms.get("code", ())),
-        "code_location": _infer_code_location_intent(normalized, code_location_terms=code_location_terms),
-    }
+    # 统一通过 DomainProfile 实例方法做意图判定，避免不同节点各自维护一份词表命中逻辑。
+    return service.domain_profile.infer_query_flags(user_query)
 
 
 def _module_alias_queries(service: Any, module_name: str) -> list[str]:
@@ -72,6 +61,24 @@ def _module_alias_queries(service: Any, module_name: str) -> list[str]:
         返回类型为 `list[str]` 的处理结果。
     """
     return service.domain_profile.module_alias_queries(module_name)
+
+
+def _related_module_queries(service: Any, related_modules: list[dict[str, Any]]) -> list[str]:
+    """
+    为相关模块补充少量检索锚点。
+
+    说明：
+        这里只做轻量扩展，避免一次性注入过多辅助模块词，导致主问题焦点被冲散。
+        因此每个相关模块最多补充模块名与前两个别名。
+    """
+    rows: list[str] = []
+    for item in related_modules[:2]:
+        module_name = str(item.get("module_name", "")).strip()
+        if not module_name:
+            continue
+        rows.append(module_name)
+        rows.extend(_module_alias_queries(service, module_name)[:2])
+    return rows
 
 
 def _expand_queries(service: Any, base_queries: list[str], *, original_user_query: str) -> list[str]:
@@ -259,6 +266,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     module_name = state["module_name"]
     user_query = state["user_query"]
     route = state.get("route", "knowledge_qa")
+    related_modules = list(state.get("related_modules", []) or [])
     flags = _infer_query_flags(service, user_query)
     # 基于 route 区分检索改写策略：问题分析更偏日志/案例，知识问答更偏语义扩展。
     # 同时根据查询意图标记补充模块别名与模板查询，提升召回覆盖率。
@@ -274,6 +282,8 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         ]
         if flags["pipeline"] or flags["architecture"]:
             base_queries.extend(_module_alias_queries(service, module_name))
+        if related_modules:
+            base_queries.extend(_related_module_queries(service, related_modules))
     else:
         base_queries = [user_query]
         base_queries.extend(_expand_symbol_alias_queries(service, user_query))
@@ -287,6 +297,9 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
             or flags["code_location"]
         ):
             base_queries.extend(_module_alias_queries(service, module_name)[:2])
+        if related_modules:
+            # 对跨模块问题补充辅助模块锚点，提升“主模块 + 相关模块”联合召回能力。
+            base_queries.extend(_related_module_queries(service, related_modules))
         if not any(flags.values()):
             base_queries.append(f"{module_name} 业务说明")
         if route in {"issue_analysis", "code_generation"}:

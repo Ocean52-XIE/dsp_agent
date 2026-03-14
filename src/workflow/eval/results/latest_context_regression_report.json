@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-03-14T15:12:59",
+  "total_cases": 4,
+  "passed_cases": 4,
+  "failed_cases": 0,
+  "all_passed": true,
+  "debug_verbose_enabled": false,
+  "cases": [
+    {
+      "case_id": "context_followup_code_location",
+      "description": "The short follow-up 'code where' should keep previous module/topic.",
+      "passed": true,
+      "failures": [],
+      "turns": [
+        {
+          "query": "target_cpa 和 pCVR 的出价公式是什么",
+          "kind": "knowledge_qa",
+          "status": "completed",
+          "module": "bid-optimizer",
+          "citation_count": 4,
+          "first_citation_path": "domain/ad_engine/codes/ad_engine/bid/bid_optimizer.py"
+        },
+        {
+          "query": "代码在哪里",
+          "kind": "knowledge_qa",
+          "status": "completed",
+          "module": "bid-optimizer",
+          "citation_count": 4,
+          "first_citation_path": "domain/ad_engine/codes/ad_engine/bid/bid_optimizer.py"
+        }
+      ]
+    },
+    {
+      "case_id": "out_of_scope_no_citation_leak",
+      "description": "Out-of-scope response should not leak previous turn citations/evidence.",
+      "passed": true,
+      "failures": [],
+      "turns": [
+        {
+          "query": "target_cpa 和 pCVR 的出价公式是什么",
+          "kind": "knowledge_qa",
+          "status": "completed",
+          "module": "bid-optimizer",
+          "citation_count": 4,
+          "first_citation_path": "domain/ad_engine/codes/ad_engine/bid/bid_optimizer.py"
+        },
+        {
+          "query": "今天天气怎么样",
+          "kind": "out_of_scope",
+          "status": "out_of_scope",
+          "module": null,
+          "citation_count": 0,
+          "first_citation_path": null
+        }
+      ]
+    },
+    {
+      "case_id": "cross_module_followup_code_location",
+      "description": "Cross-module question should keep related modules on short code-location follow-up.",
+      "passed": true,
+      "failures": [],
+      "turns": [
+        {
+          "query": "pCTR/pCVR 与出价的关系在业务上如何体现",
+          "kind": "knowledge_qa",
+          "status": "completed",
+          "module": "rate-prediction",
+          "citation_count": 4,
+          "first_citation_path": "domain/ad_engine/codes/ad_engine/bid/bid_optimizer.py"
+        },
+        {
+          "query": "代码在哪里",
+          "kind": "knowledge_qa",
+          "status": "completed",
+          "module": "rate-prediction",
+          "citation_count": 4,
+          "first_citation_path": "domain/ad_engine/codes/ad_engine/bid/bid_optimizer.py"
+        }
+      ]
+    },
+    {
+      "case_id": "generic_troubleshoot_to_knowledge",
+      "description": "Generic troubleshoot method query without concrete incident details should go to knowledge QA.",
+      "passed": true,
+      "failures": [],
+      "turns": [
+        {
+          "query": "召回队列下降怎么排查",
+          "kind": "knowledge_qa",
+          "status": "completed",
+          "module": "ad-recall",
+          "citation_count": 4,
+          "first_citation_path": "domain/ad_engine/codes/ad_engine/bid/bid_optimizer.py"
+        }
+      ]
+    }
+  ]
+}

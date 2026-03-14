@@ -91,3 +91,20 @@ flowchart TD
 - 节点说明：`src/workflow/NODES.md`
 - 总体设计：`docs/智能问答问题分析系统整体设计.md`
 - 子系统设计：`docs/子系统设计/*.md`
+
+## 9. Checkpointer 持久化
+
+当前默认支持 LangGraph `PostgresSaver`（可回退内存）：
+
+- 默认行为：当配置了 PostgreSQL DSN 时，workflow checkpointer 会优先使用 PostgreSQL。
+- 回退行为：PostgreSQL 初始化失败时，会自动回退到 `MemorySaver` 并在日志与 `/api/health` 中给出原因。
+
+相关环境变量：
+
+- `WORKFLOW_CHECKPOINTER_BACKEND`：`postgres` / `memory`
+- `WORKFLOW_CHECKPOINTER_PG_ENABLED`
+- `WORKFLOW_CHECKPOINTER_PG_DSN`
+- `WORKFLOW_CHECKPOINTER_PG_SETUP`：首次使用时是否自动建表迁移（默认 `true`）
+- `WORKFLOW_CHECKPOINTER_PG_CONNECT_TIMEOUT_SECONDS`
+
+你可以通过 `GET /api/health` 的 `checkpointer` 字段查看当前启用状态。

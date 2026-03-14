@@ -271,6 +271,83 @@ class DomainProfile:
         item = self.module_by_name(module_name)
         return item.hint if item else ""
 
+    def normalize_query_text(self, text: str) -> str:
+        """
+        统一归一化用户查询文本。
+
+        说明：
+            节点侧对短问句、追问和意图词的判断都依赖同一份标准化文本，
+            因此这里统一做小写化与空白折叠，避免不同节点因为预处理不一致
+            造成同一句话在不同阶段命中不同规则。
+        """
+        return " ".join(str(text or "").strip().lower().split())
+
+    def query_intent_terms(self, intent_name: str) -> tuple[str, ...]:
+        """
+        返回指定意图对应的配置词表。
+
+        说明：
+            节点不应直接读取 `query_rewrite.intent_terms`，
+            而是通过该实例方法访问，保证意图判定入口统一。
+        """
+        return self.query_rewrite.intent_terms.get(str(intent_name or "").strip(), ())
+
+    def has_query_intent(self, text: str, intent_name: str) -> bool:
+        """
+        判断查询文本是否命中指定意图词。
+
+        说明：
+            该方法统一封装“文本归一化 + 词表命中”逻辑，
+            供 load_context、query_rewriter、knowledge_answer 等节点共用。
+        """
+        normalized = self.normalize_query_text(text)
+        if not normalized:
+            return False
+        terms = self.query_intent_terms(intent_name)
+        return any(term and term.lower() in normalized for term in terms)
+
+    def infer_query_flags(self, text: str) -> dict[str, bool]:
+        """
+        统一推断查询文本的基础意图标记。
+
+        说明：
+            当前主要用于检索改写与回答阶段的策略判断。
+            其中 `code_location` 显式复用 `is_code_location_query`，
+            保证代码定位问题在不同节点拥有完全一致的判定结果。
+        """
+        return {
+            "metric": self.has_query_intent(text, "metric"),
+            "pipeline": self.has_query_intent(text, "pipeline"),
+            "architecture": self.has_query_intent(text, "architecture"),
+            "troubleshoot": self.has_query_intent(text, "troubleshoot"),
+            "code": self.has_query_intent(text, "code"),
+            "code_location": self.is_code_location_query(text),
+        }
+
+    def is_code_location_query(self, text: str) -> bool:
+        """
+        判断查询是否属于“代码定位”类问题。
+
+        说明：
+            这是跨节点共用的统一判定入口。优先读取 domain profile 中配置的
+            `intent_terms.code_location`，只保留极少量英文兜底表达，防止配置
+            缺项时基础能力完全失效。
+        """
+        normalized = self.normalize_query_text(text)
+        if not normalized:
+            return False
+
+        if self.has_query_intent(normalized, "code_location"):
+            return True
+
+        fallback_terms = (
+            "code location",
+            "line",
+            "where is the code",
+            "where is code",
+        )
+        return any(token in normalized for token in fallback_terms)
+
     def is_pronoun_followup(self, text: str) -> bool:
         pronouns = (
             "\u5b83",  # 它
@@ -320,6 +397,53 @@ class DomainProfile:
                 best_module_hint = module.hint
 
         return best_module_name, best_module_hint
+
+    def infer_related_modules(
+        self,
+        text: str,
+        *,
+        primary_module_name: str = "",
+        limit: int = 2,
+    ) -> list[dict[str, str]]:
+        """
+        推断与当前问题相关的辅助模块列表。
+
+        说明：
+            该方法用于识别“跨模块问题”，例如同时提到两率预估与出价。
+            返回结果不替代主模块，只作为补充上下文提供给检索改写和最终回答。
+        """
+        normalized = str(text or "").strip().lower()
+        primary_normalized = str(primary_module_name or "").strip().lower()
+        if not normalized or limit <= 0:
+            return []
+
+        scored_modules: list[tuple[int, int, ModuleProfile]] = []
+        for module in self.modules:
+            module_normalized = module.name.strip().lower()
+            if not module_normalized or module_normalized == primary_normalized:
+                continue
+
+            # 相关模块使用“宽松召回”策略：
+            # 只要关键词、别名或符号关键词在用户问题中命中，就认为该模块可以作为辅助上下文。
+            keyword_score = sum(1 for token in module.keywords if token and token.lower() in normalized)
+            alias_score = sum(1 for token in module.aliases if token and token.lower() in normalized)
+            symbol_score = sum(2 for token in module.symbol_keywords if token and token.lower() in normalized)
+            score = keyword_score + alias_score + symbol_score
+            if score <= 0:
+                continue
+
+            scored_modules.append((score, module.route_priority, module))
+
+        scored_modules.sort(key=lambda item: (-item[0], item[1], item[2].name))
+        rows: list[dict[str, str]] = []
+        for _, _, module in scored_modules[:limit]:
+            rows.append(
+                {
+                    "module_name": module.name,
+                    "module_hint": module.hint,
+                }
+            )
+        return rows
 
     def looks_like_code_location_query(self, text: str) -> bool:
         normalized = " ".join((text or "").strip().lower().split())

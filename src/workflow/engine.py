@@ -2,14 +2,19 @@
 """LangGraph workflow engine."""
 from __future__ import annotations
 
+from contextlib import ExitStack
+from dataclasses import dataclass
 import os
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable, TypedDict
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
+from bootstrap.postgres_bootstrap import ensure_database_exists
+from workflow.common.func_utils import env_bool, to_bool, to_int
 from workflow.llm.llm_client import WorkflowLLMClient
 from workflow.common.domain_profile import DomainProfile, get_domain_profile
 from workflow.common.node_trace import append_node_trace
@@ -30,28 +35,135 @@ from workflow.nodes.retrieval_flow.retrieve_wiki.wiki_retriever import MarkdownW
 from workflow.nodes.routing_context.intent_routing import run as intent_routing_node
 from workflow.nodes.routing_context.load_context import run as load_context_node
 from workflow.common.runtime_logging import get_file_logger
-from workflow.common.func_utils import env_bool
 
 BACKEND_NAME = "langgraph"
+
+
+def _ensure_connect_timeout_in_dsn(dsn: str, timeout_seconds: int) -> str:
+    """
+    为 PostgreSQL DSN 注入 connect_timeout 参数（若未显式配置）。
+
+    说明：
+    1. PostgresSaver 的构造仅接收 conn_string，因此需要在 DSN 层完成超时参数注入；
+    2. 若用户已在 DSN 中显式配置 connect_timeout，则保持用户配置优先，不做覆盖。
+    """
+    normalized_dsn = str(dsn or "").strip()
+    if not normalized_dsn:
+        return normalized_dsn
+
+    parsed = urlsplit(normalized_dsn)
+    query_pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    if any(str(key).lower() == "connect_timeout" for key, _ in query_pairs):
+        return normalized_dsn
+
+    query_pairs.append(("connect_timeout", str(max(1, int(timeout_seconds)))))
+    updated_query = urlencode(query_pairs)
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, updated_query, parsed.fragment))
+
+
+@dataclass
+class WorkflowCheckpointerConfig:
+    """
+    Workflow Checkpointer 配置。
+
+    说明：
+    1. backend 支持 `memory` 与 `postgres` 两种模式；
+    2. 当未显式指定 backend 时，会根据是否配置了 PostgreSQL DSN 自动决策；
+    3. PostgreSQL DSN 支持独立配置，也支持复用 session/observability 的 DSN。
+    """
+
+    backend: str
+    pg_enabled: bool
+    pg_dsn: str
+    pg_setup: bool
+    pg_connect_timeout_seconds: int
+
+    @classmethod
+    def from_env(cls) -> "WorkflowCheckpointerConfig":
+        """
+        从环境变量解析 checkpointer 配置。
+
+        环境变量优先级：
+        1. `WORKFLOW_CHECKPOINTER_PG_DSN`
+        2. `WORKFLOW_SESSION_PG_DSN`
+        3. `WORKFLOW_OBS_PG_DSN`
+        """
+        explicit_backend = str(os.getenv("WORKFLOW_CHECKPOINTER_BACKEND", "") or "").strip().lower()
+        explicit_dsn = str(os.getenv("WORKFLOW_CHECKPOINTER_PG_DSN", "") or "").strip()
+        fallback_dsn = (
+            str(os.getenv("WORKFLOW_SESSION_PG_DSN", "") or "").strip()
+            or str(os.getenv("WORKFLOW_OBS_PG_DSN", "") or "").strip()
+        )
+        resolved_dsn = explicit_dsn or fallback_dsn
+
+        if explicit_backend in {"memory", "postgres"}:
+            backend = explicit_backend
+        else:
+            backend = "postgres" if resolved_dsn else "memory"
+
+        pg_enabled_default = bool(resolved_dsn) and backend == "postgres"
+        connect_timeout_raw = (
+            str(os.getenv("WORKFLOW_CHECKPOINTER_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
+            or str(os.getenv("WORKFLOW_SESSION_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
+            or str(os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
+        )
+
+        connect_timeout_seconds = max(1, to_int(connect_timeout_raw, 5))
+        dsn_with_timeout = _ensure_connect_timeout_in_dsn(resolved_dsn, connect_timeout_seconds)
+
+        return cls(
+            backend=backend,
+            pg_enabled=to_bool(os.getenv("WORKFLOW_CHECKPOINTER_PG_ENABLED"), pg_enabled_default),
+            pg_dsn=dsn_with_timeout,
+            pg_setup=to_bool(os.getenv("WORKFLOW_CHECKPOINTER_PG_SETUP"), True),
+            pg_connect_timeout_seconds=connect_timeout_seconds,
+        )
 
 
 class WorkflowState(TypedDict, total=False):
     """Shared state payload across graph nodes."""
 
-    trace_id: str  # 褰撳墠璇锋眰閾捐矾鐨勮拷韪?ID
-    session_id: str  # 浼氳瘽 ID锛岀敤浜庡叧鑱斿杞璇?    user_query: str  # 鐢ㄦ埛鏈疆杈撳叆闂
-    history: list[dict[str, Any]]  # 浼氳瘽鍘嗗彶娑堟伅鍒楄〃
+    # Request/session context
+    trace_id: str
+    session_id: str
+    user_query: str
+    original_user_query: str
+    query_rewrite_mode: str
+    history: list[dict[str, Any]]
 
-    route: str  # 鎰忓浘璺敱缁撴灉锛堣蛋鍝潯鍒嗘敮锛?    status: str  # 褰撳墠澶勭悊鐘舵€?    response_kind: str  # 鏈€缁堝搷搴旂被鍨?    domain_relevance: float  # 杈撳叆涓庨鍩熺殑鐩稿叧搴﹀垎鏁?
-    module_name: str  # 褰撳墠璇嗗埆鍒扮殑妯″潡鍚?    module_hint: str  # 妯″潡鎻愮ず淇℃伅锛堢敤浜庤緟鍔╄矾鐢变笌妫€绱級
-    active_topic_source: str  # 褰撳墠娲昏穬涓婚鐨勬潵婧?    active_module_name: str  # 褰撳墠涓婁笅鏂囦腑鐨勬椿璺冩ā鍧楀悕
-    last_analysis_result: dict[str, Any] | None  # 鏈€杩戜竴娆″垎鏋愮粨鏋?    last_analysis_citations: list[dict[str, Any]]  # 鏈€杩戜竴娆″垎鏋愬紩鐢?
-    retrieval_queries: list[str]  # 妫€绱㈡敼鍐欏悗鏌ヨ璇嶅垪琛?    retrieval_plan: dict[str, Any]  # 妫€绱㈣鍒掞紙鏉ユ簮銆佺瓥鐣ョ瓑锛?    wiki_hits: list[dict[str, Any]]  # wiki 妫€绱㈠懡涓枃妗?    wiki_retrieval_grade: str  # wiki 妫€绱㈣川閲忚瘎绾?    wiki_retrieval_profile: dict[str, Any]  # wiki 妫€绱㈣繃绋嬬敾鍍?    case_hits: list[dict[str, Any]]  # case 妫€绱㈠懡涓枃妗?    case_retrieval_grade: str  # case 妫€绱㈣川閲忚瘎绾?    case_retrieval_profile: dict[str, Any]  # case 妫€绱㈣繃绋嬬敾鍍?    code_hits: list[dict[str, Any]]  # code 妫€绱㈠懡涓枃妗?    code_retrieval_grade: str  # code 妫€绱㈣川閲忚瘎绾?    code_retrieval_profile: dict[str, Any]  # code 妫€绱㈣繃绋嬬敾鍍?    citations: list[dict[str, Any]]  # 铻嶅悎鍚庣殑寮曠敤鍒楄〃
-    evidence_fusion_profile: dict[str, Any]  # 璇佹嵁铻嶅悎杩囩▼鐢诲儚
+    # Routing context
+    route: str
+    status: str
+    response_kind: str
+    domain_relevance: float
+    module_name: str
+    module_hint: str
+    related_modules: list[dict[str, str]]
+    active_topic_source: str
+    active_module_name: str
+    last_analysis_result: dict[str, Any] | None
+    last_analysis_citations: list[dict[str, Any]]
 
-    analysis: dict[str, Any] | None  # 鍒嗘瀽缁撴灉杞借嵎
-    answer: str  # 闈㈠悜鐢ㄦ埛鐨勬渶缁堝洖绛旀枃鏈?    node_trace: list[dict[str, str]]  # 鑺傜偣鎵ц杞ㄨ抗
-    assistant_message: dict[str, Any]  # 鏈€缁堣緭鍑虹殑鍔╂墜娑堟伅缁撴瀯
+    # Retrieval context
+    retrieval_queries: list[str]
+    retrieval_plan: dict[str, Any]
+    wiki_hits: list[dict[str, Any]]
+    wiki_retrieval_grade: str
+    wiki_retrieval_profile: dict[str, Any]
+    case_hits: list[dict[str, Any]]
+    case_retrieval_grade: str
+    case_retrieval_profile: dict[str, Any]
+    code_hits: list[dict[str, Any]]
+    code_retrieval_grade: str
+    code_retrieval_profile: dict[str, Any]
+    citations: list[dict[str, Any]]
+    evidence_fusion_profile: dict[str, Any]
+
+    # Output context
+    analysis: dict[str, Any] | None
+    answer: str
+    node_trace: list[dict[str, str]]
+    assistant_message: dict[str, Any]
 
 
 class WorkflowService:
@@ -86,7 +198,10 @@ class WorkflowService:
         )
         self._llm_client = WorkflowLLMClient.from_env(prefix="WORKFLOW_QA_LLM")
 
-        self._checkpointer = MemorySaver()
+        self._checkpointer_context: ExitStack | None = None
+        self._checkpointer_status: dict[str, Any] = {}
+        self._checkpointer_config = WorkflowCheckpointerConfig.from_env()
+        self._checkpointer = self._init_checkpointer()
         self._graph = self._build_graph()
 
         self._file_logger.info(
@@ -99,7 +214,112 @@ class WorkflowService:
             wiki_dir=str(wiki_dir),
             code_dirs=[str(path) for path in getattr(self._code_retriever, "code_dirs", [])],
             checkpointer_type=type(self._checkpointer).__name__,
+            checkpointer=self.checkpointer_status(),
         )
+
+    def _memory_checkpointer_with_status(
+        self,
+        *,
+        reason: str,
+        init_error: str | None = None,
+    ) -> MemorySaver:
+        """
+        构造内存 checkpointer，并同步写入状态快照。
+
+        说明：
+        1. 该方法用于统一“回退到内存”时的状态结构；
+        2. 保证 health/日志里能直接看到回退原因，便于排障。
+        """
+        self._checkpointer_status = {
+            "requested_backend": self._checkpointer_config.backend,
+            "backend": "memory",
+            "active": True,
+            "dsn_configured": bool(self._checkpointer_config.pg_dsn),
+            "pg_enabled": bool(self._checkpointer_config.pg_enabled),
+            "fallback_reason": reason,
+            "init_error": init_error,
+        }
+        return MemorySaver()
+
+    def _init_checkpointer(self) -> Any:
+        """
+        初始化 workflow checkpointer。
+
+        行为约定：
+        1. 若配置为 `memory`，直接使用 MemorySaver；
+        2. 若配置为 `postgres`，优先初始化 PostgresSaver；
+        3. PostgreSQL 初始化失败时自动回退 MemorySaver，并记录结构化日志。
+        """
+        config = self._checkpointer_config
+
+        if config.backend == "memory":
+            self._file_logger.info("workflow.checkpointer.memory.enabled", reason="backend_memory")
+            return self._memory_checkpointer_with_status(reason="backend_memory")
+
+        if not config.pg_enabled:
+            self._file_logger.info("workflow.checkpointer.memory.enabled", reason="pg_disabled")
+            return self._memory_checkpointer_with_status(reason="pg_disabled")
+
+        if not config.pg_dsn:
+            self._file_logger.warning("workflow.checkpointer.postgres.disabled", reason="empty_dsn")
+            return self._memory_checkpointer_with_status(reason="empty_dsn")
+
+        try:
+            import psycopg  # type: ignore
+            from langgraph.checkpoint.postgres import PostgresSaver  # type: ignore
+        except Exception as exc:  # pragma: no cover - 依赖缺失
+            self._file_logger.warning(
+                "workflow.checkpointer.postgres.init_failed",
+                reason="import_dependency_failed",
+                error_type=type(exc).__name__,
+            )
+            return self._memory_checkpointer_with_status(
+                reason="import_dependency_failed",
+                init_error=f"import_dependency_failed:{exc}",
+            )
+
+        stack: ExitStack | None = None
+        try:
+            ensure_database_exists(
+                psycopg_module=psycopg,
+                dsn=config.pg_dsn,
+                connect_timeout_seconds=config.pg_connect_timeout_seconds,
+            )
+
+            stack = ExitStack()
+            postgres_checkpointer = stack.enter_context(PostgresSaver.from_conn_string(config.pg_dsn))
+            if config.pg_setup:
+                postgres_checkpointer.setup()
+            self._checkpointer_context = stack
+            self._checkpointer_status = {
+                "requested_backend": config.backend,
+                "backend": "postgres",
+                "active": True,
+                "dsn_configured": True,
+                "pg_enabled": True,
+                "pg_setup": bool(config.pg_setup),
+                "connect_timeout_seconds": int(config.pg_connect_timeout_seconds),
+                "fallback_reason": None,
+                "init_error": None,
+            }
+            self._file_logger.info(
+                "workflow.checkpointer.postgres.ready",
+                connect_timeout_seconds=config.pg_connect_timeout_seconds,
+                setup_ran=bool(config.pg_setup),
+            )
+            return postgres_checkpointer
+        except Exception as exc:  # pragma: no cover - 数据库异常
+            if stack is not None:
+                stack.close()
+            self._file_logger.warning(
+                "workflow.checkpointer.postgres.init_failed",
+                reason="bootstrap_or_setup_failed",
+                error_type=type(exc).__name__,
+            )
+            return self._memory_checkpointer_with_status(
+                reason="bootstrap_or_setup_failed",
+                init_error=f"bootstrap_or_setup_failed:{exc}",
+            )
 
     def run_user_message(
         self,
@@ -290,6 +510,7 @@ class WorkflowService:
             "route",
             "status",
             "response_kind",
+            "query_rewrite_mode",
             "module_name",
             "module_hint",
             "active_topic_source",
@@ -304,8 +525,14 @@ class WorkflowService:
             value = updates.get(key)
             summary[key] = self._preview_text(value, max_chars=120) if isinstance(value, str) else value
 
+        if "user_query" in updates:
+            summary["user_query_preview"] = self._preview_text(updates.get("user_query", ""), max_chars=120)
+        if "original_user_query" in updates:
+            summary["original_user_query_preview"] = self._preview_text(updates.get("original_user_query", ""), max_chars=120)
         if "retrieval_queries" in updates:
             summary["retrieval_query_count"] = len(updates.get("retrieval_queries", []) or [])
+        if "related_modules" in updates:
+            summary["related_module_count"] = len(updates.get("related_modules", []) or [])
         if "wiki_hits" in updates:
             summary["wiki_hit_count"] = len(updates.get("wiki_hits", []) or [])
         if "case_hits" in updates:
@@ -365,6 +592,12 @@ class WorkflowService:
 
     def runtime_log_status(self) -> dict[str, Any]:
         return self._file_logger.status()
+
+    def checkpointer_status(self) -> dict[str, Any]:
+        """
+        返回 checkpointer 当前状态，供 health 与排障使用。
+        """
+        return dict(self._checkpointer_status)
 
     def _trace(self, state: WorkflowState, node: str, summary: str) -> list[dict[str, str]]:
         return append_node_trace(state, node, summary)

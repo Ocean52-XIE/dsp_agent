@@ -35,5 +35,7 @@ def extract_module_from_message(
         return "", ""
     analysis = message.get("analysis") or {}
     module_name = analysis.get("module", "")
-    module_hint = domain_profile.infer_module(module_name)[1] if module_name else ""
+    # 这里直接按模块名读取 hint，避免把模块名再次当成查询文本去路由，
+    # 从而错误回落到默认模块的说明。
+    module_hint = domain_profile.module_hint(module_name) if module_name else ""
     return module_name, module_hint

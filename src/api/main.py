@@ -27,7 +27,7 @@ OBS_STORE = PostgresObservabilityStore.from_env()
 SESSION_STORE = PostgresSessionStore.from_env()
 SESSIONS: dict[str, dict[str, Any]] = {}
 TRACE_REFERENCES: dict[str, list[dict[str, Any]]] = {}
-APP_LOGGER.info('api.service.initialized', workflow_backend=WORKFLOW.backend_name, session_store=SESSION_STORE.status(), observability=OBS_STORE.status(), runtime_logging=APP_LOGGER.status())
+APP_LOGGER.info('api.service.initialized', workflow_backend=WORKFLOW.backend_name, checkpointer=WORKFLOW.checkpointer_status(), session_store=SESSION_STORE.status(), observability=OBS_STORE.status(), runtime_logging=APP_LOGGER.status())
 
 class SessionCreateRequest(BaseModel):
     title: str | None = None
@@ -131,7 +131,7 @@ def root() -> FileResponse:
 @app.get('/api/health')
 def health() -> dict[str, Any]:
     APP_LOGGER.debug('api.health.checked')
-    return {'status': 'ok', 'workflow_backend': WORKFLOW.backend_name, 'debug_verbose_enabled': bool(getattr(WORKFLOW, 'debug_verbose_enabled', False)), 'runtime_logging': WORKFLOW.runtime_log_status(), 'observability': OBS_STORE.status(), 'session_store': SESSION_STORE.status()}
+    return {'status': 'ok', 'workflow_backend': WORKFLOW.backend_name, 'checkpointer': WORKFLOW.checkpointer_status(), 'debug_verbose_enabled': bool(getattr(WORKFLOW, 'debug_verbose_enabled', False)), 'runtime_logging': WORKFLOW.runtime_log_status(), 'observability': OBS_STORE.status(), 'session_store': SESSION_STORE.status()}
 
 @app.get('/api/sessions')
 def list_sessions(limit: int=20) -> dict[str, list[dict[str, Any]]]:
