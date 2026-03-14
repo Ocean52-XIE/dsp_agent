@@ -162,7 +162,6 @@ def _build_retrieval_plan(
     *,
     user_query: str,
     route: str,
-    transition_type: str,
     query_flags: dict[str, bool],
 ) -> dict[str, Any]:
     """
@@ -216,10 +215,6 @@ def _build_retrieval_plan(
         source_weights["code"] = max(float(source_weights.get("code", 1.0)), 1.15)
         reasons.append("issue_analysis_bias_code")
 
-    if transition_type == "upgrade_from_qa_to_issue_analysis":
-        source_weights["code"] = max(float(source_weights.get("code", 1.0)), 1.25)
-        reasons.append("upgrade_to_issue_analysis")
-
     plan: dict[str, Any] = {
         "strategy": strategy,
         "enable_wiki": bool(retrieval_profile.enable_wiki),
@@ -264,12 +259,11 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     module_name = state["module_name"]
     user_query = state["user_query"]
     route = state.get("route", "knowledge_qa")
-    transition_type = state.get("transition_type", "start_knowledge_qa")
     flags = _infer_query_flags(service, user_query)
     # 基于 route 区分检索改写策略：问题分析更偏日志/案例，知识问答更偏语义扩展。
     # 同时根据查询意图标记补充模块别名与模板查询，提升召回覆盖率。
     # 当用户问题较短且无明显意图时，追加通用业务说明查询做兜底。
-    # 若会话处于 issue_analysis/confirm_code/code_generation 阶段，追加设计背景类查询。
+    # 分析或代码实现意图时，追加设计背景类查询。
 
     if route == "issue_analysis":
         base_queries = [
@@ -295,17 +289,16 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
             base_queries.extend(_module_alias_queries(service, module_name)[:2])
         if not any(flags.values()):
             base_queries.append(f"{module_name} 业务说明")
-        if state.get("active_task_stage") in {"issue_analysis", "confirm_code", "code_generation"}:
+        if route in {"issue_analysis", "code_generation"}:
             base_queries.append(f"{module_name} 设计背景 业务口径")
 
     queries = _expand_queries(service, base_queries, original_user_query=user_query)
     retrieval_plan = _build_retrieval_plan(
-        # 根据 route、transition_type 与 query flags 动态确定检索策略和 top_k。
+        # 根据 route 与 query flags 动态确定检索策略和 top_k。
 
         service,
         user_query=user_query,
         route=route,
-        transition_type=transition_type,
         query_flags=flags,
     )
     trace_summary = (

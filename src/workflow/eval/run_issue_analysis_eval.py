@@ -9,7 +9,7 @@ from __future__ import annotations
 Evaluates whether queries expected to trigger issue-analysis flow are routed to:
 - route: issue_analysis
 - kind: issue_analysis
-- status: confirm_code
+- status: completed
 - module: expected_module (optional)
 """
 
@@ -102,7 +102,7 @@ def _load_dataset(path: Path) -> list[IssueEvalCase]:
                     query=query,
                     expected_route=str(record.get("expected_route", "issue_analysis")).strip() or "issue_analysis",
                     expected_kind=str(record.get("expected_kind", "issue_analysis")).strip() or "issue_analysis",
-                    expected_status=str(record.get("expected_status", "confirm_code")).strip() or "confirm_code",
+                    expected_status=str(record.get("expected_status", "completed")).strip() or "completed",
                     expected_module=str(record.get("expected_module", "")).strip(),
                     intent=str(record.get("intent", "issue_analysis")).strip() or "issue_analysis",
                     note=str(record.get("note", "")).strip(),

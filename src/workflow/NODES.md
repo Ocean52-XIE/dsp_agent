@@ -1,72 +1,82 @@
-# Workflow 节点说明
+﻿# Workflow 节点说明（当前实现）
 
-本文档说明 `workflow/nodes/` 目录下各节点的职责，以及当前版本的多源检索与融合行为。
+本文档对应 `src/workflow/engine.py` 与 `src/workflow/nodes/` 的当前实现。
 
-## 1. 入口与路由类节点
+## 1. 图结构
 
-- `entry_router`：判断本轮请求走普通消息链路，还是走“确认后代码生成”的恢复链路。
-- `load_context`：从会话历史恢复活动主题、活动阶段、最近分析结果等上下文。
-- `domain_gate`：领域门控，识别是否属于广告引擎业务域。
-- `intent_classifier`：识别本轮意图（如 `knowledge_qa`、`issue_analysis`）。
-- `conversation_transition`：结合意图与上下文判断本轮执行路径（检索问答 / 排障分析 / 代码生成）。
-- `query_rewriter`：生成检索改写语句，并输出 `retrieval_plan`（多源路由策略）。
-  - 支持同义词扩展、缩写归一（CTR/CVR/pCTR/pCVR 等）和指标词典补充。
+```mermaid
+flowchart TD
+    START --> load_context
+    load_context --> intent_routing
 
-## 2. 检索类节点
+    intent_routing -->|knowledge_qa| query_rewriter
+    intent_routing -->|issue_analysis| query_rewriter
+    intent_routing -->|code_generation| load_code_context
+    intent_routing -->|out_of_scope| out_of_scope_response
 
-- `retrieve_wiki`：执行 Wiki 检索，输出 `wiki_hits`、`wiki_retrieval_grade`、`wiki_retrieval_profile`。
-  - 低置信时自动重试（扩 TopK + 扩展查询语句）。
-- `retrieve_code`：执行代码检索，输出 `code_hits`、`code_retrieval_grade`、`code_retrieval_profile`。
-  - 低置信时自动重试（扩 TopK + 定位型查询增强）。
-- `retrieve_cases`：案例检索占位节点；当前默认不启用，仅保留统一扩展接口。
-- `merge_evidence`：多源证据融合节点。根据 `retrieval_plan` 执行：
-  - 源权重加权（`source_weights`）
-  - 源内配额控制（`max_per_source`）
-  - 最终 TopK 裁剪（`final_top_k`）
-  - 输出融合调试画像（`evidence_fusion_profile`）
+    query_rewriter --> retrieve_wiki --> retrieve_cases --> retrieve_code --> merge_evidence
 
-### Wiki Hybrid 检索说明
+    merge_evidence -->|knowledge_qa| knowledge_answer
+    merge_evidence -->|issue_analysis| issue_analysis
+    merge_evidence -->|code_generation| load_code_context
 
-- 代码位置：`workflow/nodes/retrieve_wiki/wiki_retriever.py`
-- 召回分三路：
-  - BM25 分（词项相关性）
-  - 向量分（TF-IDF 余弦）
-  - 规则分（短语命中、标题/章节命中、结构特征）
-- 融合权重支持从 `WORKFLOW_WIKI_HYBRID_WEIGHTS_PATH` 加载。
+    load_code_context --> retrieve_code_context --> code_generation
 
-## 3. 分析与生成类节点
+    knowledge_answer --> finalize_response
+    issue_analysis --> finalize_response
+    out_of_scope_response --> finalize_response
+    code_generation --> finalize_response
 
-- `knowledge_answer`：知识问答节点，LLM 优先，失败自动降级到规则兜底。
-- `issue_localizer`：问题定位，给出候选模块和初步判断。
-- `root_cause_analysis`：根因分析，补充风险与证据链。
-- `fix_plan`：形成修复建议，并进入是否生成代码的确认阶段。
-- `decline_code_generation_response`：处理“暂不生成代码”的控制类响应。
-- `out_of_scope_response`：处理领域外输入。
-- `load_code_context`：从上游分析消息中装配代码生成所需上下文。
-- `retrieve_code_context`：为代码生成补充代码上下文（当前可按需扩展）。
-- `code_generation`：输出代码实现建议/补丁建议。
-- `finalize_response`：收敛最终响应结构，返回前端可直接消费的消息体。
+    finalize_response --> END
+```
 
-## 4. 当前多源检索链路
+## 2. 路由与上下文节点
 
-当前默认链路为：
+- `load_context`
+  - 从历史消息恢复模块上下文。
+  - 产出：`module_name`、`module_hint`、`active_module_name`、`active_topic_source`、`last_analysis_result`、`last_analysis_citations`。
+- `intent_routing`
+  - 基于领域相关性和本轮输入分类意图。
+  - 路由：`knowledge_qa` / `issue_analysis` / `code_generation` / `out_of_scope`。
 
-`query_rewriter -> retrieve_wiki -> retrieve_cases -> retrieve_code -> merge_evidence`
+## 3. 检索链路节点
 
-其中关键状态字段如下：
+- `query_rewriter`：按路由生成检索 query 与 `retrieval_plan`。
+- `retrieve_wiki`：Wiki 检索。
+- `retrieve_cases`：案例检索。
+- `retrieve_code`：代码检索。
+- `merge_evidence`：按计划融合多源证据，产出 `citations`。
 
-- `retrieval_queries`：检索改写语句列表。
-- `retrieval_plan`：多源路由与融合计划（策略、开关、TopK、权重、配额）。
-- `wiki_hits` / `code_hits` / `case_hits`：各检索源的原始命中。
-- `wiki_retrieval_grade` / `code_retrieval_grade`：检索质量分级。
-- `wiki_retrieval_profile` / `code_retrieval_profile`：检索耗时、命中量、候选量等诊断信息。
-- `citations`：融合后的最终证据列表。
-- `evidence_fusion_profile`：融合过程画像，用于调参与回归分析。
+## 4. 分析与生成节点
 
-## 5. 相关代码入口
+- `knowledge_answer`
+  - 知识问答。
+  - 优先使用 LLM，失败时回退规则答案。
+- `issue_analysis`
+  - 问题分析（模块定位、根因、修复建议、验证步骤）。
+  - 节点内部集成了原先拆分的本地化、分析、根因、修复逻辑。
+- `load_code_context`
+  - 为代码生成准备上下文，优先复用 `last_analysis_result`。
+- `retrieve_code_context`
+  - 补充代码上下文证据。
+- `code_generation`
+  - 输出实现建议（当前仍为 mock 产物）。
 
-- 工作流定义：`workflow/engine.py`
-- Wiki 检索器：`workflow/nodes/retrieve_wiki/wiki_retriever.py`
-- Wiki Hybrid 设计文档：`workflow/retrieve_wiki_hybrid_v1.md`
-- 代码检索器：`workflow/nodes/retrieve_code/code_retriever.py`
-- 融合策略：`workflow/nodes/merge_evidence/__init__.py`
+## 5. 控制响应节点
+
+- `out_of_scope_response`：领域外兜底回复。
+- `finalize_response`：统一组装 assistant 输出。
+
+## 6. 已移除的旧流程概念
+
+当前实现不再使用以下流程字段/阶段：
+
+- `confirm_code`
+- `task_stage`
+- `transition_type`
+- `execution_path`
+- `next_action`
+- `active_task_stage`
+- `pending_action`
+
+当前是否生成代码由“每次用户输入”决定，`intent_routing` 每轮重判。

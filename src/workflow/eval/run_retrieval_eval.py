@@ -32,6 +32,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from workflow.engine import WorkflowService  # noqa: E402
+from workflow.common.module_inference import infer_module  # noqa: E402
 
 
 @dataclass
@@ -160,13 +161,12 @@ def _build_retrieval_queries(service: WorkflowService, query: str) -> tuple[str,
     返回:
         返回类型为 `tuple[str, str, list[str]]` 的处理结果。
     """
-    module_name, module_hint = service._infer_module(query)
+    module_name, module_hint = infer_module(query, domain_profile=service.domain_profile)
     rewritten = service._query_rewriter(  # 这里直接调用节点方法，保持与线上链路一致。
         {
             "user_query": query,
             "module_name": module_name,
             "route": "knowledge_qa",
-            "active_task_stage": "idle",
         }
     )
     retrieval_queries = rewritten.get("retrieval_queries", [])

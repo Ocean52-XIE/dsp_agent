@@ -21,9 +21,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     return {
         "route": "out_of_scope",
         "response_kind": "out_of_scope",
-        "task_stage": "out_of_scope",
         "status": "out_of_scope",
-        "next_action": "completed",
         "retrieval_queries": [],
         "retrieval_plan": {},
         "wiki_hits": [],

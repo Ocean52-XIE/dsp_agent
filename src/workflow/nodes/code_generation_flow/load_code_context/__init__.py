@@ -6,6 +6,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from workflow.common.module_inference import infer_module
+from workflow.common.node_trace import append_node_trace
+
 
 def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     """
@@ -18,22 +21,18 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     返回:
         返回类型为 `dict[str, Any]` 的处理结果。
     """
-    source_message = state.get("source_message") or {}
-    analysis = source_message.get("analysis") or state.get("last_analysis_result") or {}
-    citations = source_message.get("citations") or state.get("last_analysis_citations", [])
+    analysis = state.get("last_analysis_result") or {}
+    citations = state.get("last_analysis_citations", [])
 
     module_name = analysis.get("module") or state.get("active_module_name") or state.get("module_name")
     if not module_name:
         module_name = service.domain_profile.default_module
-    module_hint = service._infer_module(module_name)[1]
+    module_hint = infer_module(module_name, domain_profile=service.domain_profile)[1]
     return {
-        "route": "issue_analysis",
-        "execution_path": "code_generation_flow",
-        "transition_type": state.get("transition_type", "resume_code_generation"),
-        "task_stage": "code_generation",
+        "route": "code_generation",
         "module_name": module_name,
         "module_hint": module_hint,
         "analysis": analysis or None,
         "citations": citations,
-        "node_trace": service._trace(state, "load_code_context", f"module={module_name}"),
+        "node_trace": append_node_trace(state, "load_code_context", f"module={module_name}"),
     }

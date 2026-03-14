@@ -109,12 +109,6 @@ function bindEvents() {
       return;
     }
 
-    const actionButton = event.target.closest("[data-action='confirm-code']");
-    if (actionButton) {
-      confirmCodeGeneration(actionButton.dataset.messageId).catch(handleError);
-      return;
-    }
-
     const copyCitationCodeButton = event.target.closest("[data-action='copy-citation-code']");
     if (copyCitationCodeButton) {
       copyCitationCode(copyCitationCodeButton).catch(() => {
@@ -557,27 +551,6 @@ async function submitMessage() {
   }
 }
 
-async function confirmCodeGeneration(messageId) {
-  if (!messageId || state.sending) {
-    return;
-  }
-
-  setPending(true);
-  try {
-    const payload = await api(`/api/messages/${messageId}/confirm-code`, {
-      method: "POST",
-      body: JSON.stringify({ approved: true }),
-    });
-    await refreshSessions();
-    state.currentSession = payload.session;
-    state.selectedMessageId = resolveSelectedMessageId(state.currentSession, payload.assistant_message_id);
-    renderAll();
-    scrollMessagesToBottom();
-  } finally {
-    setPending(false);
-  }
-}
-
 function renderAll() {
   applyDraftComposerModeClass();
   renderSessionList();
@@ -795,28 +768,7 @@ function buildMessageActions(message) {
   if (!Array.isArray(message.actions) || message.actions.length === 0) {
     return "";
   }
-
-  const buttons = message.actions
-    .map((action) => {
-      if (action.type !== "confirm_code_generation") {
-        return "";
-      }
-      const disabled = state.sending ? "disabled" : "";
-      return `
-        <button
-          class="secondary-button"
-          type="button"
-          data-action="confirm-code"
-          data-message-id="${escapeHtml(message.id)}"
-          ${disabled}
-        >
-          ${escapeHtml(action.label)}
-        </button>
-      `;
-    })
-    .join("");
-
-  return buttons ? `<div class="message-actions">${buttons}</div>` : "";
+  return "";
 }
 
 function buildMessageInlinePanels(message) {
@@ -1642,9 +1594,6 @@ function badgeClassForRoute(route) {
 function badgeClassForStatus(status) {
   if (status === "completed") {
     return "success";
-  }
-  if (status === "confirm_code") {
-    return "warn";
   }
   if (status === "out_of_scope" || status === "error") {
     return "danger";

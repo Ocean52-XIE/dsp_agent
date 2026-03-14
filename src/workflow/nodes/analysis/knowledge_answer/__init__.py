@@ -1,27 +1,46 @@
 # -*- coding: utf-8 -*-
-"""
-该模块实现工作流节点`knowledge_answer` 的处理逻辑，负责读取状态并输出增量结果。
-"""
+"""Knowledge answer node."""
 from __future__ import annotations
 
 import re
 from typing import Any
 
+from workflow.common.evidence import collect_evidence_hits
+from workflow.common.llm_client import CommonLLMRequest
+from workflow.common.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump, resolve_system_prompt
 from workflow.utils import normalize_source_type
 
 
+QA_SYSTEM_PROMPT_TEMPLATE = (
+    "你是企业知识问答助手。"
+    "必须严格基于提供的证据回答，不补充证据外事实。"
+    "输出中文，结构尽量为：结论 -> 依据。"
+)
+
+QA_USER_PROMPT_TEMPLATE = """【用户问题】
+{user_query}
+
+【当前模块】
+- module_name: {module_name}
+- module_hint: {module_hint}
+
+【检索语句】
+{retrieval_queries}
+
+【检索证据（按相关性排序）】
+{evidence_block}
+
+【回答要求】
+{answer_style_requirement}
+"""
+
+
+def _contains_any(text: str, keywords: tuple[str, ...]) -> bool:
+    return any(keyword in text for keyword in keywords if keyword)
+
+
 def _infer_question_type(service: Any, user_query: str) -> str:
-    """
-    内部辅助函数，负责`infer question type` 相关处理。
-    
-    参数:
-        service: 工作流服务对象，提供检索、路由、日志与配置能力。
-        user_query: 用户输入问题文本。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
-    """
-    normalized = user_query.lower().strip()
+    normalized = str(user_query or "").lower().strip()
     formula_terms = {
         "公式",
         "怎么算",
@@ -34,7 +53,7 @@ def _infer_question_type(service: Any, user_query: str) -> str:
     formula_terms.update(service.domain_profile.answering.bid_terms)
     if any(token in normalized for token in formula_terms if token):
         return "formula"
-    if any(token in normalized for token in ("为什么", "为何", "原因", "怎么会", "为啥")):
+    if any(token in normalized for token in ("为什么", "为何", "原因", "how to", "why")):
         return "reason"
     if any(token in normalized for token in ("有哪些", "哪些", "包括什么", "包含什么", "分别是", "列出", "清单")):
         return "list"
@@ -42,20 +61,10 @@ def _infer_question_type(service: Any, user_query: str) -> str:
 
 
 def _is_code_location_query(service: Any, user_query: str) -> bool:
-    """
-    判断输入是否满足特定条件，并返回布尔结果。
-    
-    参数:
-        service: 工作流服务对象，提供检索、路由、日志与配置能力。
-        user_query: 用户输入问题文本。
-    
-    返回:
-        返回类型为 `bool` 的处理结果。
-    """
-    normalized = user_query.lower().strip()
+    normalized = str(user_query or "").lower().strip()
     code_location_terms = service.domain_profile.query_rewrite.intent_terms.get("code_location", ())
     if code_location_terms:
-        return any(token in normalized for token in code_location_terms)
+        return _contains_any(normalized, code_location_terms)
     fallback = (
         "哪个函数",
         "什么函数",
@@ -66,42 +75,10 @@ def _is_code_location_query(service: Any, user_query: str) -> bool:
         "where",
         "which function",
     )
-    return any(token in normalized for token in fallback)
-
-
-def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
-    """
-    收集并标准化当前流程依赖的输入数据。
-    
-    参数:
-        state: 工作流状态字典，包含会话上下文与中间结果。
-    
-    返回:
-        返回类型为 `list[dict[str, Any]]` 的处理结果。
-    """
-    citations = state.get("citations", [])
-    if isinstance(citations, list) and citations:
-        return citations
-
-    fallback_hits: list[dict[str, Any]] = []
-    for key, default_type in (("wiki_hits", "wiki"), ("code_hits", "code"), ("case_hits", "case")):
-        for item in list(state.get(key, []) or []):
-            row = dict(item)
-            row["source_type"] = normalize_source_type(row.get("source_type", default_type))
-            fallback_hits.append(row)
-    return fallback_hits
+    return _contains_any(normalized, fallback)
 
 
 def _format_line_range(item: dict[str, Any]) -> str:
-    """
-    内部辅助函数，负责`format line range` 相关处理。
-    
-    参数:
-        item: 输入参数，用于控制当前处理逻辑。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
-    """
     start_line = item.get("start_line")
     end_line = item.get("end_line")
     if start_line is not None and end_line is not None:
@@ -112,17 +89,7 @@ def _format_line_range(item: dict[str, Any]) -> str:
 
 
 def _answer_mentions_code_anchor(answer_text: str, code_hits: list[dict[str, Any]]) -> bool:
-    """
-    内部辅助函数，负责`answer mentions code anchor` 相关处理。
-    
-    参数:
-        answer_text: 输入参数，用于控制当前处理逻辑。
-        code_hits: 列表参数，用于承载批量输入数据。
-    
-    返回:
-        返回类型为 `bool` 的处理结果。
-    """
-    normalized_answer = answer_text.lower()
+    normalized_answer = str(answer_text or "").lower()
     for item in code_hits[:6]:
         path = str(item.get("path", "")).strip().lower()
         symbol_name = str(item.get("symbol_name", "")).strip().lower()
@@ -134,15 +101,6 @@ def _answer_mentions_code_anchor(answer_text: str, code_hits: list[dict[str, Any
 
 
 def _extract_points_from_hits(evidence_hits: list[dict[str, Any]], *, max_points: int = 6) -> list[str]:
-    """
-    内部辅助函数，负责`extract points from hits` 相关处理。
-    
-    参数:
-        evidence_hits: 列表参数，用于承载批量输入数据。
-    
-    返回:
-        返回类型为 `list[str]` 的处理结果。
-    """
     points: list[str] = []
     for item in evidence_hits:
         source_type = normalize_source_type(item.get("source_type"))
@@ -150,7 +108,7 @@ def _extract_points_from_hits(evidence_hits: list[dict[str, Any]], *, max_points
         if source_type == "code":
             path = str(item.get("path", "")).strip() or "unknown_path"
             symbol_name = str(item.get("symbol_name", "")).strip() or str(item.get("section", "")).strip() or "unknown_symbol"
-            points.append(f"代码位置：`{path}` -> `{symbol_name}`（line: {_format_line_range(item)}）")
+            points.append(f"代码位置：`{path}` -> `{symbol_name}` (line: {_format_line_range(item)})")
             if excerpt:
                 points.append(f"代码摘要：{excerpt[:140]}")
         else:
@@ -165,27 +123,16 @@ def _extract_points_from_hits(evidence_hits: list[dict[str, Any]], *, max_points
 
 
 def _build_code_location_fallback(module_name: str, module_hint: str, code_hits: list[dict[str, Any]]) -> str:
-    """
-    构建当前步骤所需的数据结构或文本内容。
-    
-    参数:
-        module_name: 输入参数，用于控制当前处理逻辑。
-        module_hint: 输入参数，用于控制当前处理逻辑。
-        code_hits: 列表参数，用于承载批量输入数据。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
-    """
     lines: list[str] = []
     for item in code_hits[:3]:
         path = str(item.get("path", "")).strip() or "unknown_path"
         symbol_name = str(item.get("symbol_name", "")).strip() or str(item.get("section", "")).strip() or "unknown_symbol"
-        lines.append(f"{len(lines) + 1}. `{path}` -> `{symbol_name}`（line: {_format_line_range(item)}）")
+        lines.append(f"{len(lines) + 1}. `{path}` -> `{symbol_name}` (line: {_format_line_range(item)})")
     if not lines:
         lines = [
             f"1. 当前问题主要落在 `{module_name}`。",
             f"2. 当前模块说明：{module_hint or '--'}。",
-            "3. 目前没有命中可直接定位的代码证据，建议补充函数名、文件名或调用链关键字后重试。",
+            "3. 暂无可直接定位的代码证据，建议补充函数名、文件名或调用链关键词后重试。",
         ]
     return "\n".join(lines)
 
@@ -197,12 +144,6 @@ def _build_general_fallback(
     question_type: str,
     evidence_hits: list[dict[str, Any]],
 ) -> str:
-    """
-    构建当前步骤所需的数据结构或文本内容。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
-    """
     points = _extract_points_from_hits(evidence_hits, max_points=6)
     if not points:
         return (
@@ -213,37 +154,13 @@ def _build_general_fallback(
 
     if question_type == "list":
         return "\n".join(f"{index}. {point}" for index, point in enumerate(points[:5], start=1))
-    if question_type == "reason":
-        return "\n".join(f"{index}. {point}" for index, point in enumerate(points[:4], start=1))
-    if question_type == "formula":
+    if question_type in {"reason", "formula"}:
         return "\n".join(f"{index}. {point}" for index, point in enumerate(points[:4], start=1))
     return "；".join(points[:3])
 
 
-def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
-    """
-    执行`knowledge_answer` 节点主流程，基于输入状态计算并返回状态增量。
-    
-    参数:
-        service: 工作流服务对象，提供检索、路由、日志与配置能力。
-        state: 工作流状态字典，包含会话上下文与中间结果。
-    
-    返回:
-        返回类型为 `dict[str, Any]` 的处理结果。
-    """
-    module_name = state["module_name"]
-    module_hint = state["module_hint"]
-    user_query = str(state.get("user_query", ""))
-    transition_type = state.get("transition_type", "start_knowledge_qa")
-    question_type = _infer_question_type(service, user_query)
-
-    wiki_hits = list(state.get("wiki_hits", []))
-    code_hits = list(state.get("code_hits", []))
-    evidence_hits = _collect_evidence_hits(state)
-
-    llm_mode = "fallback_rule"
-    llm_fallback_reason: str | None = None
-    llm_call_status: dict[str, Any] = {
+def _default_llm_call_status() -> dict[str, Any]:
+    return {
         "status": "not_configured",
         "invoked": False,
         "request_sent": False,
@@ -252,24 +169,196 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         "reason": None,
         "model": None,
     }
-    final_answer: str
 
-    llm_answer_text: str | None = None
-    if hasattr(service, "_knowledge_qa_llm") and service._knowledge_qa_llm is not None:
-        llm_client = service._knowledge_qa_llm
-        llm_answer_text, llm_fallback_reason = llm_client.generate_answer(
+
+def _is_calibration_query(service: Any, normalized_query: str) -> bool:
+    terms = service.domain_profile.answering.calibration_terms
+    if terms:
+        return any(token in normalized_query for token in terms)
+    return any(token in normalized_query for token in ("校准", "pctr", "pcvr", "ctr", "cvr"))
+
+
+def _is_bid_entry_query(service: Any, normalized_query: str) -> bool:
+    profile = service.domain_profile.answering
+    bid_terms = profile.bid_terms or ("出价", "计费", "报价", "pricing", "bid")
+    entry_terms = profile.bid_entry_terms or ("入口", "函数", "实现")
+    has_bid = any(token in normalized_query for token in bid_terms)
+    has_entry = any(token in normalized_query for token in entry_terms)
+    return has_bid and has_entry
+
+
+def _default_entry_symbol(service: Any) -> str:
+    return service.domain_profile.answering.default_entry_symbol or "main_entry"
+
+
+def _is_reason_query(normalized_query: str) -> bool:
+    return any(token in normalized_query for token in ("原因", "为什么", "为何", "导致", "怎么会", "why"))
+
+
+def _build_answer_style_requirement(service: Any, *, question_type: str, user_query: str) -> str:
+    base = "按结论 + 依据简洁作答。"
+    extras: list[str] = []
+    normalized_query = user_query.lower().strip()
+
+    if question_type == "list":
+        extras.append("优先给出 3-6 条要点，使用编号列表。")
+    elif question_type == "reason":
+        extras.append("优先列主要原因，并给出对应证据。")
+    elif question_type == "formula":
+        extras.append("给出公式与变量含义，确保符号和字段名一致。")
+
+    if _is_code_location_query(service, normalized_query):
+        extras.append("至少给 1 个代码锚点：路径 + 函数/类名，最好带行号。")
+        extras.append("如果已给出代码锚点和依据，不要附加“当前证据不足”。")
+
+    if _is_calibration_query(service, normalized_query):
+        extras.append("优先覆盖校准指标关键词，例如 AUC、LogLoss、Calibration Error。")
+
+    if _is_bid_entry_query(service, normalized_query):
+        extras.append(f"若证据包含入口函数，请显式给出入口函数名（优先 {_default_entry_symbol(service)}）。")
+
+    if _is_reason_query(normalized_query):
+        extras.append("优先覆盖：特征分布漂移、模型版本切换、校准参数同步。")
+
+    return " ".join([base, *extras]).strip()
+
+
+def _enforce_structured_output(answer: str, *, question_type: str) -> str:
+    if not answer:
+        return ""
+    if question_type not in {"list", "reason", "formula"}:
+        return answer
+
+    has_list = bool(re.search(r"(?m)^\s*(?:\d+\.|[-*])\s+", answer))
+    if has_list:
+        return answer
+
+    sentences = [segment.strip() for segment in re.split(r"[。\n,，!?！？]", answer) if segment.strip()]
+    if not sentences:
+        return answer
+
+    top_sentences = sentences[:4]
+    list_body = "\n".join(f"{index}. {text}" for index, text in enumerate(top_sentences, start=1))
+    if question_type == "list":
+        section_title = "要点清单"
+    elif question_type == "reason":
+        section_title = "主要原因"
+    else:
+        section_title = "公式与关键变量"
+    return f"{answer}\n\n**{section_title}**\n{list_body}"
+
+
+def _validate_qa_answer(answer: str) -> tuple[bool, str | None]:
+    if not answer.strip():
+        return False, "empty_answer"
+    if looks_like_reasoning_dump(answer):
+        return False, "empty_answer:reasoning_dump"
+    return True, None
+
+
+def _run_llm_for_qa(
+    service: Any,
+    *,
+    user_query: str,
+    question_type: str,
+    module_name: str,
+    module_hint: str,
+    retrieval_queries: list[str],
+    evidence_hits: list[dict[str, Any]],
+) -> tuple[str | None, str | None, dict[str, Any]]:
+    llm_client = getattr(service, "_knowledge_qa_llm", None)
+    if llm_client is None:
+        return None, None, _default_llm_call_status()
+
+    system_prompt = resolve_system_prompt(
+        env_key="WORKFLOW_QA_LLM_SYSTEM_PROMPT",
+        default_prompt=QA_SYSTEM_PROMPT_TEMPLATE,
+        domain_profile=getattr(service, "domain_profile", None),
+    )
+    retrieval_text = "\n".join(f"- {item}" for item in retrieval_queries) if retrieval_queries else "- none"
+
+    request = CommonLLMRequest(
+        node_name="knowledge_answer",
+        system_prompt=system_prompt,
+        user_prompt=QA_USER_PROMPT_TEMPLATE.format(
+            user_query=user_query,
+            module_name=module_name,
+            module_hint=module_hint,
+            retrieval_queries=retrieval_text,
+            evidence_block=build_evidence_block(evidence_hits),
+            answer_style_requirement=_build_answer_style_requirement(
+                service,
+                question_type=question_type,
+                user_query=user_query,
+            ),
+        ),
+        evidence_count=len(evidence_hits),
+        require_evidence=True,
+        log_namespace="workflow.llm_qa",
+        metadata={
+            "module_name": module_name,
+            "question_type": question_type,
+            "retrieval_query_count": len(retrieval_queries),
+            "user_query_preview": user_query[:120],
+        },
+        normalize_answer=lambda text: _enforce_structured_output(text, question_type=question_type),
+        validate_answer=_validate_qa_answer,
+    )
+
+    if hasattr(llm_client, "generate_with_status"):
+        return llm_client.generate_with_status(request)
+
+    if hasattr(llm_client, "generate_answer_with_status"):
+        return llm_client.generate_answer_with_status(
             user_query=user_query,
             question_type=question_type,
             module_name=module_name,
             module_hint=module_hint,
-            retrieval_queries=state.get("retrieval_queries", []),
+            retrieval_queries=retrieval_queries,
             evidence_hits=evidence_hits,
         )
-        latest_status = getattr(llm_client, "last_call_status", {}) or {}
-        if isinstance(latest_status, dict):
-            llm_call_status = dict(latest_status)
-        llm_call_status.setdefault("model", llm_client.config.model)
-        llm_call_status.setdefault("invoked", True)
+
+    answer_text, fallback_reason = llm_client.generate_answer(
+        user_query=user_query,
+        question_type=question_type,
+        module_name=module_name,
+        module_hint=module_hint,
+        retrieval_queries=retrieval_queries,
+        evidence_hits=evidence_hits,
+    )
+    status = getattr(llm_client, "last_call_status", {}) or {}
+    call_status = dict(status) if isinstance(status, dict) else _default_llm_call_status()
+    return answer_text, fallback_reason, call_status
+
+
+def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
+    module_name = state["module_name"]
+    module_hint = state["module_hint"]
+    user_query = str(state.get("user_query", ""))
+    question_type = _infer_question_type(service, user_query)
+
+    wiki_hits = list(state.get("wiki_hits", []))
+    code_hits = list(state.get("code_hits", []))
+    evidence_hits = collect_evidence_hits(state)
+
+    llm_mode = "fallback_rule"
+    llm_fallback_reason: str | None = None
+    llm_call_status = _default_llm_call_status()
+    final_answer: str
+
+    llm_answer_text, llm_fallback_reason, llm_call_status = _run_llm_for_qa(
+        service,
+        user_query=user_query,
+        question_type=question_type,
+        module_name=module_name,
+        module_hint=module_hint,
+        retrieval_queries=list(state.get("retrieval_queries", []) or []),
+        evidence_hits=evidence_hits,
+    )
+
+    llm_client = getattr(service, "_knowledge_qa_llm", None)
+    llm_call_status.setdefault("model", getattr(getattr(llm_client, "config", None), "model", None))
+    llm_call_status.setdefault("invoked", bool(llm_client is not None))
 
     if llm_answer_text:
         if _is_code_location_query(service, user_query) and code_hits and not _answer_mentions_code_anchor(llm_answer_text, code_hits):
@@ -297,41 +386,25 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "response_kind": "knowledge_qa",
-        "task_stage": "knowledge_qa",
         "status": "completed",
-        "next_action": "completed",
         "answer": final_answer,
         "analysis": {
             "summary": "知识问答已完成",
             "module": module_name,
             "confidence": "medium",
-            "transition_type": transition_type,
-            "task_stage": "knowledge_qa",
             "generation_mode": llm_mode,
             "question_type": question_type,
             "evidence_count": len(evidence_hits),
             "wiki_evidence_count": len(wiki_hits),
             "code_evidence_count": len(code_hits),
-            "llm_enabled": bool(
-                hasattr(service, "_knowledge_qa_llm")
-                and service._knowledge_qa_llm is not None
-                and service._knowledge_qa_llm.config.enabled
-            ),
-            "llm_available": bool(
-                hasattr(service, "_knowledge_qa_llm")
-                and service._knowledge_qa_llm is not None
-                and service._knowledge_qa_llm.is_available
-            ),
-            "llm_model": (
-                service._knowledge_qa_llm.config.model
-                if hasattr(service, "_knowledge_qa_llm") and service._knowledge_qa_llm is not None
-                else None
-            ),
+            "llm_enabled": bool(llm_client is not None and llm_client.config.enabled),
+            "llm_available": bool(llm_client is not None and llm_client.is_available),
+            "llm_model": (llm_client.config.model if llm_client is not None else None),
             "llm_fallback_reason": llm_fallback_reason,
             "llm_call_status": llm_call_status,
             "highlights": [
                 "知识问答优先尝试使用 LLM 基于证据生成答案",
-                "代码定位类问题会额外检查答案里是否包含代码锚点",
+                "代码定位类问题会额外检查答案是否包含代码锚点",
                 "最终 Markdown 三段式格式由 finalize_response 节点统一收口",
             ],
         },

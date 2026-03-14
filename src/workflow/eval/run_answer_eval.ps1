@@ -17,7 +17,7 @@ param(
 # ===================================================
 $QA_LLM_ENABLED = "true"
 $QA_LLM_BASE_URL = "https://api.deepseek.com/v1"
-$QA_LLM_API_KEY = "sk-e6d6c6e197834f538d7cd40021f382c2"
+$QA_LLM_API_KEY = "sk-a50be0a1740b49efb7cdeaf6b3c6b954"
 $QA_LLM_MODEL = "deepseek-chat"
 $QA_LLM_TIMEOUT_SECONDS = "180"
 $QA_LLM_TEMPERATURE = "0.1"
@@ -38,7 +38,7 @@ $CODE_RETRIEVER_DIRS = "$WORKFLOW_DOMAIN_DIR/codes"
 # =====================================================
 $EVAL_JUDGE_LLM_ENABLED = "true"
 $EVAL_JUDGE_LLM_BASE_URL = "https://api.deepseek.com/v1"
-$EVAL_JUDGE_LLM_API_KEY = "sk-e6d6c6e197834f538d7cd40021f382c2"
+$EVAL_JUDGE_LLM_API_KEY = "sk-a50be0a1740b49efb7cdeaf6b3c6b954"
 $EVAL_JUDGE_LLM_MODEL = "deepseek-chat"
 $EVAL_JUDGE_LLM_TIMEOUT_SECONDS = "120"
 $EVAL_JUDGE_LLM_TEMPERATURE = "0.0"

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,9 @@ from typing import Any
 
 DEFAULT_PROFILE_ID = "ad_engine"
 DEFAULT_PROFILE_DIR = "domain"
+_PROFILE_SINGLETON_LOCK = threading.Lock()
+_PROFILE_SINGLETON: "DomainProfile | None" = None
+_PROFILE_SINGLETON_ROOT: Path | None = None
 
 
 def _as_str(value: Any, default: str = "") -> str:
@@ -364,3 +368,33 @@ def load_domain_profile(*, project_root: Path) -> DomainProfile:
     profile_path = _resolve_profile_path(project_root)
     payload = _load_json_file(profile_path)
     return DomainProfile.from_dict(payload, domain_dir=profile_path.parent.resolve())
+
+
+def _default_project_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def get_domain_profile(*, project_root: Path | None = None, force_reload: bool = False) -> DomainProfile:
+    global _PROFILE_SINGLETON, _PROFILE_SINGLETON_ROOT
+
+    resolved_root = (project_root or _default_project_root()).resolve()
+    with _PROFILE_SINGLETON_LOCK:
+        if force_reload or _PROFILE_SINGLETON is None:
+            _PROFILE_SINGLETON = load_domain_profile(project_root=resolved_root)
+            _PROFILE_SINGLETON_ROOT = resolved_root
+            return _PROFILE_SINGLETON
+
+        if _PROFILE_SINGLETON_ROOT != resolved_root:
+            raise ValueError(
+                "DomainProfile singleton is already initialized with a different project_root: "
+                f"{_PROFILE_SINGLETON_ROOT}; requested={resolved_root}"
+            )
+        return _PROFILE_SINGLETON
+
+
+def reset_domain_profile_singleton() -> None:
+    global _PROFILE_SINGLETON, _PROFILE_SINGLETON_ROOT
+
+    with _PROFILE_SINGLETON_LOCK:
+        _PROFILE_SINGLETON = None
+        _PROFILE_SINGLETON_ROOT = None

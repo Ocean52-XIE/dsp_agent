@@ -22,7 +22,7 @@
 | `title` | `TEXT` | 会话标题 |
 | `created_at` | `TIMESTAMPTZ` | 创建时间 |
 | `updated_at` | `TIMESTAMPTZ` | 更新时间 |
-| `status` | `TEXT` | 会话状态（如 `idle/completed/confirm_code`） |
+| `status` | `TEXT` | 会话状态（如 `idle/completed/out_of_scope`） |
 | `messages` | `JSONB` | 会话消息数组（按时间顺序） |
 | `payload` | `JSONB` | 扩展字段，便于后续平滑演进 |
 
