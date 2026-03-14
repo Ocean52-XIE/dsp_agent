@@ -183,6 +183,10 @@ class WorkflowService:
             project_root=project_root,
             default_top_k=4,
             module_doc_hints=self.domain_profile.module_doc_hints(),
+            embedding_profile=self.domain_profile.retrieval.embedding,
+            hybrid_weights_profile=self.domain_profile.retrieval.hybrid_weights,
+            module_prior_boost=self.domain_profile.retrieval.module_prior_boost,
+            reranker_profile=self.domain_profile.retrieval.reranker,
         )
 
         env_code_dirs = os.getenv("WORKFLOW_CODE_RETRIEVER_DIRS", "").strip()
@@ -195,6 +199,7 @@ class WorkflowService:
             project_root=project_root,
             code_dirs=code_dirs,
             default_top_k=4,
+            reranker_profile=self.domain_profile.retrieval.reranker,
         )
         self._llm_client = WorkflowLLMClient.from_env(prefix="WORKFLOW_QA_LLM")
 

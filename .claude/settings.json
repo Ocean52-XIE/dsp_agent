@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python src/workflow/eval/run_wiki_retrieval_eval.py --config src/workflow/eval/config.template.json)"
+    ]
+  }
+}

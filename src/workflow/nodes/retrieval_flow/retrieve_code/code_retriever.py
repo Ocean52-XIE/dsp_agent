@@ -23,6 +23,7 @@ from langchain_core.documents import Document
 from workflow.retrievers import WeightedFusionRetriever
 from workflow.common.runtime_logging import get_file_logger
 from workflow.common.func_utils import env_bool, env_float, env_int
+from workflow.common.domain_profile import RerankerProfile
 
 
 RG_STRATEGIES = {"rg_first", "rg_only", "no_rg"}
@@ -161,15 +162,24 @@ class LocalCodeRetriever:
     EXCERPT_MAX_LINES = 18
     EXCERPT_CONTEXT_RADIUS = 2
 
-    def __init__(self, *, project_root: Path, code_dirs: list[Path] | None = None, default_top_k: int = 4, runtime_config: CodeRetrieverRuntimeConfig | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        project_root: Path,
+        code_dirs: list[Path] | None = None,
+        default_top_k: int = 4,
+        runtime_config: CodeRetrieverRuntimeConfig | None = None,
+        reranker_profile: RerankerProfile | None = None,
+    ) -> None:
         """
-        内部辅助函数，负责` init  ` 相关处理。
-        
+        初始化代码检索器。
+
         参数:
-            self: 当前对象实例。
-        
-        返回:
-            无返回值。
+            project_root: 项目根目录
+            code_dirs: 代码目录列表
+            default_top_k: 默认返回结果数
+            runtime_config: 运行时配置
+            reranker_profile: Cross-Encoder 重排器配置
         """
         self.project_root = project_root
         self._logger = get_file_logger(project_root=project_root)
@@ -200,6 +210,10 @@ class LocalCodeRetriever:
         self._tfidf: TFIDFRetriever | None = None
         self._ensemble: WeightedFusionRetriever | None = None
 
+        # Cross-Encoder 重排器（可选）
+        self._reranker: Any = None
+        self._reranker_profile = reranker_profile
+
         started_at = perf_counter()
         index_stats = self._build_index()
         self._logger.info(
@@ -221,6 +235,58 @@ class LocalCodeRetriever:
         )
         if self.runtime_config.rg_strategy in {"rg_first", "rg_only"} and self._rg_executable is None:
             self._warn_rg_unavailable("rg is unavailable; retrieve_code falls back to BM25/TFIDF only.")
+
+        # 初始化 Cross-Encoder 重排器（可选）
+        if self._reranker_profile and self._reranker_profile.enabled and not self._reranker:
+            self._init_reranker()
+
+        # 记录重排器状态
+        self._logger.info(
+            "workflow.code_reranker.status",
+            enabled=self._reranker is not None,
+            model=self._reranker_profile.model if self._reranker_profile else None,
+        )
+
+    def _init_reranker(self) -> None:
+        """初始化 Cross-Encoder 重排器。
+
+        该方法延迟导入 CrossEncoderReranker，避免未安装 sentence-transformers 时启动失败。
+        重排器初始化后会加载模型到内存，首次调用可能需要下载模型文件。
+        """
+        if not self._reranker_profile or not self._reranker_profile.enabled:
+            return
+
+        try:
+            from workflow.retrievers.cross_encoder_reranker import (
+                CrossEncoderReranker,
+                CrossEncoderRerankerConfig,
+            )
+
+            config = CrossEncoderRerankerConfig.from_profile(self._reranker_profile)
+            self._reranker = CrossEncoderReranker(
+                project_root=self.project_root,
+                config=config,
+            )
+            self._reranker.initialize()
+            self._logger.info(
+                "workflow.code_reranker.initialized",
+                model=self._reranker_profile.model,
+                top_k=self._reranker_profile.top_k,
+                candidate_top_k=self._reranker_profile.candidate_top_k,
+            )
+        except ImportError as e:
+            self._logger.warning(
+                "workflow.code_reranker.import_error",
+                error=str(e),
+                message="CrossEncoderReranker 未安装，跳过重排器初始化",
+            )
+            self._reranker = None
+        except Exception as e:
+            self._logger.error(
+                "workflow.code_reranker.init_error",
+                error=str(e),
+            )
+            self._reranker = None
 
     def search(self, *, user_query: str, retrieval_queries: list[str] | None = None, module_name: str | None = None, top_k: int | None = None) -> list[dict[str, Any]]:
         """
@@ -457,7 +523,73 @@ class LocalCodeRetriever:
                 "matched_children": len(rg_candidate_child_ids),
             },
         }
+
+        # Cross-Encoder 重排（可选）
+        if self._reranker and hits:
+            rerank_start = perf_counter()
+            # 为重排器准备候选集，添加 content 字段
+            rerank_candidates = [
+                {
+                    **hit,
+                    "content": self._get_chunk_content_by_hit(
+                        hit["path"],
+                        hit["section"],
+                        hit.get("excerpt_lines"),
+                    ),
+                }
+                for hit in hits
+            ]
+            # 执行重排
+            reranked_hits = self._reranker.rerank(
+                query=user_query,
+                candidates=rerank_candidates,
+                top_k=final_top_k,
+                content_key="content",
+            )
+            # 更新分数和排名
+            for rank, hit in enumerate(reranked_hits, start= 1):
+                hits.append({
+                    **hit,
+                    "score": round(float(hit.get("rerank_score", 0.0 or 0.0)), 4),
+                    "rank": rank,
+                    "score_source": "reranker",
+                    "retrieval_debug": {
+                        **hit.get("retrieval_debug", {}),
+                        "rerank_score": round(float(hit.get("rerank_score", 0.0), 4)),
+                        "original_rank": hit.get("original_rank", rank),
+                    },
+                })
+            rerank_latency = round((perf_counter() - rerank_start) * 1000, 3)
+            self.last_search_profile["rerank"] = {
+                "enabled": True,
+                "latency_ms": rerank_latency,
+                "model": self._reranker_profile.model if self._reranker_profile else None,
+            }
+            self.last_search_profile["latency_ms"] = round((perf_counter() - started) * 1000, 3)
+
         return hits
+
+    def _get_chunk_content_by_hit(self, path: str, section: str) -> str:
+        """根据路径和章节获取 chunk 内容，用于重排器。
+
+        参数:
+            path: 文档相对路径
+            section: 章节名称
+
+        返回:
+            chunk 内容字符串
+        """
+        chunk_ids = self._children_by_path.get(path, [])
+        for chunk_id in chunk_ids:
+            chunk = self._child_by_id.get(chunk_id)
+            if chunk and chunk.section == section:
+                return chunk.content
+        # 如果找不到精确匹配，返回第一个 chunk 的内容
+        if chunk_ids:
+            chunk = self._child_by_id.get(chunk_ids[0])
+            if chunk:
+                return chunk.content
+        return ""
 
     def get_index_snapshot(self) -> list[dict[str, Any]]:
         """

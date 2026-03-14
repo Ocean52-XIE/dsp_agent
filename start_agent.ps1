@@ -28,7 +28,7 @@ param(
 $QA_LLM_ENABLED = "true"
 $QA_LLM_BASE_URL = "https://api.deepseek.com/v1"
 $QA_LLM_API_KEY = "sk-338be4c62f214816aac1e0ad5667fcb4"
-$QA_LLM_MODEL = "deepseek-chat"
+$QA_LLM_MODEL = "deepseek-reasoner"
 $QA_LLM_TIMEOUT_SECONDS = "120"
 $QA_LLM_TEMPERATURE = "0.2"
 $QA_LLM_MAX_TOKENS = "1600"

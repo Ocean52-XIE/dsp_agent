@@ -593,7 +593,29 @@
     },
     "enable_wiki": true,
     "enable_code": true,
-    "enable_cases": false
+    "enable_cases": false,
+    "embedding": {
+      "enabled": true,
+      "model": "BAAI/bge-base-zh-v1.5",
+      "device": "cpu",
+      "top_k": 4,
+      "persist_root": ".vectorstore"
+    },
+    "reranker": {
+      "enabled": true,
+      "model": "BAAI/bge-reranker-base",
+      "device": "cpu",
+      "top_k": 4,
+      "candidate_top_k": 20,
+      "batch_size": 8,
+      "max_length": 512
+    },
+    "hybrid_weights": {
+      "bm25": 0.30,
+      "embedding": 0.50,
+      "lexical": 0.20
+    },
+    "module_prior_boost": 0.25
   },
   "fusion": {
     "intent_source_bias": {

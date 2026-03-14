@@ -132,16 +132,104 @@ class DomainGateProfile:
 
 
 @dataclass(frozen=True)
+class EmbeddingProfile:
+    """向量检索配置，定义 Embedding 模型和检索参数"""
+    enabled: bool = True
+    model: str = "BAAI/bge-base-zh-v1.5"
+    device: str = "cpu"
+    top_k: int = 4
+    persist_root: str = ".vectorstore"
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "EmbeddingProfile":
+        return cls(
+            enabled=bool(payload.get("enabled", True)),
+            model=_as_str(payload.get("model"), "BAAI/bge-base-zh-v1.5"),
+            device=_as_str(payload.get("device"), "cpu"),
+            top_k=_as_int(payload.get("top_k"), 4),
+            persist_root=_as_str(payload.get("persist_root"), ".vectorstore"),
+        )
+
+
+@dataclass(frozen=True)
+class RerankerProfile:
+    """Cross-Encoder 重排器配置，用于对检索候选集进行精排。
+
+    属性:
+        enabled: 是否启用重排器，默认关闭
+        model: Cross-Encoder 模型名称，推荐使用 BGE 中文重排模型
+        device: 运行设备，cpu 或 cuda
+        top_k: 重排后返回的结果数量
+        candidate_top_k: 参与重排的候选集大小，建议 15-30
+        batch_size: 批处理大小，影响重排性能
+        max_length: 最大序列长度，超过会被截断
+    """
+    enabled: bool = False
+    model: str = "BAAI/bge-reranker-base"
+    device: str = "cpu"
+    top_k: int = 4
+    candidate_top_k: int = 20
+    batch_size: int = 8
+    max_length: int = 512
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "RerankerProfile":
+        """从字典解析重排器配置。
+
+        参数:
+            payload: 配置字典，通常来自 profile.json 的 retrieval.reranker 节
+
+        返回:
+            RerankerProfile 实例
+        """
+        return cls(
+            enabled=bool(payload.get("enabled", False)),
+            model=_as_str(payload.get("model"), "BAAI/bge-reranker-base"),
+            device=_as_str(payload.get("device"), "cpu"),
+            top_k=_as_int(payload.get("top_k"), 4),
+            candidate_top_k=_as_int(payload.get("candidate_top_k"), 20),
+            batch_size=_as_int(payload.get("batch_size"), 8),
+            max_length=_as_int(payload.get("max_length"), 512),
+        )
+
+
+@dataclass(frozen=True)
 class RetrievalProfile:
+    """检索配置，包含召回、融合和重排参数。
+
+    属性:
+        presets: 预设策略配置，如 hybrid/wiki_first/code_first
+        source_weights: 各数据源权重
+        max_per_source: 各数据源最大返回数
+        enable_wiki: 是否启用 wiki 检索
+        enable_code: 是否启用代码检索
+        enable_cases: 是否启用案例检索
+        embedding: 向量检索配置
+        reranker: Cross-Encoder 重排器配置
+        hybrid_weights: 混合检索权重（bm25/embedding/lexical）
+        module_prior_boost: 模块先验提升因子
+    """
     presets: dict[str, dict[str, int]] = field(default_factory=dict)
     source_weights: dict[str, float] = field(default_factory=dict)
     max_per_source: dict[str, int] = field(default_factory=dict)
     enable_wiki: bool = True
     enable_code: bool = True
     enable_cases: bool = False
+    embedding: EmbeddingProfile = field(default_factory=EmbeddingProfile)
+    reranker: RerankerProfile = field(default_factory=RerankerProfile)
+    hybrid_weights: dict[str, float] = field(default_factory=lambda: {"bm25": 0.30, "embedding": 0.50, "lexical": 0.20})
+    module_prior_boost: float = 0.25
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "RetrievalProfile":
+        """从字典解析检索配置。
+
+        参数:
+            payload: 配置字典，通常来自 profile.json 的 retrieval 节
+
+        返回:
+            RetrievalProfile 实例
+        """
         presets_raw = _as_dict(payload.get("presets"))
         presets: dict[str, dict[str, int]] = {}
         for key, value in presets_raw.items():
@@ -154,6 +242,10 @@ class RetrievalProfile:
             }
         weights_raw = _as_dict(payload.get("source_weights"))
         max_raw = _as_dict(payload.get("max_per_source"))
+        embedding_raw = _as_dict(payload.get("embedding"))
+        reranker_raw = _as_dict(payload.get("reranker"))
+        hybrid_weights_raw = _as_dict(payload.get("hybrid_weights"))
+        module_prior_boost_raw = payload.get("module_prior_boost")
         return cls(
             presets=presets,
             source_weights={
@@ -169,6 +261,14 @@ class RetrievalProfile:
             enable_wiki=bool(payload.get("enable_wiki", True)),
             enable_code=bool(payload.get("enable_code", True)),
             enable_cases=bool(payload.get("enable_cases", False)),
+            embedding=EmbeddingProfile.from_dict(embedding_raw),
+            reranker=RerankerProfile.from_dict(reranker_raw),
+            hybrid_weights={
+                "bm25": _as_float(hybrid_weights_raw.get("bm25"), 0.30),
+                "embedding": _as_float(hybrid_weights_raw.get("embedding"), 0.50),
+                "lexical": _as_float(hybrid_weights_raw.get("lexical"), 0.20),
+            },
+            module_prior_boost=_as_float(module_prior_boost_raw, 0.25),
         )
 
     def preset(self, strategy: str) -> dict[str, int]:

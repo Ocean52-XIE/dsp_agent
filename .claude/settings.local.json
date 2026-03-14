@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"from workflow.common.domain_profile import EmbeddingProfile; from workflow.retrievers.embedding_retriever import EmbeddingRetrieverConfig; print\\(''Import OK''\\)\")",
+      "Bash(PYTHONPATH=src python -c \"from workflow.common.domain_profile import EmbeddingProfile; from workflow.retrievers.embedding_retriever import EmbeddingRetrieverConfig; print\\(''Import OK''\\)\")",
+      "Bash(PYTHONPATH=src python -c \"from workflow.engine import WorkflowService; print\\(''Engine Import OK''\\)\")"
+    ]
+  }
+}
