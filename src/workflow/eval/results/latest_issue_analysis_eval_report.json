@@ -1,0 +1,392 @@
+{
+  "generated_at": "2026-03-14T10:19:30",
+  "config_path": "src/workflow/eval/config.issue_analysis.template.json",
+  "dataset_path": "domain/ad_engine/eval/datasets/ad_engine_issue_analysis_eval.jsonl",
+  "output_path": "src/workflow/eval/results/latest_issue_analysis_eval_report.json",
+  "total_cases": 15,
+  "module_eval_count": 15,
+  "metrics": {
+    "route_accuracy": 1.0,
+    "kind_accuracy": 1.0,
+    "status_accuracy": 1.0,
+    "strict_pass_rate": 1.0,
+    "module_accuracy": 1.0
+  },
+  "per_case": [
+    {
+      "id": "issue_001",
+      "query": "召回队列从今天10:30开始下降40%，recall_service 出现 timeout 告警，request_id=abc123，怎么排查",
+      "intent": "issue_analysis",
+      "note": "召回队列下降+超时告警+请求ID",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_002",
+      "query": "召回候选量突然从12000掉到3000，日志里有 filter_drop_rate=0.78，trace_id=tr_9f2a，帮我定位原因",
+      "intent": "issue_analysis",
+      "note": "召回候选骤降+过滤率异常",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_003",
+      "query": "召回接口 p99 从90ms升到420ms，伴随 downstream timeout error，近15分钟持续，怎么排障",
+      "intent": "issue_analysis",
+      "note": "召回时延突增+下游超时",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_004",
+      "query": "pCVR 线上偏低12%，模型版本昨晚切换到v3.2后出现，日志提示 calibration slope=0.61，如何定位",
+      "intent": "issue_analysis",
+      "note": "两率偏差+版本切换+校准参数异常",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rate-prediction"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rate-prediction"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_005",
+      "query": "rate_predictor 出现 exception: nan in calibrate_probability，影响cvr预估，怎么修复思路",
+      "intent": "issue_analysis",
+      "note": "两率预估代码异常",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rate-prediction"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rate-prediction"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_006",
+      "query": "target_cpa 成本超标35%，从14:00开始连续告警，campaign_id=93821，trace_id=t_112，帮我分析",
+      "intent": "issue_analysis",
+      "note": "出价成本超标+时间窗+告警+ID",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "bid-optimizer"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "bid-optimizer"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_007",
+      "query": "胜率从22%跌到9%，竞对出价上涨且日志里 alpha 长期=0.72，bid 链路怎么排查",
+      "intent": "issue_analysis",
+      "note": "胜率骤降+alpha异常",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "bid-optimizer"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "bid-optimizer"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_008",
+      "query": "compute_ocpc_bid 返回值异常偏低，线上 error 日志出现 underbid_warning，怎么定位",
+      "intent": "issue_analysis",
+      "note": "出价函数异常+线上错误日志",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "bid-optimizer"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "bid-optimizer"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_009",
+      "query": "高 eCPM 广告没进最终位，日志显示 apply_safety_penalty 命中率飙升到68%并触发 rerank warning 告警，怎么排查",
+      "intent": "issue_analysis",
+      "note": "重排惩罚异常导致高分不进位",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rerank-engine"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rerank-engine"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_010",
+      "query": "精排结果抖动大，rank_topn 每分钟 top1 频繁切换，告警提示 feature_drift，怎么排查",
+      "intent": "issue_analysis",
+      "note": "重排抖动+特征漂移告警",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rerank-engine"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rerank-engine"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_011",
+      "query": "rerank_engine 出现 timeout 和 queue backlog，p99 450ms，trace_id=rk889，帮我定位",
+      "intent": "issue_analysis",
+      "note": "重排时延与积压",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rerank-engine"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "rerank-engine"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_012",
+      "query": "在线投放链路出现 502 错误，request gateway 在 16:20 开始持续报错，怎么排障",
+      "intent": "issue_analysis",
+      "note": "主链路网关错误",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-serving-orchestrator"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-serving-orchestrator"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_013",
+      "query": "计费回传重复导致转化数异常，日志出现 duplicate callback warning，trace_id=cb_77，如何分析",
+      "intent": "issue_analysis",
+      "note": "回传重复与转化异常",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-serving-orchestrator"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-serving-orchestrator"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_014",
+      "query": "广告请求偶发失败，error code 504 且重试3次后仍失败，怎么定位根因",
+      "intent": "issue_analysis",
+      "note": "请求失败+错误码+重试失败",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-serving-orchestrator"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-serving-orchestrator"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    },
+    {
+      "id": "issue_015",
+      "query": "冷启动广告无量并伴随召回超时告警，候选量从500降到20，如何排查",
+      "intent": "issue_analysis",
+      "note": "冷启动无量+召回超时+候选骤降",
+      "expected": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "actual": {
+        "route": "issue_analysis",
+        "kind": "issue_analysis",
+        "status": "completed",
+        "module": "ad-recall"
+      },
+      "hits": {
+        "route_hit": 1.0,
+        "kind_hit": 1.0,
+        "status_hit": 1.0,
+        "module_hit": 1.0
+      },
+      "strict_pass": true
+    }
+  ]
+}

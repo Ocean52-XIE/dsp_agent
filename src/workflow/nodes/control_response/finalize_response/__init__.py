@@ -9,10 +9,10 @@ from workflow.utils import normalize_source_type
 
 
 SCENE_LABELS = {
-    "knowledge_qa": "鐭ヨ瘑闂瓟",
-    "issue_analysis": "闂鍒嗘瀽",
-    "code_generation": "浠ｇ爜瀹炵幇寤鸿",
-    "conversation_control": "浼氳瘽鎺у埗",
+    "knowledge_qa": "知识问答",
+    "issue_analysis": "问题分析",
+    "code_generation": "代码实现建议",
+    "conversation_control": "会话控制",
     "out_of_scope": "范围外问题",
 }
 
@@ -93,7 +93,7 @@ def _build_evidence_lines(evidence_hits: list[dict[str, Any]], *, max_items: int
 
         if excerpt:
             excerpt_preview = " ".join(excerpt.split())[:220]
-            lines.append(f"  - 鎽樿: {excerpt_preview}")
+            lines.append(f"  - 摘要: {excerpt_preview}")
     return lines
 
 
@@ -103,9 +103,9 @@ def _render_markdown_answer(state: dict[str, Any], *, evidence_hits: list[dict[s
         module_name = str(state.get("module_name", "") or "--")
         answer = f"当前已完成 `{module_name}` 相关处理，但暂未生成结论文本。"
 
-    sections: list[str] = [f"### 闂缁撹\n{answer}"]
+    sections: list[str] = [f"### 问题结论\n{answer}"]
     if evidence_hits:
-        sections.append(f"### 璇佹嵁璇存槑\n" + "\n".join(_build_evidence_lines(evidence_hits, max_items=4)))
+        sections.append(f"### 证据说明\n" + "\n".join(_build_evidence_lines(evidence_hits, max_items=4)))
     return "\n\n".join(section.strip() for section in sections if section.strip())
 
 
