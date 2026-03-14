@@ -1,0 +1,14 @@
+{
+  "domain_profile": "logistics",
+  "dataset_path": "domain/logistics/eval/datasets/logistics_issue_analysis_eval.jsonl",
+  "output_path": "src/workflow/eval/results/latest_issue_analysis_logistics_eval_report.json",
+  "session_id_prefix": "issue_eval_log_sess",
+  "trace_id_prefix": "issue_eval_log_trace",
+  "save_per_case": true,
+  "require_llm_available": true,
+  "require_llm_mode": true,
+  "llm_mode_min_rate": 0.9,
+  "fail_on_llm_mode_min_rate": true,
+  "retry_count": 1,
+  "retry_base_delay_ms": 300
+}

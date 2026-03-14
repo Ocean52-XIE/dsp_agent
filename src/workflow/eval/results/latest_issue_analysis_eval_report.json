@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-14T10:19:30",
+  "generated_at": "2026-03-14T18:34:10",
   "config_path": "src/workflow/eval/config.issue_analysis.template.json",
   "dataset_path": "domain/ad_engine/eval/datasets/ad_engine_issue_analysis_eval.jsonl",
   "output_path": "src/workflow/eval/results/latest_issue_analysis_eval_report.json",
@@ -10,7 +10,40 @@
     "kind_accuracy": 1.0,
     "status_accuracy": 1.0,
     "strict_pass_rate": 1.0,
-    "module_accuracy": 1.0
+    "root_cause_presence_rate": 1.0,
+    "risk_coverage_rate": 0.933333,
+    "fix_plan_coverage_rate": 0.933333,
+    "verification_coverage_rate": 0.933333,
+    "analysis_structure_pass_rate": 0.933333,
+    "evidence_anchor_hit_rate": 1.0,
+    "llm_mode_rate": 1.0,
+    "fallback_mode_rate": 0.0,
+    "valid_generation_mode_rate": 1.0,
+    "need_user_confirmation_rate": 0.0,
+    "numbered_answer_rate": 1.0,
+    "runtime_error_rate": 0.0,
+    "llm_required_pass_rate": 1.0,
+    "avg_attempts": 1.0,
+    "llm_mode_min_rate": 0.95,
+    "module_accuracy": 1.0,
+    "llm_mode_threshold_passed": true
+  },
+  "llm_eval_context": {
+    "enabled": true,
+    "available": true,
+    "model": "deepseek-chat",
+    "require_llm_available": true,
+    "require_llm_mode": true,
+    "retry_count": 1,
+    "retry_base_delay_ms": 300,
+    "fail_on_llm_mode_min_rate": true
+  },
+  "quality_gate": {
+    "llm_mode_min_rate": 0.95,
+    "llm_mode_rate": 1.0,
+    "passed": true,
+    "enforced": true,
+    "message": ""
   },
   "per_case": [
     {
@@ -35,6 +68,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -61,6 +111,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -85,6 +152,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -111,6 +195,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -135,6 +236,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -161,6 +279,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -185,6 +320,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -211,6 +363,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -235,6 +404,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -261,6 +447,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -285,6 +488,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -311,6 +531,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -335,6 +572,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 2,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 8,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     },
@@ -361,6 +615,23 @@
         "status_hit": 1.0,
         "module_hit": 1.0
       },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 1,
+        "fix_plan_count": 1,
+        "verification_step_count": 1,
+        "structure_pass": false,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 3,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
+      },
       "strict_pass": true
     },
     {
@@ -385,6 +656,23 @@
         "kind_hit": 1.0,
         "status_hit": 1.0,
         "module_hit": 1.0
+      },
+      "quality": {
+        "root_cause_present": true,
+        "risk_count": 3,
+        "fix_plan_count": 3,
+        "verification_step_count": 3,
+        "structure_pass": true,
+        "anchor_hit": true,
+        "generation_mode": "llm",
+        "llm_fallback_reason": "",
+        "need_user_confirmation": false,
+        "citation_count": 4,
+        "numbered_line_count": 9,
+        "attempts": 1,
+        "llm_required_pass": true,
+        "runtime_error": false,
+        "last_response_error": null
       },
       "strict_pass": true
     }

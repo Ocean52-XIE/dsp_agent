@@ -638,12 +638,14 @@
     ]
   },
   "prompts": {
-    "qa_system_path": "prompts/qa_system.md"
+    "qa_system_path": "prompts/qa_system.md",
+    "issue_system_path": "prompts/issue_system.md"
   },
   "eval": {
     "retrieval_dataset": "eval/datasets/ad_engine_retrieval_eval.jsonl",
     "code_retrieval_dataset": "eval/datasets/ad_engine_code_retrieval_eval.jsonl",
     "answer_dataset": "eval/datasets/ad_engine_answer_eval.jsonl",
-    "hybrid_answer_dataset": "eval/datasets/ad_engine_answer_eval_hybrid.jsonl"
+    "hybrid_answer_dataset": "eval/datasets/ad_engine_answer_eval_hybrid.jsonl",
+    "issue_analysis_dataset": "eval/datasets/ad_engine_issue_analysis_eval_extended.jsonl"
   }
 }

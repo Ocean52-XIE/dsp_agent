@@ -266,13 +266,49 @@ Added a dedicated issue-analysis routing evaluation set and runner.
 
 - Dataset:
   - `domain/ad_engine/eval/datasets/ad_engine_issue_analysis_eval.jsonl`
+  - `domain/ad_engine/eval/datasets/ad_engine_issue_analysis_eval_extended.jsonl`
+  - `domain/logistics/eval/datasets/logistics_issue_analysis_eval.jsonl`
 - Config template:
   - `src/workflow/eval/config.issue_analysis.template.json`
+  - `src/workflow/eval/config.issue_analysis.extended.template.json`
+  - `src/workflow/eval/config.issue_analysis.logistics.template.json`
 - Runner:
   - `python src/workflow/eval/run_issue_analysis_eval.py --config src/workflow/eval/config.issue_analysis.template.json`
+  - `python src/workflow/eval/run_issue_analysis_eval.py --config src/workflow/eval/config.issue_analysis.extended.template.json`
+  - `python src/workflow/eval/run_issue_analysis_eval.py --config src/workflow/eval/config.issue_analysis.logistics.template.json`
 - PowerShell:
   - `.\src\workflow\eval\run_issue_analysis_eval.ps1 -ConfigPath src/workflow/eval/config.issue_analysis.template.json`
+  - `.\src\workflow\eval\run_issue_analysis_eval.ps1 -ConfigPath src/workflow/eval/config.issue_analysis.extended.template.json`
+  - `.\src\workflow\eval\run_issue_analysis_eval.ps1 -ConfigPath src/workflow/eval/config.issue_analysis.logistics.template.json`
 
 Default report output:
 
 - `src/workflow/eval/results/latest_issue_analysis_eval_report.json`
+- `src/workflow/eval/results/latest_issue_analysis_eval_extended_report.json`
+- `src/workflow/eval/results/latest_issue_analysis_logistics_eval_report.json`
+
+LLM policy (new):
+
+- issue-analysis eval config now supports:
+  - `require_llm_available`
+  - `require_llm_mode`
+  - `llm_mode_min_rate`
+  - `fail_on_llm_mode_min_rate`
+  - `retry_count`
+  - `retry_base_delay_ms`
+- template configs default to “LLM-required” mode. If LLM is not configured, eval will fail fast.
+
+Required env vars for LLM-required eval:
+
+- `WORKFLOW_QA_LLM_ENABLED=true`
+- `WORKFLOW_QA_LLM_API_KEY`
+- `WORKFLOW_QA_LLM_MODEL`
+- optional: `WORKFLOW_QA_LLM_BASE_URL`, `WORKFLOW_QA_LLM_TIMEOUT_SECONDS`,
+  `WORKFLOW_QA_LLM_RETRY_COUNT`, `WORKFLOW_QA_LLM_RETRY_BASE_DELAY_MS`
+
+PowerShell helper `run_issue_analysis_eval.ps1` now follows the same config style as
+`run_answer_eval.ps1`:
+
+- script params keep only `-ConfigPath` and `-PythonCommand`
+- LLM/domain/retry settings are centralized at the top config block in the script
+- API key is read from `WORKFLOW_QA_LLM_API_KEY` by default (no hardcoded secret in script)

@@ -45,18 +45,31 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 
 def _build_prompts(payload: dict[str, Any], *, domain_dir: Path) -> dict[str, str]:
-    prompts = {_as_str(k): _as_str(v) for k, v in _as_dict(payload).items()}
-    qa_system_path = _as_str(prompts.get("qa_system_path"))
-    if not qa_system_path:
-        return prompts
+    """
+    读取领域提示词配置。
 
-    path = Path(qa_system_path)
-    if not path.is_absolute():
-        path = (domain_dir / path).resolve()
-    try:
-        prompts["qa_system"] = path.read_text(encoding="utf-8").strip()
-    except OSError as exc:
-        raise ValueError(f"Invalid qa_system_path: {qa_system_path}") from exc
+    说明：
+    1. 支持直接在 profile.json 内内联提示词；
+    2. 同时支持通过 `*_path` 引用文件，便于长提示词版本化管理；
+    3. 目前约定加载 qa_system 与 issue_system 两类系统提示词。
+    """
+    prompts = {_as_str(k): _as_str(v) for k, v in _as_dict(payload).items()}
+    prompt_path_pairs = (
+        ("qa_system", "qa_system_path"),
+        ("issue_system", "issue_system_path"),
+    )
+    for prompt_key, prompt_path_key in prompt_path_pairs:
+        prompt_path = _as_str(prompts.get(prompt_path_key))
+        if not prompt_path:
+            continue
+
+        path = Path(prompt_path)
+        if not path.is_absolute():
+            path = (domain_dir / path).resolve()
+        try:
+            prompts[prompt_key] = path.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise ValueError(f"Invalid {prompt_path_key}: {prompt_path}") from exc
     return prompts
 
 
@@ -534,7 +547,16 @@ class DomainProfile:
         return rows
 
     def system_prompt(self) -> str:
+        """
+        返回知识问答场景（knowledge_answer）系统提示词。
+        """
         return _as_str(self.prompts.get("qa_system"))
+
+    def issue_system_prompt(self) -> str:
+        """
+        返回问题分析场景（issue_analysis）系统提示词。
+        """
+        return _as_str(self.prompts.get("issue_system"))
 
 
 def _load_json_file(path: Path) -> dict[str, Any]:
