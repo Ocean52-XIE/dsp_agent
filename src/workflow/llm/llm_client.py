@@ -15,6 +15,10 @@ from langchain_openai import ChatOpenAI
 from workflow.common.runtime_logging import get_file_logger
 from workflow.common.func_utils import to_bool, to_float, to_int
 
+# LLM 日志相关常量：用于控制 prompt 截断长度
+LLM_LOG_PROMPT_MAX_LENGTH = 500  # 单个 prompt 最大日志长度
+LLM_LOG_RESPONSE_MAX_LENGTH = 1000  # 响应文本最大日志长度
+
 
 AnswerNormalizer = Callable[[str], str]
 AnswerValidator = Callable[[str], tuple[bool, str | None]]
@@ -172,6 +176,14 @@ class WorkflowLLMClient:
         last_reason = "unknown_error"
         for attempt in range(1, max_attempts + 1):
             attempt_started = time.perf_counter()
+            # 记录详细的 LLM 请求日志
+            self._log_llm_request(
+                request,
+                call_type="generate",
+                attempt=attempt,
+                max_attempts=max_attempts,
+            )
+            # 保留原有的 debug 日志（仅在 debug_verbose 时生效）
             self._log_debug_request(
                 request,
                 attempt=attempt,
@@ -182,41 +194,81 @@ class WorkflowLLMClient:
                     system_prompt=request.system_prompt,
                     user_prompt=request.user_prompt,
                 )
+                attempt_latency_ms = int((time.perf_counter() - attempt_started) * 1000)
+                # 记录成功的 LLM 响应日志
+                self._log_llm_response(
+                    request,
+                    call_type="generate",
+                    attempt=attempt,
+                    latency_ms=attempt_latency_ms,
+                    response_text=answer,
+                )
             except TimeoutError as exc:
+                attempt_latency_ms = int((time.perf_counter() - attempt_started) * 1000)
                 last_reason = "timeout"
+                # 记录失败的 LLM 响应日志
+                self._log_llm_response(
+                    request,
+                    call_type="generate",
+                    attempt=attempt,
+                    latency_ms=attempt_latency_ms,
+                    reason=last_reason,
+                    error=exc,
+                )
                 self._log_debug_response(
                     request,
                     attempt=attempt,
                     max_attempts=max_attempts,
-                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    latency_ms=attempt_latency_ms,
                     response_text=None,
                     reason=last_reason,
                     error=exc,
                 )
             except ValueError as value_error:
+                attempt_latency_ms = int((time.perf_counter() - attempt_started) * 1000)
                 reason_text = str(value_error).strip() or "empty_answer"
                 last_reason = reason_text if reason_text.startswith("empty_answer") else f"empty_answer:{reason_text}"
+                # 记录失败的 LLM 响应日志
+                self._log_llm_response(
+                    request,
+                    call_type="generate",
+                    attempt=attempt,
+                    latency_ms=attempt_latency_ms,
+                    reason=last_reason,
+                    error=value_error,
+                )
                 self._log_debug_response(
                     request,
                     attempt=attempt,
                     max_attempts=max_attempts,
-                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    latency_ms=attempt_latency_ms,
                     response_text=None,
                     reason=last_reason,
                     error=value_error,
                 )
             except Exception as exc:  # pragma: no cover - defensive fallback
+                attempt_latency_ms = int((time.perf_counter() - attempt_started) * 1000)
                 last_reason = self._map_exception_to_reason(exc)
+                # 记录失败的 LLM 响应日志
+                self._log_llm_response(
+                    request,
+                    call_type="generate",
+                    attempt=attempt,
+                    latency_ms=attempt_latency_ms,
+                    reason=last_reason,
+                    error=exc,
+                )
                 self._log_debug_response(
                     request,
                     attempt=attempt,
                     max_attempts=max_attempts,
-                    latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                    latency_ms=attempt_latency_ms,
                     response_text=None,
                     reason=last_reason,
                     error=exc,
                 )
             else:
+                # 保留原有的 debug 日志（仅在 debug_verbose 时生效）
                 self._log_debug_response(
                     request,
                     attempt=attempt,
@@ -449,6 +501,134 @@ class WorkflowLLMClient:
                 merged[key] = value
         return merged
 
+    def _truncate_text(self, text: str | None, max_length: int = LLM_LOG_PROMPT_MAX_LENGTH) -> str:
+        """截断长文本以适应日志输出
+
+        Args:
+            text: 待截断的文本
+            max_length: 最大长度
+
+        Returns:
+            截断后的文本，末尾添加 "...[truncated, total=N]" 标记
+        """
+        if not text:
+            return ""
+        if len(text) <= max_length:
+            return text
+        return f"{text[:max_length]}...[truncated, total={len(text)}]"
+
+    def _log_llm_request(
+        self,
+        request: CommonLLMRequest,
+        *,
+        call_type: str = "generate",
+        attempt: int = 1,
+        max_attempts: int = 1,
+    ) -> None:
+        """记录 LLM 请求详情到日志
+
+        Args:
+            request: LLM 请求对象
+            call_type: 调用类型（generate, tools, agent）
+            attempt: 当前尝试次数
+            max_attempts: 最大尝试次数
+        """
+        payload = {
+            "call_type": call_type,
+            "model": self.config.model,
+            "base_url": self.config.base_url,
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+            "timeout_seconds": self.config.timeout_seconds,
+            "attempt": attempt,
+            "max_attempts": max_attempts,
+            "evidence_count": request.evidence_count,
+            "system_prompt_length": len(request.system_prompt) if request.system_prompt else 0,
+            "user_prompt_length": len(request.user_prompt) if request.user_prompt else 0,
+            # 截断后的 prompt 内容，便于调试
+            "system_prompt_preview": self._truncate_text(request.system_prompt),
+            "user_prompt_preview": self._truncate_text(request.user_prompt),
+        }
+
+        # 如果有 tools，记录工具信息
+        if request.tools:
+            payload["tools_count"] = len(request.tools)
+            payload["tool_names"] = [
+                t.get("function", {}).get("name", "unknown") if isinstance(t, dict) else str(t)
+                for t in request.tools
+            ]
+            payload["tool_choice"] = request.tool_choice
+
+        self._logger.info(
+            f"{request.log_namespace}.llm_request",
+            **self._event_payload(request, payload),
+        )
+
+    def _log_llm_response(
+        self,
+        request: CommonLLMRequest,
+        *,
+        call_type: str = "generate",
+        attempt: int = 1,
+        latency_ms: int = 0,
+        response_text: str | None = None,
+        tool_calls: list[dict[str, Any]] | None = None,
+        error: Exception | None = None,
+        reason: str | None = None,
+    ) -> None:
+        """记录 LLM 响应详情到日志
+
+        Args:
+            request: LLM 请求对象
+            call_type: 调用类型（generate, tools, agent）
+            attempt: 当前尝试次数
+            latency_ms: 响应延迟（毫秒）
+            response_text: 响应文本
+            tool_calls: 工具调用列表
+            error: 异常信息
+            reason: 失败原因
+        """
+        payload: dict[str, Any] = {
+            "call_type": call_type,
+            "model": self.config.model,
+            "attempt": attempt,
+            "latency_ms": latency_ms,
+            "success": error is None and reason is None,
+        }
+
+        # 响应文本信息
+        if response_text:
+            payload["response_length"] = len(response_text)
+            payload["response_preview"] = self._truncate_text(response_text, LLM_LOG_RESPONSE_MAX_LENGTH)
+        else:
+            payload["response_length"] = 0
+            payload["response_preview"] = ""
+
+        # 工具调用信息
+        if tool_calls:
+            payload["tool_calls_count"] = len(tool_calls)
+            payload["tool_calls"] = [
+                {
+                    "name": tc.get("name", ""),
+                    "args_preview": self._truncate_text(str(tc.get("args", {})), 200),
+                }
+                for tc in tool_calls
+            ]
+
+        # 错误信息
+        if error:
+            payload["error_type"] = type(error).__name__
+            payload["error_message"] = self._truncate_text(str(error), 500)
+
+        if reason:
+            payload["reason"] = reason
+
+        log_level = "info" if error is None and reason is None else "warning"
+        getattr(self._logger, log_level)(
+            f"{request.log_namespace}.llm_response",
+            **self._event_payload(request, payload),
+        )
+
     def _build_status(
         self,
         *,
@@ -620,6 +800,14 @@ class WorkflowLLMClient:
             ),
         )
 
+        # 记录详细的 LLM 请求日志
+        self._log_llm_request(
+            request,
+            call_type="tools",
+            attempt=1,
+            max_attempts=1,
+        )
+
         try:
             # 绑定 tools
             chat_model_with_tools = self._chat_model.bind_tools(
@@ -640,6 +828,16 @@ class WorkflowLLMClient:
             # 提取响应
             answer = self._extract_text_from_message(message)
             tool_calls = self._extract_tool_calls(message)
+
+            # 记录详细的 LLM 响应日志
+            self._log_llm_response(
+                request,
+                call_type="tools",
+                attempt=1,
+                latency_ms=latency_ms,
+                response_text=answer,
+                tool_calls=tool_calls,
+            )
 
             # 记录成功状态
             success_status = self._build_status(
@@ -674,6 +872,15 @@ class WorkflowLLMClient:
 
         except TimeoutError as exc:
             latency_ms = int((time.perf_counter() - started_at) * 1000)
+            # 记录详细的 LLM 响应日志（超时）
+            self._log_llm_response(
+                request,
+                call_type="tools",
+                attempt=1,
+                latency_ms=latency_ms,
+                reason="timeout",
+                error=exc,
+            )
             self._logger.warning(
                 f"{request.log_namespace}.tools_timeout",
                 **self._event_payload(
@@ -690,6 +897,15 @@ class WorkflowLLMClient:
         except Exception as exc:  # pragma: no cover
             latency_ms = int((time.perf_counter() - started_at) * 1000)
             reason = self._map_exception_to_reason(exc)
+            # 记录详细的 LLM 响应日志（错误）
+            self._log_llm_response(
+                request,
+                call_type="tools",
+                attempt=1,
+                latency_ms=latency_ms,
+                reason=reason,
+                error=exc,
+            )
             self._logger.error(
                 f"{request.log_namespace}.tools_error",
                 **self._event_payload(
@@ -818,6 +1034,14 @@ class WorkflowLLMClient:
             ),
         )
 
+        # 记录 Agent 模式的初始 LLM 请求日志
+        self._log_llm_request(
+            request,
+            call_type="agent",
+            attempt=1,
+            max_attempts=max_iterations,
+        )
+
         try:
             # 绑定 tools 到 LLM
             chat_model_with_tools = self._chat_model.bind_tools(tools, tool_choice="auto")
@@ -840,6 +1064,20 @@ class WorkflowLLMClient:
                     ),
                 )
 
+                # 记录每次迭代的 LLM 请求日志
+                iteration_request_payload = {
+                    "call_type": "agent_iteration",
+                    "model": self.config.model,
+                    "iteration": iterations,
+                    "messages_count": len(messages),
+                    "system_prompt_preview": self._truncate_text(request.system_prompt) if iterations == 1 else "[context from previous iterations]",
+                    "user_prompt_preview": self._truncate_text(request.user_prompt) if iterations == 1 else "[context from previous iterations]",
+                }
+                self._logger.info(
+                    f"{request.log_namespace}.llm_request",
+                    **self._event_payload(request, iteration_request_payload),
+                )
+
                 # 调用 LLM
                 response: AIMessage = chat_model_with_tools.invoke(messages)
                 iteration_latency = int((time.perf_counter() - iteration_start) * 1000)
@@ -850,10 +1088,28 @@ class WorkflowLLMClient:
                 # 检查是否有 tool_calls
                 tool_calls = getattr(response, "tool_calls", None)
 
+                # 记录每次迭代的 LLM 响应日志
+                iteration_response_payload: dict[str, Any] = {
+                    "call_type": "agent_iteration",
+                    "model": self.config.model,
+                    "iteration": iterations,
+                    "latency_ms": iteration_latency,
+                    "has_tool_calls": bool(tool_calls),
+                }
+
                 if not tool_calls:
                     # 没有 tool_calls，LLM 返回了最终答案
                     answer = self._extract_text_from_message(response) or ""
                     total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+
+                    # 记录最终响应日志
+                    iteration_response_payload["success"] = True
+                    iteration_response_payload["response_length"] = len(answer)
+                    iteration_response_payload["response_preview"] = self._truncate_text(answer, LLM_LOG_RESPONSE_MAX_LENGTH)
+                    self._logger.info(
+                        f"{request.log_namespace}.llm_response",
+                        **self._event_payload(request, iteration_response_payload),
+                    )
 
                     success_status = self._build_status(
                         status="success",
@@ -889,6 +1145,21 @@ class WorkflowLLMClient:
                         call_status=success_status,
                         tool_calls=None,
                     )
+
+                # 有 tool_calls，记录响应日志
+                iteration_response_payload["success"] = True
+                iteration_response_payload["tool_calls_count"] = len(tool_calls)
+                iteration_response_payload["tool_calls"] = [
+                    {
+                        "name": tc.get("name", ""),
+                        "args_preview": self._truncate_text(str(tc.get("args", {})), 200),
+                    }
+                    for tc in tool_calls
+                ]
+                self._logger.info(
+                    f"{request.log_namespace}.llm_response",
+                    **self._event_payload(request, iteration_response_payload),
+                )
 
                 # 有 tool_calls，执行工具
                 self._logger.info(
@@ -941,11 +1212,37 @@ class WorkflowLLMClient:
                                 ),
                             )
 
+                    # 记录工具调用结果发送给 LLM 的日志
+                    tool_result_str = str(tool_result)
+                    result_preview = self._truncate_text(tool_result_str, LLM_LOG_RESPONSE_MAX_LENGTH)
+                    self._logger.info(
+                        f"{request.log_namespace}.tool_result_to_llm",
+                        **self._event_payload(
+                            request,
+                            {
+                                "tool_name": tool_name,
+                                "tool_call_id": tool_id,
+                                "result_length": len(tool_result_str),
+                                "result_preview": result_preview,
+                            },
+                        ),
+                    )
+
                     # 添加 ToolMessage 到消息历史
-                    messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
+                    messages.append(ToolMessage(content=tool_result_str, tool_call_id=tool_id))
 
             # 达到最大迭代次数
             total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+
+            # 记录达到最大迭代次数的 LLM 响应日志
+            self._log_llm_response(
+                request,
+                call_type="agent",
+                attempt=iterations,
+                latency_ms=total_latency_ms,
+                reason="max_iterations_reached",
+            )
+
             self._logger.warning(
                 f"{request.log_namespace}.agent_max_iterations",
                 **self._event_payload(
@@ -977,6 +1274,15 @@ class WorkflowLLMClient:
 
         except TimeoutError as exc:
             total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+            # 记录超时的 LLM 响应日志
+            self._log_llm_response(
+                request,
+                call_type="agent",
+                attempt=iterations or 1,
+                latency_ms=total_latency_ms,
+                reason="timeout",
+                error=exc,
+            )
             self._logger.warning(
                 f"{request.log_namespace}.agent_timeout",
                 **self._event_payload(
@@ -989,6 +1295,15 @@ class WorkflowLLMClient:
         except Exception as exc:
             total_latency_ms = int((time.perf_counter() - started_at) * 1000)
             reason = self._map_exception_to_reason(exc)
+            # 记录错误的 LLM 响应日志
+            self._log_llm_response(
+                request,
+                call_type="agent",
+                attempt=iterations or 1,
+                latency_ms=total_latency_ms,
+                reason=reason,
+                error=exc,
+            )
             self._logger.error(
                 f"{request.log_namespace}.agent_error",
                 **self._event_payload(

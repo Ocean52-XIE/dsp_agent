@@ -356,6 +356,12 @@ class SkillExecutor:
     ) -> ValidationResult:
         """校验输入参数
 
+        校验逻辑：
+        1. 如果必填参数直接提供，通过
+        2. 如果必填参数未提供，但 input 中有其他工具定义的参数，通过
+           （让 handler 处理别名转换，如 metric -> metric_type）
+        3. 只有当 input 完全没有相关参数时才报错
+
         Args:
             skill: 技能对象
             input: 输入参数
@@ -368,9 +374,32 @@ class SkillExecutor:
         if not schema:
             return ValidationResult(ok=True)
 
+        # 获取工具定义的所有参数名（用于判断别名）
+        defined_params = set()
+        for tool in skill.tools:
+            defined_params.update(tool.parameters.keys())
+
         # 检查必填字段
         required = schema.get("required", [])
-        missing = [f for f in required if f not in input or input[f] is None]
+        missing = []
+
+        for field in required:
+            # 检查主参数是否提供
+            if field in input and input[field] is not None:
+                continue
+
+            # 检查是否有其他定义的参数被提供（可能是别名）
+            # 如果 input 中有任何工具定义的参数，就跳过这个必填检查
+            # 让 handler 来处理参数映射
+            other_provided_params = [
+                p for p in input.keys()
+                if p in defined_params and input[p] is not None
+            ]
+
+            if not other_provided_params:
+                # input 中没有任何工具定义的参数，才报错
+                missing.append(field)
+
         if missing:
             return ValidationResult(
                 ok=False,
@@ -443,6 +472,7 @@ class SkillExecutor:
         """构建工具参数
 
         从 input 中提取工具需要的参数。
+        同时传递所有未定义的参数，让 handler 可以处理别名参数。
 
         Args:
             tool: 工具对象
@@ -453,9 +483,24 @@ class SkillExecutor:
         """
         params = {}
 
+        # 1. 提取工具定义中声明的参数
         for param_name in tool.parameters.keys():
             if param_name in input:
                 params[param_name] = input[param_name]
+
+        # 2. 传递 input 中所有其他参数（支持别名参数）
+        # handler 可以处理如 metric->metric_type 的别名转换
+        for key, value in input.items():
+            if key not in params:
+                params[key] = value
+
+        # 记录参数构建日志，便于调试
+        logger.debug(
+            f"[SkillExecutor] 构建工具参数: tool={tool.name}, "
+            f"input_keys={list(input.keys())}, "
+            f"defined_params={list(tool.parameters.keys())}, "
+            f"output_params={list(params.keys())}"
+        )
 
         return params
 
@@ -476,8 +521,6 @@ class SkillExecutor:
             工具调用记录
         """
         start_time = time.time()
-
-        logger.info(f"[SkillExecutor] 执行工具: {tool.name}, 参数: {arguments}")
 
         try:
             # 1. 尝试从 handler.py 获取处理器
@@ -501,6 +544,14 @@ class SkillExecutor:
                 success = True
                 data = result
                 error = None
+
+            # 记录工具调用结果日志
+            result_summary = self._summarize_tool_result(data) if data else None
+            logger.info(
+                f"[SkillExecutor] 工具执行完成: {tool.name}, "
+                f"success={success}, latency_ms={latency_ms}, "
+                f"result_summary={result_summary}"
+            )
 
             return ToolCallRecord(
                 tool_name=tool.name,
@@ -611,3 +662,65 @@ class SkillExecutor:
             )
 
         return method(**arguments)
+
+    def _summarize_tool_result(self, result: Any, max_length: int = 500) -> str:
+        """生成工具调用结果的摘要，用于日志输出
+
+        Args:
+            result: 工具返回结果
+            max_length: 最大摘要长度
+
+        Returns:
+            结果摘要字符串
+        """
+        import json
+
+        try:
+            if result is None:
+                return "None"
+
+            if isinstance(result, dict):
+                # 对于字典结果，提取关键信息
+                summary_parts = []
+
+                # 检查常见字段
+                if "success" in result:
+                    summary_parts.append(f"success={result['success']}")
+
+                if "data" in result:
+                    data = result["data"]
+                    if isinstance(data, dict):
+                        # 检查 records 数量
+                        if "records" in data:
+                            records = data["records"]
+                            if isinstance(records, list):
+                                summary_parts.append(f"records_count={len(records)}")
+                        # 检查其他关键字段
+                        for key in ["metric_type", "time_range", "total"]:
+                            if key in data:
+                                summary_parts.append(f"{key}={data[key]}")
+                    elif isinstance(data, list):
+                        summary_parts.append(f"data_count={len(data)}")
+
+                if summary_parts:
+                    return ", ".join(summary_parts)
+
+                # 默认返回 JSON 摘要
+                json_str = json.dumps(result, ensure_ascii=False, default=str)
+                if len(json_str) <= max_length:
+                    return json_str
+                return f"dict(keys={list(result.keys())}, len={len(json_str)})"
+
+            elif isinstance(result, list):
+                return f"list(len={len(result)})"
+
+            elif isinstance(result, str):
+                if len(result) <= max_length:
+                    return result
+                return f"str(len={len(result)}, preview={result[:100]}...)"
+
+            else:
+                return str(result)[:max_length]
+
+        except Exception as e:
+            return f"<error summarizing: {e}>"

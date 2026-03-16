@@ -18,11 +18,19 @@ logger = logging.getLogger(__name__)
 
 
 def get_ad_metrics(
-    metric_type: str,
+    metric_type: str | None = None,
     time_range: str = "7d",
     ad_group_id: str | None = None,
     campaign_id: str | None = None,
     dimension: str = "day",
+    # 兼容 LLM 可能使用的别名参数
+    date: str | None = None,
+    metric: str | None = None,  # metric_type 的别名
+    metrics: list[str] | None = None,  # metric_type 的复数形式别名
+    plan_id: str | None = None,  # campaign_id 的别名
+    date_range: str | None = None,  # time_range 的别名
+    dimensions: list[str] | None = None,  # dimension 的复数形式别名
+    **kwargs,  # 接收其他未知参数，避免报错
 ) -> dict[str, Any]:
     """获取广告指标数据
 
@@ -30,11 +38,14 @@ def get_ad_metrics(
     支持多维度筛选和时间范围查询。
 
     Args:
-        metric_type: 指标类型（ctr/cvr/cost/impression/click/conversion/all）
-        time_range: 时间范围，如 "7d" 表示最近7天
+        metric_type: 指标类型（ctr/cvr/cost/impression/click/conversion/all/click_rate）
+        time_range: 时间范围，如 "7d" 表示最近7天，也支持自然语言如 "yesterday"
         ad_group_id: 广告组 ID（可选）
         campaign_id: 计划 ID（可选）
         dimension: 聚合维度（day/hour/campaign/ad_group/creative）
+        date: 时间范围的别名参数（兼容 LLM 传参）
+        metric: 指标类型的别名参数（兼容 LLM 传参）
+        plan_id: 计划 ID 的别名参数（兼容 LLM 传参）
 
     Returns:
         包含指标数据的字典，格式如下：
@@ -50,9 +61,49 @@ def get_ad_metrics(
             }
         }
     """
+
+    # 兼容 metric 参数名（LLM 可能使用 metric 而非 metric_type）
+    if not metric_type and metric:
+        metric_type = metric
+
+    # 兼容 metrics 参数名（LLM 可能使用 metrics 列表）
+    if not metric_type and metrics:
+        metric_type = metrics[0] if metrics else None
+
+    # 兼容 date 参数名（LLM 可能使用 date 而非 time_range）
+    if date and time_range == "7d":
+        time_range = date
+
+    # 兼容 date_range 参数名
+    if date_range and time_range == "7d":
+        time_range = date_range
+
+    # 兼容 plan_id 参数名（LLM 可能使用 plan_id 而非 campaign_id）
+    if not campaign_id and plan_id:
+        campaign_id = plan_id
+
+    # 兼容 dimensions 参数名
+    if dimensions and dimension == "day":
+        dimension = dimensions[0] if dimensions else "day"
+
+    # 如果 metric_type 仍然为空，使用默认值
+    if not metric_type:
+        logger.error(
+            f"[get_ad_metrics.DEBUG] metric_type 为空! "
+            f"原始 metric_type={metric_type}, metric={metric}"
+        )
+        return {
+            "success": False,
+            "error": "缺少必填参数: metric_type",
+        }
+
+    # 标准化 metric_type（兼容 LLM 可能使用的别名）
+    metric_type = _normalize_metric_type(metric_type)
+
     logger.info(
         f"[get_ad_metrics] 查询指标: type={metric_type}, "
-        f"time_range={time_range}, dimension={dimension}"
+        f"time_range={time_range}, dimension={dimension}, "
+        f"campaign_id={campaign_id}, ad_group_id={ad_group_id}"
     )
 
     try:
@@ -104,20 +155,118 @@ def get_ad_metrics(
 
 
 def _parse_time_range(time_range: str) -> int:
-    """解析时间范围字符串
+    """解析时间范围字符串，支持自然语言和标准格式
+
+    支持的格式：
+    - 自然语言：yesterday, today, yesterday, 昨天, 今天, 近7天, 近30天 等
+    - 标准格式：7d, 30d, 1d 等
 
     Args:
-        time_range: 时间范围字符串，如 "7d", "30d", "1d"
+        time_range: 时间范围字符串
 
     Returns:
         天数
     """
+    # 自然语言映射表
+    natural_language_map = {
+        # 英文
+        "yesterday": 1,
+        "today": 1,
+        "last_7_days": 7,
+        "last_30_days": 30,
+        "last_day": 1,
+        "last_week": 7,
+        "last_month": 30,
+        # 中文
+        "昨天": 1,
+        "今日": 1,
+        "今天": 1,
+        "近7天": 7,
+        "近30天": 30,
+        "最近7天": 7,
+        "最近30天": 30,
+        "上周": 7,
+        "上月": 30,
+    }
+
+    time_range_lower = time_range.lower().strip()
+
+    # 检查自然语言映射
+    if time_range_lower in natural_language_map:
+        logger.debug(f"[_parse_time_range] 自然语言解析: '{time_range}' -> {natural_language_map[time_range_lower]}天")
+        return natural_language_map[time_range_lower]
+
+    # 标准格式解析（如 "7d", "30d"）
     if time_range.endswith("d"):
-        return int(time_range[:-1])
+        try:
+            days = int(time_range[:-1])
+            return max(1, days)
+        except ValueError:
+            pass
     elif time_range.endswith("h"):
         return 1  # 小时级按1天处理
-    else:
-        return 7  # 默认7天
+
+    # 默认7天
+    logger.debug(f"[_parse_time_range] 无法解析 '{time_range}'，使用默认值7天")
+    return 7
+
+
+def _normalize_metric_type(metric_type: str) -> str:
+    """标准化指标类型名称
+
+    LLM 可能使用不同的名称，这里进行统一转换。
+
+    Args:
+        metric_type: 原始指标类型
+
+    Returns:
+        标准化后的指标类型
+    """
+    # 指标类型映射表（LLM 常用名称 -> 标准名称）
+    metric_type_map = {
+        # 点击率
+        "click_rate": "ctr",
+        "点击率": "ctr",
+        "ctr": "ctr",
+        # 转化率
+        "conversion_rate": "cvr",
+        "转化率": "cvr",
+        "cvr": "cvr",
+        # 消耗
+        "cost": "cost",
+        "消耗": "cost",
+        "花费": "cost",
+        # 展示量
+        "impression": "impression",
+        "展示": "impression",
+        "展示量": "impression",
+        "曝光": "impression",
+        "曝光量": "impression",
+        # 点击量
+        "click": "click",
+        "点击": "click",
+        "点击量": "click",
+        # 转化量
+        "conversion": "conversion",
+        "转化": "conversion",
+        "转化量": "conversion",
+        # 全部
+        "all": "all",
+        "全部": "all",
+        "所有": "all",
+    }
+
+    metric_type_lower = metric_type.lower().strip()
+
+    if metric_type_lower in metric_type_map:
+        normalized = metric_type_map[metric_type_lower]
+        if normalized != metric_type_lower:
+            logger.debug(f"[_normalize_metric_type] 标准化: '{metric_type}' -> '{normalized}'")
+        return normalized
+
+    # 未知类型，返回原值
+    logger.warning(f"[_normalize_metric_type] 未知指标类型 '{metric_type}'，使用原值")
+    return metric_type_lower
 
 
 def _generate_mock_data(

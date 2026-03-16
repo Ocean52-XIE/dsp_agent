@@ -31,7 +31,7 @@ trigger:
     - "查询.*指标"
     - "获取.*数据"
     - "统计.*报表"
-    - "\d+天.*数据"
+    - '\d+天.*数据'
   priority: 15
 
 # 参数定义
@@ -79,17 +79,28 @@ tools:
     parameters:
       metric_type:
         type: string
-        description: 指标类型
+        description: 指标类型（ctr/cvr/cost/impression/click/conversion/all 或中文别名如 点击率/转化率/消耗）
       time_range:
         type: string
-        description: 时间范围
+        description: 时间范围（如 7d/30d 或自然语言如 yesterday/昨天/今天）
         default: "7d"
+      # 别名参数（兼容 LLM 可能使用的不同参数名）
+      metric:
+        type: string
+        description: 指标类型的别名（同 metric_type）
+      date:
+        type: string
+        description: 时间范围的别名（同 time_range）
       ad_group_id:
         type: string
         description: 广告组 ID
       campaign_id:
         type: string
         description: 计划 ID
+      # 别名参数（兼容 LLM 可能使用的不同参数名）
+      plan_id:
+        type: string
+        description: 计划 ID 的别名（同 campaign_id）
       dimension:
         type: string
         description: 聚合维度

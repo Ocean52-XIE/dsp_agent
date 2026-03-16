@@ -98,59 +98,87 @@ class SkillTool(BaseTool):
         kwargs["executor"] = executor
         kwargs["candidate_skill_ids"] = candidate_skill_ids or []
 
-        # 动态生成描述
-        kwargs["description"] = "执行技能工具。根据用户需求选择合适的技能执行。"
+        # 动态生成描述（包含可用技能列表）
+        kwargs["description"] = self._generate_description_static(
+            registry, candidate_skill_ids or []
+        )
 
         super().__init__(**kwargs)
 
         logger.info(
             f"[SkillTool] 初始化完成, "
-            f"候选技能数: {len(self.candidate_skill_ids)}"
+            f"候选技能数: {len(self.candidate_skill_ids)}, "
+            f"description_length={len(self.description)}"
         )
 
-    def _generate_description(self) -> str:
-        """生成包含可用技能列表的描述
+    @staticmethod
+    def _generate_description_static(
+        registry: SkillRegistry | None,
+        candidate_skill_ids: list[str]
+    ) -> str:
+        """静态方法生成包含可用技能列表的描述
+
+        设计原则：
+        - 保持通用性，不硬编码领域特定的提示词
+        - 从技能元数据（keywords、patterns）动态生成使用场景提示
+        - 使用强指令性语言确保 LLM 理解何时调用
+
+        Args:
+            registry: 技能注册中心
+            candidate_skill_ids: 候选技能 ID 列表
 
         Returns:
             完整的工具描述
         """
-        base_desc = "执行技能工具。根据用户需求选择合适的技能执行。\n\n可用技能：\n"
-
-        if not self.registry:
-            return base_desc + "- 无可用技能"
+        if not registry:
+            return "执行技能工具。当前无可用技能。"
 
         # 获取候选技能
-        if self.candidate_skill_ids:
+        if candidate_skill_ids:
             skills = [
-                self.registry.get_skill(skill_id)
-                for skill_id in self.candidate_skill_ids
+                registry.get_skill(skill_id)
+                for skill_id in candidate_skill_ids
             ]
             skills = [s for s in skills if s is not None]
         else:
-            skills = list(self.registry.skills.values())
+            skills = list(registry.skills.values())
 
-        # 构建技能列表
-        skill_lines = []
+        if not skills:
+            return "执行技能工具。当前无可用技能。"
+
+        # 从所有技能中聚合关键词，构建"使用场景"提示
+        all_keywords: set[str] = set()
+        skill_details: list[str] = []
+
         for skill in skills[:10]:  # 最多显示 10 个
-            desc_preview = skill.description[:80]
-            if len(skill.description) > 80:
+            # 聚合关键词
+            keywords = skill.get_keywords()
+            all_keywords.update(keywords[:5])
+
+            # 技能详情
+            desc_preview = skill.description[:60]
+            if len(skill.description) > 60:
                 desc_preview += "..."
-            skill_lines.append(f"- {skill.skill_id}: {desc_preview}")
 
-        return base_desc + "\n".join(skill_lines)
+            keyword_str = f"（触发词: {', '.join(keywords[:3])}）" if keywords else ""
+            skill_details.append(f"  - {skill.skill_id}: {desc_preview} {keyword_str}")
 
-    def update_candidates(self, candidate_skill_ids: list[str]) -> None:
-        """更新候选技能列表
+        # 构建关键词提示（取前 15 个最常见的）
+        keyword_list = sorted(all_keywords, key=len)[:15]
+        keyword_hint = "、".join(keyword_list) if keyword_list else "见下方技能列表"
 
-        Args:
-            candidate_skill_ids: 新的候选技能 ID 列表
-        """
-        self.candidate_skill_ids = candidate_skill_ids
-        # 更新描述
-        self.description = self._generate_description()
-        logger.debug(
-            f"[SkillTool] 更新候选技能: {candidate_skill_ids}"
-        )
+        # 构建完整描述（强指令性语言 + 动态关键词）
+        desc = f"""执行技能工具。当用户问题涉及数据查询、指标获取、报表生成等需要调用后端服务的场景时，**必须**使用此工具。
+
+【使用场景】
+当用户问题包含以下关键词或类似表述时，请调用此工具：
+{keyword_hint}
+
+【可用技能】
+""" + "\n".join(skill_details)
+
+        return desc
+
 
     def _run(
         self,
@@ -162,7 +190,7 @@ class SkillTool(BaseTool):
         """同步执行技能（LangChain Tool 入口）
 
         Args:
-            skill_name: 技能名称
+            skill_name: 技能名称（支持英文ID、中文别名、关键词模糊匹配）
             query: 用户原始问题
             context: 上下文参数
             **kwargs: 其他参数
@@ -181,8 +209,8 @@ class SkillTool(BaseTool):
             logger.error(f"[SkillTool] {error_msg}")
             return json.dumps({"success": False, "error": error_msg}, ensure_ascii=False)
 
-        # 2. 获取技能
-        skill = self.registry.get_skill(skill_name)
+        # 2. 获取技能（支持别名和模糊匹配）
+        skill = self._resolve_skill(skill_name)
         if skill is None:
             error_msg = f"技能不存在: {skill_name}"
             logger.warning(f"[SkillTool] {error_msg}")
@@ -191,11 +219,15 @@ class SkillTool(BaseTool):
                 ensure_ascii=False,
             )
 
+        # 记录实际使用的技能ID（用于调试）
+        if skill.skill_id != skill_name:
+            logger.info(f"[SkillTool] 技能名称解析: '{skill_name}' -> '{skill.skill_id}'")
+
         # 3. 构建执行参数
         from src.workflow.skills.base import SkillCallPlan
         plan = SkillCallPlan(
             action="single_tool_call",
-            skill_name=skill_name,
+            skill_name=skill.skill_id,
             input=context or {},
             skill=skill,
         )
@@ -203,13 +235,51 @@ class SkillTool(BaseTool):
         # 4. 执行技能
         try:
             result = self.executor.execute_plan(plan, query)
-            return self._format_result(result, skill)
+            formatted_result = self._format_result(result, skill)
+
+            # 记录返回给 LLM 的工具调用结果日志
+            result_preview = formatted_result[:500] if len(formatted_result) > 500 else formatted_result
+            logger.info(
+                f"[SkillTool] 工具调用结果返回给LLM: skill={skill.skill_id}, "
+                f"success={result.success}, result_length={len(formatted_result)}, "
+                f"result_preview={result_preview}"
+            )
+
+            return formatted_result
         except Exception as e:
             logger.error(f"[SkillTool] 执行失败: {e}")
             return json.dumps(
-                {"success": False, "error": str(e), "skill_name": skill_name},
+                {"success": False, "error": str(e), "skill_name": skill.skill_id},
                 ensure_ascii=False,
             )
+
+    def _resolve_skill(self, skill_name: str) -> StandardSkill | None:
+        """解析技能名称，仅支持忽略大小写的精确匹配
+
+        Args:
+            skill_name: LLM 传入的技能名称
+
+        Returns:
+            匹配到的技能对象，未找到返回 None
+        """
+        if not self.registry:
+            return None
+
+        skill_name_lower = skill_name.lower().strip()
+
+        # 1. 精确匹配技能ID（区分大小写）
+        skill = self.registry.get_skill(skill_name)
+        if skill:
+            return skill
+
+        # 2. 忽略大小写精确匹配技能ID
+        for s in self.registry.skills.values():
+            if s.skill_id.lower() == skill_name_lower:
+                return s
+
+        # 未找到匹配
+        logger.warning(f"[SkillTool] 技能不存在: '{skill_name}'")
+        return None
 
     def _format_result(self, result: SkillExecutionResult, skill: StandardSkill) -> str:
         """格式化执行结果为 LLM 可理解的字符串
@@ -266,46 +336,6 @@ class SkillTool(BaseTool):
                 },
                 ensure_ascii=False,
             )
-
-    async def _arun(
-        self,
-        skill_name: str,
-        query: str,
-        context: dict[str, Any] | None = None,
-        **kwargs,
-    ) -> str:
-        """异步执行技能（暂不支持，降级为同步）
-
-        Args:
-            skill_name: 技能名称
-            query: 用户原始问题
-            context: 上下文参数
-            **kwargs: 其他参数
-
-        Returns:
-            执行结果
-        """
-        # 暂不支持异步，降级为同步
-        return self._run(skill_name, query, context, **kwargs)
-
-    def get_openai_tool_schema(self) -> dict[str, Any]:
-        """获取 OpenAI 格式的 Tool Schema
-
-        Returns:
-            OpenAI 格式的工具定义
-        """
-        # 获取 Pydantic schema
-        args_schema = self.args_schema.model_json_schema()
-
-        # 构建 OpenAI 格式
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self._generate_description(),
-                "parameters": args_schema,
-            },
-        }
 
 
 def create_skill_tool(
