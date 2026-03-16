@@ -1,29 +1,106 @@
 # -*- coding: utf-8 -*-
-"""
-问题分析节点（issue_analysis）。
+"""Issue analysis node with Agent mode skill_tool integration.
+
+问题分析节点，支持 skill_tool 集成（Agent 模式）。
 
 设计目标：
-1. 对齐 knowledge_answer 的“LLM 优先 + 规则兜底”执行模式；
+1. 对齐 knowledge_answer 的"LLM 优先 + 规则兜底"执行模式；
 2. 兜底输出必须尽量由证据驱动，避免固定模板导致结果空泛；
 3. 统一输出观测字段，兼容前端与 observability 对 generation_mode 的读取；
 4. 在证据不足场景显式给出 need_user_confirmation，便于后续追问与闭环。
+
+Agent 模式：
+- 创建 SkillTool 作为 LangChain Tool
+- 使用 llm_client.generate_with_agent() 自动处理 tool calling 循环
+- LLM 自动决定是否调用 skill_tool，执行后自动获取最终答案
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
+from pathlib import Path
 from typing import Any
 
 from workflow.common.evidence import collect_evidence_hits
 from workflow.common.func_utils import normalize_source_type
 from workflow.llm.llm_client import CommonLLMRequest
-from workflow.llm.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump
+from workflow.llm.llm_prompt_utils import build_evidence_block, looks_like_reasoning_dump, resolve_system_prompt
 from workflow.common.node_trace import append_node_trace
 
+logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# Skill 组件延迟初始化（Agent 模式）
+# ============================================================================
+
+# 模块级缓存（应用启动时初始化一次）
+_skill_components: dict[str, Any] | None = None
+
+
+def _get_skill_components() -> dict[str, Any] | None:
+    """获取 skill 组件（延迟初始化，Agent 模式）
+
+    Returns:
+        包含 registry, executor, skill_tool 的字典，或 None
+    """
+    global _skill_components
+
+    if _skill_components is not None:
+        return _skill_components
+
+    try:
+        from src.workflow.skills import SkillExecutor, create_skill_tool
+        from src.workflow.skills.registry import get_skill_registry
+
+        # 尝试获取全局 registry（可能在其他地方已初始化）
+        registry = get_skill_registry()
+
+        # 如果 registry 为空，尝试加载技能
+        if len(registry.skills) == 0:
+            domain_root = Path("domain/ad_engine")
+            if domain_root.exists():
+                registry.load_from_directory(domain_root)
+                logger.info(f"[IssueAnalysis] 加载技能: {len(registry.skills)} 个")
+
+        # 如果仍然没有技能，跳过 skill 功能
+        if len(registry.skills) == 0:
+            logger.info("[IssueAnalysis] 无可用技能，跳过 skill_tool 绑定")
+            return None
+
+        # 创建执行器
+        executor = SkillExecutor(external_registry=None)
+
+        # 创建 LangChain Tool（用于 Agent 模式）
+        skill_tool = create_skill_tool(registry, executor)
+
+        _skill_components = {
+            "registry": registry,
+            "executor": executor,
+            "skill_tool": skill_tool,
+        }
+
+        logger.info(
+            f"[IssueAnalysis] Skill 组件初始化完成（Agent 模式）: "
+            f"技能数={len(registry.skills)}"
+        )
+
+        return _skill_components
+
+    except Exception as e:
+        logger.warning(f"[IssueAnalysis] Skill 组件初始化失败: {e}")
+        return None
+
+
+# ============================================================================
+# 提示词模板
+# ============================================================================
 
 ISSUE_SYSTEM_PROMPT_TEMPLATE = (
     "你是企业问题分析助手。"
     "必须严格基于提供的证据回答，不补充证据外事实。"
+    "如果需要查询实时数据或执行特定技能，请使用 skill_tool。"
     "输出中文，优先给出结构化结果，并保留可追踪锚点。"
 )
 
@@ -79,8 +156,8 @@ def _strip_item(text: str) -> str:
     清洗候选列表项文本。
 
     说明：
-    1. 去除 markdown 列表前缀，提升“结构化解析”稳定性；
-    2. 去除标题类残留符号，避免把“### 风险”误识别为正文条目。
+    1. 去除 markdown 列表前缀，提升"结构化解析"稳定性；
+    2. 去除标题类残留符号，避免把"### 风险"误识别为正文条目。
     """
     value = str(text or "").strip()
     if not value:
@@ -98,7 +175,7 @@ def _dedup(items: list[str], max_items: int) -> list[str]:
     去重并限制条目数。
 
     说明：
-    1. 去重可以避免 LLM 输出“同义重复句”挤占有效条目；
+    1. 去重可以避免 LLM 输出"同义重复句"挤占有效条目；
     2. max_items 保证最终响应长度可控，避免前端展示过长。
     """
     seen: set[str] = set()
@@ -244,33 +321,12 @@ def _default_llm_call_status() -> dict[str, Any]:
     }
 
 
-def _resolve_issue_system_prompt(service: Any) -> str:
-    """
-    解析 issue_analysis 使用的系统提示词。
-
-    优先级：
-    1. 环境变量 `WORKFLOW_ISSUE_LLM_SYSTEM_PROMPT`；
-    2. 领域配置 `prompts.issue_system`；
-    3. 内置默认 ISSUE_SYSTEM_PROMPT_TEMPLATE。
-    """
-    env_prompt = os.getenv("WORKFLOW_ISSUE_LLM_SYSTEM_PROMPT", "").strip()
-    if env_prompt:
-        return env_prompt
-
-    domain_profile = getattr(service, "domain_profile", None)
-    if domain_profile is not None and hasattr(domain_profile, "issue_system_prompt"):
-        profile_prompt = str(domain_profile.issue_system_prompt() or "").strip()
-        if profile_prompt:
-            return profile_prompt
-    return ISSUE_SYSTEM_PROMPT_TEMPLATE
-
-
 def _build_related_modules_block(related_modules: list[dict[str, Any]]) -> str:
     """
     构建相关模块提示词块。
 
     说明：
-    保持“主模块 + 相关模块”上下文，不强制模型只看单模块，
+    保持"主模块 + 相关模块"上下文，不强制模型只看单模块，
     便于处理跨模块联动故障。
     """
     if not related_modules:
@@ -293,7 +349,7 @@ def _extract_issue_context(
     evidence_hits: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """
-    从问题文本与检索上下文提取“症状结构化”信息。
+    从问题文本与检索上下文提取"症状结构化"信息。
 
     提取维度：
     1. 关键信号：error/exception/告警/超时/4xx/5xx 等；
@@ -323,7 +379,7 @@ def _build_issue_context_block(issue_context: dict[str, Any]) -> str:
 
     说明：
     文本块保持简洁，避免把模型注意力拉走；
-    同时保留“可定位信息”以提升建议可执行性。
+    同时保留"可定位信息"以提升建议可执行性。
     """
     rows = [
         f"- symptom_excerpt: {issue_context.get('symptom_excerpt', '') or '--'}",
@@ -380,7 +436,7 @@ def _answer_mentions_anchor(answer_text: str, anchor_tokens: list[str]) -> bool:
     判断回答是否至少提到了一个证据锚点。
 
     说明：
-    该校验用于拦截“看似完整但完全不可追踪”的模型输出，
+    该校验用于拦截"看似完整但完全不可追踪"的模型输出，
     在命中证据较多时尤其重要。
     """
     normalized_answer = str(answer_text or "").lower().strip()
@@ -431,7 +487,7 @@ def _build_root_cause_from_evidence(
     issue_context: dict[str, Any],
 ) -> str:
     """
-    基于头部证据构建“根因判断”兜底句。
+    基于头部证据构建"根因判断"兜底句。
     """
     if not evidence_hits:
         return (
@@ -487,7 +543,7 @@ def _build_fix_plan_from_evidence(
     生成可落地的修复建议。
 
     说明：
-    优先给“定位点 + 动作”描述，避免输出泛化口号。
+    优先给"定位点 + 动作"描述，避免输出泛化口号。
     """
     plans: list[str] = []
     for item in code_hits[:2]:
@@ -509,7 +565,7 @@ def _build_verification_steps(
     evidence_hits: list[dict[str, Any]],
 ) -> list[str]:
     """
-    生成验证步骤，确保“修复 -> 验证 -> 观测”闭环。
+    生成验证步骤，确保"修复 -> 验证 -> 观测"闭环。
     """
     steps: list[str] = []
     ids = list(issue_context.get("ids", []) or [])
@@ -527,7 +583,7 @@ def _build_verification_steps(
     if evidence_hits:
         steps.append(f"抽样核对证据锚点（如 {_format_anchor(evidence_hits[0])}）相关分支在生产流量下按预期执行。")
     else:
-        steps.append(f"补充 `{module_name}` 链路的关键日志后再做二次验证，避免“看起来恢复”但缺少证据。")
+        steps.append(f"补充 `{module_name}` 链路的关键日志后再做二次验证，避免看起来恢复但缺少证据。")
     return _dedup(steps, 3)
 
 
@@ -599,22 +655,51 @@ def _run_llm_for_issue(
     issue_context: dict[str, Any],
     evidence_hits: list[dict[str, Any]],
 ) -> tuple[str | None, str | None, dict[str, Any]]:
-    """
-    执行 issue_analysis 的 LLM 调用（若可用）。
+    """使用 Agent 模式调用 LLM（自动处理 skill_tool）
 
-    返回：
-    - answer_text：成功文本；
-    - fallback_reason：失败原因；
-    - call_status：调用状态快照。
+    Agent 模式流程：
+    1. 调用 LLM（绑定 skill_tool）
+    2. 如果 LLM 返回 tool_calls，自动执行 skill_tool
+    3. 将执行结果发回 LLM
+    4. LLM 生成最终答案
+
+    Args:
+        service: WorkflowService 实例
+        user_query: 用户问题
+        module_name: 模块名称
+        module_hint: 模块提示
+        related_modules: 相关模块
+        retrieval_queries: 检索查询列表
+        issue_context: 问题上下文
+        evidence_hits: 证据命中列表
+
+    Returns:
+        (answer, fallback_reason, call_status) 元组
     """
     llm_client = getattr(service, "_llm_client", None)
     if llm_client is None:
         return None, None, _default_llm_call_status()
 
+    # 使用 resolve_system_prompt 统一处理系统提示词
+    system_prompt = resolve_system_prompt(
+        env_key="WORKFLOW_ISSUE_LLM_SYSTEM_PROMPT",
+        default_prompt=ISSUE_SYSTEM_PROMPT_TEMPLATE,
+        domain_profile=getattr(service, "domain_profile", None),
+    )
+
+    # 获取 skill_tool（LangChain Tool）
+    skill_components = _get_skill_components()
+    tools = None
+    if skill_components is not None:
+        tools = [skill_components["skill_tool"]]
+        logger.info(f"[IssueAnalysis] Agent 模式：绑定 skill_tool")
+
     retrieval_text = "\n".join(f"- {item}" for item in retrieval_queries) if retrieval_queries else "- 无"
+
+    # 构建请求
     request = CommonLLMRequest(
         node_name="issue_analysis",
-        system_prompt=_resolve_issue_system_prompt(service),
+        system_prompt=system_prompt,
         user_prompt=ISSUE_USER_PROMPT_TEMPLATE.format(
             user_query=user_query,
             module_name=module_name,
@@ -632,34 +717,23 @@ def _run_llm_for_issue(
             "retrieval_query_count": len(retrieval_queries),
             "related_module_count": len(related_modules),
             "user_query_preview": user_query[:120],
+            "skill_tool_enabled": tools is not None,
         },
         normalize_answer=lambda text: text.strip(),
         validate_answer=_validate_issue_answer,
     )
 
+    # 使用 Agent 模式（自动处理 tool calling 循环）
+    if tools and hasattr(llm_client, "generate_with_agent"):
+        result = llm_client.generate_with_agent(request, tools=tools, max_iterations=3)
+        return result.answer, result.fallback_reason, dict(result.call_status)
+
+    # 降级：使用普通模式
     if hasattr(llm_client, "generate_with_status"):
         return llm_client.generate_with_status(request)
 
-    if hasattr(llm_client, "generate_issue_analysis_with_status"):
-        return llm_client.generate_issue_analysis_with_status(
-            user_query=user_query,
-            module_name=module_name,
-            module_hint=module_hint,
-            retrieval_queries=retrieval_queries,
-            evidence_hits=evidence_hits,
-        )
-
-    # 兼容旧接口：仅返回 text 与 reason，从 llm_client.last_call_status 补状态。
-    llm_text, llm_fallback_reason = llm_client.generate_issue_analysis(
-        user_query=user_query,
-        module_name=module_name,
-        module_hint=module_hint,
-        retrieval_queries=retrieval_queries,
-        evidence_hits=evidence_hits,
-    )
-    status = getattr(llm_client, "last_call_status", {}) or {}
-    call_status = dict(status) if isinstance(status, dict) else _default_llm_call_status()
-    return llm_text, llm_fallback_reason, call_status
+    # 最终降级：返回无 LLM 可用
+    return None, "llm_client_not_available", _default_llm_call_status()
 
 
 def _format_numbered(items: list[str], *, max_items: int, default_line: str = "--") -> str:
@@ -749,7 +823,12 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
             for key, value in fallback_payload.items():
                 analysis.setdefault(key, value)
             analysis["issue_analysis_llm_summary"] = llm_answer_text
-            llm_mode = "llm"
+            # 判断是否使用了 skill_tool（根据 call_status 的 iterations）
+            iterations = llm_call_status.get("attempts", 1)
+            if iterations > 1:
+                llm_mode = "skill_tool"
+            else:
+                llm_mode = "llm"
     else:
         analysis.update(fallback_payload)
 

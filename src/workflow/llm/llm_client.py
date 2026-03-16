@@ -54,7 +54,21 @@ class CommonLLMConfig:
 
 @dataclass(frozen=True)
 class CommonLLMRequest:
-    """LLM request payload passed from a node-level wrapper."""
+    """LLM request payload passed from a node-level wrapper.
+
+    Attributes:
+        node_name: 调用节点名称
+        system_prompt: 系统提示词
+        user_prompt: 用户提示词
+        evidence_count: 证据数量
+        require_evidence: 是否需要证据
+        log_namespace: 日志命名空间
+        metadata: 元数据
+        normalize_answer: 答案标准化函数
+        validate_answer: 答案验证函数
+        tools: OpenAI 格式的工具 schema 列表（可选）
+        tool_choice: 工具选择策略（"auto" | "none" | "required" | dict）
+    """
 
     node_name: str
     system_prompt: str
@@ -65,15 +79,27 @@ class CommonLLMRequest:
     metadata: dict[str, Any] = field(default_factory=dict)
     normalize_answer: AnswerNormalizer | None = None
     validate_answer: AnswerValidator | None = None
+    # Tool use 支持
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: str | dict[str, Any] | None = None  # "auto" | "none" | "required" | {"type": "function", "function": {"name": "xxx"}}
 
 
 @dataclass(frozen=True)
 class CommonLLMResult:
-    """LLM invocation result."""
+    """LLM invocation result.
+
+    Attributes:
+        answer: LLM 生成的答案文本（无 tool_call 时）
+        fallback_reason: 降级原因（如果调用失败或跳过）
+        call_status: 调用状态信息
+        tool_calls: LLM 返回的工具调用列表（如果有）
+            格式: [{"name": "xxx", "args": {...}, "id": "..."}]
+    """
 
     answer: str | None
     fallback_reason: str | None
     call_status: dict[str, Any]
+    tool_calls: list[dict[str, Any]] | None = None
 
 
 class WorkflowLLMClient:
@@ -443,25 +469,6 @@ class WorkflowLLMClient:
             "model": self.config.model,
         }
 
-    def _set_last_call_status(
-        self,
-        *,
-        status: str,
-        invoked: bool,
-        request_sent: bool,
-        attempts: int,
-        latency_ms: int,
-        reason: str | None,
-    ) -> None:
-        self.last_call_status = self._build_status(
-            status=status,
-            invoked=invoked,
-            request_sent=request_sent,
-            attempts=attempts,
-            latency_ms=latency_ms,
-            reason=reason,
-        )
-
     def _chat_completion(self, *, system_prompt: str, user_prompt: str) -> str:
         if self._chat_model is None:
             raise ValueError(self._init_error or "chat_model_unavailable")
@@ -561,6 +568,458 @@ class WorkflowLLMClient:
         # Keep compatibility for legacy readers, but callers should consume returned status.
         self.last_call_status = dict(result.call_status)
         return result.answer, result.fallback_reason, dict(result.call_status)
+
+    def generate_with_tools(
+        self,
+        request: CommonLLMRequest,
+    ) -> CommonLLMResult:
+        """支持 tool use 的 LLM 调用
+
+        当 request.tools 不为空时，使用 bind_tools 调用 LLM。
+        LLM 可以选择：
+        1. 直接回答（answer 不为空）
+        2. 调用工具（tool_calls 不为空）
+
+        Args:
+            request: LLM 请求对象，可能包含 tools 和 tool_choice
+
+        Returns:
+            CommonLLMResult，包含 answer 和/或 tool_calls
+        """
+        # 如果没有 tools，降级为普通调用
+        if not request.tools:
+            answer, fallback_reason, call_status = self.generate_with_status(request)
+            return CommonLLMResult(
+                answer=answer,
+                fallback_reason=fallback_reason,
+                call_status=call_status,
+                tool_calls=None,
+            )
+
+        # 检查模型可用性
+        if self._chat_model is None:
+            return self._skip_with_tools(request, self._init_error or "chat_model_unavailable")
+
+        if not self.config.enabled:
+            return self._skip_with_tools(request, "llm_disabled")
+
+        if not self.config.api_key:
+            return self._skip_with_tools(request, "missing_api_key")
+
+        # 执行带 tools 的调用
+        started_at = time.perf_counter()
+        self._logger.info(
+            f"{request.log_namespace}.tools_start",
+            **self._event_payload(
+                request,
+                {
+                    "model": self.config.model,
+                    "tools_count": len(request.tools),
+                    "tool_choice": request.tool_choice,
+                },
+            ),
+        )
+
+        try:
+            # 绑定 tools
+            chat_model_with_tools = self._chat_model.bind_tools(
+                request.tools,
+                tool_choice=request.tool_choice or "auto",
+            )
+
+            chain = self._prompt | chat_model_with_tools
+            message = chain.invoke(
+                {
+                    "system_prompt": request.system_prompt,
+                    "user_prompt": request.user_prompt,
+                }
+            )
+
+            latency_ms = int((time.perf_counter() - started_at) * 1000)
+
+            # 提取响应
+            answer = self._extract_text_from_message(message)
+            tool_calls = self._extract_tool_calls(message)
+
+            # 记录成功状态
+            success_status = self._build_status(
+                status="success",
+                invoked=True,
+                request_sent=True,
+                attempts=1,
+                latency_ms=latency_ms,
+                reason=None,
+            )
+            self.last_call_status = dict(success_status)
+
+            self._logger.info(
+                f"{request.log_namespace}.tools_success",
+                **self._event_payload(
+                    request,
+                    {
+                        "model": self.config.model,
+                        "latency_ms": latency_ms,
+                        "has_answer": bool(answer),
+                        "tool_calls_count": len(tool_calls) if tool_calls else 0,
+                    },
+                ),
+            )
+
+            return CommonLLMResult(
+                answer=answer if answer else None,
+                fallback_reason=None,
+                call_status=success_status,
+                tool_calls=tool_calls,
+            )
+
+        except TimeoutError as exc:
+            latency_ms = int((time.perf_counter() - started_at) * 1000)
+            self._logger.warning(
+                f"{request.log_namespace}.tools_timeout",
+                **self._event_payload(
+                    request,
+                    {
+                        "model": self.config.model,
+                        "latency_ms": latency_ms,
+                        "error": str(exc),
+                    },
+                ),
+            )
+            return self._build_error_result(request, "timeout", latency_ms)
+
+        except Exception as exc:  # pragma: no cover
+            latency_ms = int((time.perf_counter() - started_at) * 1000)
+            reason = self._map_exception_to_reason(exc)
+            self._logger.error(
+                f"{request.log_namespace}.tools_error",
+                **self._event_payload(
+                    request,
+                    {
+                        "model": self.config.model,
+                        "latency_ms": latency_ms,
+                        "reason": reason,
+                        "error": str(exc),
+                    },
+                ),
+            )
+            return self._build_error_result(request, reason, latency_ms)
+
+    def _extract_tool_calls(self, message: Any) -> list[dict[str, Any]] | None:
+        """从 LLM 响应中提取 tool_calls
+
+        Args:
+            message: LangChain AIMessage 对象
+
+        Returns:
+            tool_calls 列表，格式：[{"name": "xxx", "args": {...}, "id": "..."}]
+        """
+        # LangChain AIMessage 的 tool_calls 属性
+        tool_calls = getattr(message, "tool_calls", None)
+        if tool_calls:
+            return [
+                {
+                    "name": tc.get("name", ""),
+                    "args": tc.get("args", {}),
+                    "id": tc.get("id", ""),
+                }
+                for tc in tool_calls
+            ]
+
+        # 兼容：检查 additional_kwargs
+        additional_kwargs = getattr(message, "additional_kwargs", {}) or {}
+        raw_tool_calls = additional_kwargs.get("tool_calls", [])
+        if raw_tool_calls:
+            parsed_calls: list[dict[str, Any]] = []
+            for tc in raw_tool_calls:
+                if isinstance(tc, dict):
+                    func = tc.get("function", {})
+                    parsed_calls.append({
+                        "name": func.get("name", ""),
+                        "args": func.get("arguments", {}),
+                        "id": tc.get("id", ""),
+                    })
+            return parsed_calls if parsed_calls else None
+
+        return None
+
+    def _skip_with_tools(self, request: CommonLLMRequest, reason: str) -> CommonLLMResult:
+        """跳过调用并返回空结果"""
+        skipped_status = self._build_status(
+            status="skipped",
+            invoked=True,
+            request_sent=False,
+            attempts=0,
+            latency_ms=0,
+            reason=reason,
+        )
+        self.last_call_status = dict(skipped_status)
+        return CommonLLMResult(
+            answer=None,
+            fallback_reason=reason,
+            call_status=skipped_status,
+            tool_calls=None,
+        )
+
+    def generate_with_agent(
+        self,
+        request: CommonLLMRequest,
+        tools: list[Any] | None = None,
+        max_iterations: int = 3,
+    ) -> CommonLLMResult:
+        """Agent 模式：自动处理 tool calling 循环
+
+        这个方法模拟 LangChain Agent 的行为：
+        1. 调用 LLM（绑定 tools）
+        2. 如果 LLM 返回 tool_calls，执行对应的工具
+        3. 将工具结果作为 ToolMessage 发回 LLM
+        4. 重复直到 LLM 返回最终答案或达到最大迭代次数
+
+        Args:
+            request: LLM 请求对象
+            tools: LangChain Tool 对象列表（如 SkillTool）
+                   注意：这里传入的是 Tool 对象，不是 OpenAI schema
+            max_iterations: 最大迭代次数（防止无限循环）
+
+        Returns:
+            CommonLLMResult，包含最终答案
+        """
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+
+        # 如果没有 tools，降级为普通调用
+        if not tools:
+            return self.generate_with_tools(request)
+
+        # 检查模型可用性
+        if self._chat_model is None:
+            return self._skip_with_tools(request, self._init_error or "chat_model_unavailable")
+
+        if not self.config.enabled:
+            return self._skip_with_tools(request, "llm_disabled")
+
+        if not self.config.api_key:
+            return self._skip_with_tools(request, "missing_api_key")
+
+        # 构建工具映射（name -> tool）
+        tool_map = {tool.name: tool for tool in tools}
+
+        started_at = time.perf_counter()
+        total_latency_ms = 0
+        iterations = 0
+
+        self._logger.info(
+            f"{request.log_namespace}.agent_start",
+            **self._event_payload(
+                request,
+                {
+                    "model": self.config.model,
+                    "tools_count": len(tools),
+                    "max_iterations": max_iterations,
+                },
+            ),
+        )
+
+        try:
+            # 绑定 tools 到 LLM
+            chat_model_with_tools = self._chat_model.bind_tools(tools, tool_choice="auto")
+
+            # 构建初始消息
+            messages: list[BaseMessage] = [
+                SystemMessage(content=request.system_prompt),
+                HumanMessage(content=request.user_prompt),
+            ]
+
+            while iterations < max_iterations:
+                iterations += 1
+                iteration_start = time.perf_counter()
+
+                self._logger.debug(
+                    f"{request.log_namespace}.agent_iteration",
+                    **self._event_payload(
+                        request,
+                        {"iteration": iterations, "messages_count": len(messages)},
+                    ),
+                )
+
+                # 调用 LLM
+                response: AIMessage = chat_model_with_tools.invoke(messages)
+                iteration_latency = int((time.perf_counter() - iteration_start) * 1000)
+
+                # 添加 AI 响应到消息历史
+                messages.append(response)
+
+                # 检查是否有 tool_calls
+                tool_calls = getattr(response, "tool_calls", None)
+
+                if not tool_calls:
+                    # 没有 tool_calls，LLM 返回了最终答案
+                    answer = self._extract_text_from_message(response) or ""
+                    total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+
+                    success_status = self._build_status(
+                        status="success",
+                        invoked=True,
+                        request_sent=True,
+                        attempts=iterations,
+                        latency_ms=total_latency_ms,
+                        reason=None,
+                    )
+                    self.last_call_status = dict(success_status)
+
+                    self._logger.info(
+                        f"{request.log_namespace}.agent_complete",
+                        **self._event_payload(
+                            request,
+                            {
+                                "model": self.config.model,
+                                "latency_ms": total_latency_ms,
+                                "iterations": iterations,
+                                "answer_length": len(answer),
+                            },
+                        ),
+                    )
+
+                    # 标准化答案
+                    normalized = answer.strip()
+                    if request.normalize_answer and normalized:
+                        normalized = request.normalize_answer(normalized)
+
+                    return CommonLLMResult(
+                        answer=normalized or None,
+                        fallback_reason=None,
+                        call_status=success_status,
+                        tool_calls=None,
+                    )
+
+                # 有 tool_calls，执行工具
+                self._logger.info(
+                    f"{request.log_namespace}.agent_tool_call",
+                    **self._event_payload(
+                        request,
+                        {
+                            "iteration": iterations,
+                            "tool_calls_count": len(tool_calls),
+                            "tools": [tc.get("name") for tc in tool_calls],
+                        },
+                    ),
+                )
+
+                # 执行每个 tool_call
+                for tool_call in tool_calls:
+                    tool_name = tool_call.get("name", "")
+                    tool_args = tool_call.get("args", {})
+                    tool_id = tool_call.get("id", "")
+
+                    tool = tool_map.get(tool_name)
+                    if tool is None:
+                        # 工具不存在
+                        tool_result = f"Error: Tool '{tool_name}' not found"
+                        self._logger.warning(
+                            f"{request.log_namespace}.agent_tool_not_found",
+                            **self._event_payload(request, {"tool_name": tool_name}),
+                        )
+                    else:
+                        # 执行工具
+                        try:
+                            tool_result = tool.invoke(tool_args)
+                            self._logger.debug(
+                                f"{request.log_namespace}.agent_tool_success",
+                                **self._event_payload(
+                                    request,
+                                    {
+                                        "tool_name": tool_name,
+                                        "result_length": len(str(tool_result)),
+                                    },
+                                ),
+                            )
+                        except Exception as e:
+                            tool_result = f"Error executing tool '{tool_name}': {e}"
+                            self._logger.error(
+                                f"{request.log_namespace}.agent_tool_error",
+                                **self._event_payload(
+                                    request,
+                                    {"tool_name": tool_name, "error": str(e)},
+                                ),
+                            )
+
+                    # 添加 ToolMessage 到消息历史
+                    messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_id))
+
+            # 达到最大迭代次数
+            total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+            self._logger.warning(
+                f"{request.log_namespace}.agent_max_iterations",
+                **self._event_payload(
+                    request,
+                    {"iterations": iterations, "max_iterations": max_iterations},
+                ),
+            )
+
+            # 尝试从最后一条消息提取答案
+            last_message = messages[-1] if messages else None
+            final_answer = self._extract_text_from_message(last_message) if last_message else None
+
+            max_iter_status = self._build_status(
+                status="max_iterations_reached",
+                invoked=True,
+                request_sent=True,
+                attempts=iterations,
+                latency_ms=total_latency_ms,
+                reason="max_iterations_reached",
+            )
+            self.last_call_status = dict(max_iter_status)
+
+            return CommonLLMResult(
+                answer=final_answer,
+                fallback_reason="max_iterations_reached",
+                call_status=max_iter_status,
+                tool_calls=None,
+            )
+
+        except TimeoutError as exc:
+            total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+            self._logger.warning(
+                f"{request.log_namespace}.agent_timeout",
+                **self._event_payload(
+                    request,
+                    {"latency_ms": total_latency_ms, "error": str(exc)},
+                ),
+            )
+            return self._build_error_result(request, "timeout", total_latency_ms)
+
+        except Exception as exc:
+            total_latency_ms = int((time.perf_counter() - started_at) * 1000)
+            reason = self._map_exception_to_reason(exc)
+            self._logger.error(
+                f"{request.log_namespace}.agent_error",
+                **self._event_payload(
+                    request,
+                    {"latency_ms": total_latency_ms, "reason": reason, "error": str(exc)},
+                ),
+            )
+            return self._build_error_result(request, reason, total_latency_ms)
+
+    def _build_error_result(
+        self,
+        request: CommonLLMRequest,
+        reason: str,
+        latency_ms: int,
+    ) -> CommonLLMResult:
+        """构建错误结果"""
+        error_status = self._build_status(
+            status="error",
+            invoked=True,
+            request_sent=True,
+            attempts=1,
+            latency_ms=latency_ms,
+            reason=reason,
+        )
+        self.last_call_status = dict(error_status)
+        return CommonLLMResult(
+            answer=None,
+            fallback_reason=reason,
+            call_status=error_status,
+            tool_calls=None,
+        )
 
 
 WorkflowLLMConfig = CommonLLMConfig

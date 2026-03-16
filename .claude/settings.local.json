@@ -3,7 +3,12 @@
     "allow": [
       "Bash(python -c \"from workflow.common.domain_profile import EmbeddingProfile; from workflow.retrievers.embedding_retriever import EmbeddingRetrieverConfig; print\\(''Import OK''\\)\")",
       "Bash(PYTHONPATH=src python -c \"from workflow.common.domain_profile import EmbeddingProfile; from workflow.retrievers.embedding_retriever import EmbeddingRetrieverConfig; print\\(''Import OK''\\)\")",
-      "Bash(PYTHONPATH=src python -c \"from workflow.engine import WorkflowService; print\\(''Engine Import OK''\\)\")"
+      "Bash(PYTHONPATH=src python -c \"from workflow.engine import WorkflowService; print\\(''Engine Import OK''\\)\")",
+      "Bash(python -m py_compile d:/codes/dsp_agent/src/workflow/skills/loader.py)",
+      "Bash(python -m py_compile d:/codes/dsp_agent/src/workflow/skills/base.py)",
+      "Bash(python -m py_compile d:/codes/dsp_agent/src/workflow/skills/registry.py)",
+      "Bash(python -m py_compile d:/codes/dsp_agent/src/workflow/skills/__init__.py)",
+      "Bash(python -m py_compile d:/codes/dsp_agent/src/workflow/skills/planner.py)"
     ]
   }
 }

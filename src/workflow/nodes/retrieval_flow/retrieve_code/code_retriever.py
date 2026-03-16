@@ -543,22 +543,24 @@ class LocalCodeRetriever:
             reranked_hits = self._reranker.rerank(
                 query=user_query,
                 candidates=rerank_candidates,
-                top_k=final_top_k,
+                top_k=top_k or self.runtime_config.default_top_k,
                 content_key="content",
             )
-            # 更新分数和排名
-            for rank, hit in enumerate(reranked_hits, start= 1):
-                hits.append({
+            # 用重排结果替换原来的 hits，更新分数和排名
+            reranked_results: list[dict[str, Any]] = []
+            for rank, hit in enumerate(reranked_hits, start=1):
+                reranked_results.append({
                     **hit,
-                    "score": round(float(hit.get("rerank_score", 0.0 or 0.0)), 4),
+                    "score": round(float(hit.get("rerank_score", 0.0)), 4),
                     "rank": rank,
                     "score_source": "reranker",
                     "retrieval_debug": {
                         **hit.get("retrieval_debug", {}),
-                        "rerank_score": round(float(hit.get("rerank_score", 0.0), 4)),
+                        "rerank_score": round(float(hit.get("rerank_score", 0.0)), 4),
                         "original_rank": hit.get("original_rank", rank),
                     },
                 })
+            hits = reranked_results  # 用重排结果替换
             rerank_latency = round((perf_counter() - rerank_start) * 1000, 3)
             self.last_search_profile["rerank"] = {
                 "enabled": True,
@@ -569,26 +571,27 @@ class LocalCodeRetriever:
 
         return hits
 
-    def _get_chunk_content_by_hit(self, path: str, section: str) -> str:
+    def _get_chunk_content_by_hit(self, path: str, section: str, excerpt_lines: Any = None) -> str:
         """根据路径和章节获取 chunk 内容，用于重排器。
 
         参数:
             path: 文档相对路径
-            section: 章节名称
+            section: 章节名称，格式为 "{chunk_type}:{symbol_name}"
+            excerpt_lines: 可选的行范围信息（预留参数，暂未使用）
 
         返回:
             chunk 内容字符串
         """
-        chunk_ids = self._children_by_path.get(path, [])
-        for chunk_id in chunk_ids:
-            chunk = self._child_by_id.get(chunk_id)
-            if chunk and chunk.section == section:
+        # _children_by_path 存储的是 CodeChildChunk 对象列表，直接遍历使用
+        chunks = self._children_by_path.get(path, [])
+        for chunk in chunks:
+            # section 格式: "{chunk_type}:{symbol_name}"
+            chunk_section = f"{chunk.chunk_type}:{chunk.symbol_name or 'file'}"
+            if chunk_section == section:
                 return chunk.content
         # 如果找不到精确匹配，返回第一个 chunk 的内容
-        if chunk_ids:
-            chunk = self._child_by_id.get(chunk_ids[0])
-            if chunk:
-                return chunk.content
+        if chunks:
+            return chunks[0].content
         return ""
 
     def get_index_snapshot(self) -> list[dict[str, Any]]:

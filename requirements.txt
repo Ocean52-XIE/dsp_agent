@@ -15,3 +15,5 @@ sentence-transformers>=2.2.0
 chromadb>=0.4.0
 # 技能加载器依赖
 pyyaml>=6.0
+# 序列化依赖（langchain/chromadb 等需要）
+protobuf>=4.25.0

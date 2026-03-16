@@ -595,14 +595,14 @@
     "enable_code": true,
     "enable_cases": false,
     "embedding": {
-      "enabled": true,
+      "enabled": false,
       "model": "BAAI/bge-base-zh-v1.5",
       "device": "cpu",
       "top_k": 4,
       "persist_root": ".vectorstore"
     },
     "reranker": {
-      "enabled": true,
+      "enabled": false,
       "model": "BAAI/bge-reranker-base",
       "device": "cpu",
       "top_k": 4,
