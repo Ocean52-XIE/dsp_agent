@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
+import re
 import time
 from typing import Any, Callable
 
@@ -18,6 +19,33 @@ from workflow.common.func_utils import to_bool, to_float, to_int
 # LLM 日志相关常量：用于控制 prompt 截断长度
 LLM_LOG_PROMPT_MAX_LENGTH = 500  # 单个 prompt 最大日志长度
 LLM_LOG_RESPONSE_MAX_LENGTH = 1000  # 响应文本最大日志长度
+
+# 用于匹配 LLM thinking 内容的正则表达式（支持 <thinking> 和 <thinker> 等变体）
+_THINKING_PATTERN = re.compile(
+    r"<(?:thinking|thinker|think)>[\s\S]*?</(?:thinking|thinker|think)>",
+    re.IGNORECASE
+)
+
+
+def strip_thinking_content(text: str) -> str:
+    """
+    移除 LLM 响应中的 thinking 标签及其内容。
+
+    部分 LLM（如 DeepSeek-R1、Claude 等）会返回 <thinking>...</thinking> 格式的思考过程，
+    该函数用于在返回给用户界面之前过滤掉这部分内容。
+
+    Args:
+        text: 原始响应文本，可能包含 thinking 标签
+
+    Returns:
+        移除 thinking 内容后的文本
+    """
+    if not text:
+        return text
+    # 使用正则表达式移除所有 thinking 标签及其内容
+    cleaned = _THINKING_PATTERN.sub("", text)
+    # 清理可能产生的多余空行，保持格式整洁
+    return cleaned.strip()
 
 
 AnswerNormalizer = Callable[[str], str]
@@ -673,11 +701,13 @@ class WorkflowLLMClient:
         raise ValueError(f"empty_answer:empty_content:{summary}")
 
     def _extract_text_from_message(self, message: Any) -> str:
+        """从 LLM 响应消息中提取文本内容，并自动过滤 thinking 标签。"""
         content = getattr(message, "content", None)
         if isinstance(content, str):
             normalized = content.strip()
             if normalized:
-                return normalized
+                # 过滤 thinking 内容后再返回
+                return strip_thinking_content(normalized)
         if isinstance(content, list):
             text_parts: list[str] = []
             for item in content:
@@ -691,7 +721,8 @@ class WorkflowLLMClient:
                         text_parts.append(value)
             normalized = "\n".join(text_parts).strip()
             if normalized:
-                return normalized
+                # 过滤 thinking 内容后再返回
+                return strip_thinking_content(normalized)
         return ""
 
     def _build_message_summary(self, message: Any) -> str:

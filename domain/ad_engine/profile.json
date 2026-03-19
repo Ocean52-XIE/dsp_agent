@@ -39,6 +39,7 @@
     }
   },
   "domain_gate": {
+    "enabled": false,
     "threshold": 0.5,
     "weak_in_scope_min_score": 0.62,
     "weak_code_hint_min_score": 0.58,

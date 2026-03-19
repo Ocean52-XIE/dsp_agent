@@ -7,9 +7,11 @@ This script lets you:
 1) Configure knowledge_answer LLM settings in one place.
 2) Export settings as environment variables.
 3) Start `api.main:app` with uvicorn (with `src` added to PYTHONPATH).
+4) Choose between v1 (Workflow) and v2 (Agent) backend.
 
 Examples:
-- Start service: `.\start_agent.ps1`
+- Start service (v1 default): `.\start_agent.ps1`
+- Start with v2 backend: `.\start_agent.ps1 -BackendVersion v2`
 - Custom port: `.\start_agent.ps1 -Port 8080`
 - Validate config only: `.\start_agent.ps1 -DryRun`
 #>
@@ -18,6 +20,8 @@ param(
     [string]$BindHost = "127.0.0.1",
     [int]$Port = 8000,
     [string]$DomainDir = "domain/ad_engine",
+    [ValidateSet("v1", "v2")]
+    [string]$BackendVersion = "v2",  # v1 = Workflow, v2 = Agent
     [switch]$DisableReload,
     [switch]$DryRun
 )
@@ -27,7 +31,7 @@ param(
 # ============================
 $QA_LLM_ENABLED = "true"
 $QA_LLM_BASE_URL = "https://api.deepseek.com/v1"
-$QA_LLM_API_KEY = "sk-9c6bf0ce91054b23b54fc3ef89ad3a90"
+$QA_LLM_API_KEY = "sk-48f2e9a153124240b88e223145a4be3b"
 $QA_LLM_MODEL = "deepseek-chat"
 $QA_LLM_TIMEOUT_SECONDS = "120"
 $QA_LLM_TEMPERATURE = "0.2"
@@ -44,6 +48,31 @@ $WORKFLOW_FILE_LOG_BACKUP_COUNT = "3"
 # 代码检索目录收口：固定指向仓库根目录 `codes`
 # 说明：可避免误检索到 workflow/eval 等工具工程目录文件。
 $CODE_RETRIEVER_DIRS = ""
+
+# ============================================
+# API VERSION CONFIG (v1 vs v2)
+# ============================================
+# API 后端版本: v1 = Workflow (固定节点链), v2 = Agent (动态 Agent Loop)
+# 可通过命令行参数 -BackendVersion 覆盖
+$API_BACKEND_VERSION = $BackendVersion
+# v2 失败时是否自动回退到 v1
+$API_V2_FALLBACK_TO_V1 = "false"
+
+# ============================================
+# AGENT LLM CONFIG (v2 后端使用)
+# ============================================
+# 当 API_BACKEND_VERSION=v2 时，使用以下 LLM 配置
+# 这些配置用于 agent/llm/client.py
+$AGENT_LLM_ENABLED = "true"
+$AGENT_LLM_BASE_URL = "https://api.deepseek.com/v1"
+$AGENT_LLM_API_KEY = "sk-48f2e9a153124240b88e223145a4be3b"
+$AGENT_LLM_MODEL = "deepseek-chat"
+$AGENT_LLM_TIMEOUT_SECONDS = "120"
+$AGENT_LLM_TEMPERATURE = "0.1"
+$AGENT_LLM_MAX_TOKENS = "4096"
+# Agent 循环配置
+$AGENT_MAX_STEPS = "10"
+$AGENT_TIMEOUT_SECONDS = "120"
 
 # ============================================
 # OBSERVABILITY CONFIG (PostgreSQL + Alerting)
@@ -156,6 +185,25 @@ try {
     $env:WORKFLOW_OBS_ALERT_P95_LATENCY_MS_MAX = $OBS_ALERT_P95_LATENCY_MS_MAX
     $env:WORKFLOW_OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN = $OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN
 
+    # ============================================
+    # Export API Version Config
+    # ============================================
+    $env:API_BACKEND_VERSION = $API_BACKEND_VERSION
+    $env:API_V2_FALLBACK_TO_V1 = $API_V2_FALLBACK_TO_V1
+
+    # ============================================
+    # Export Agent (v2) LLM Config
+    # ============================================
+    $env:AGENT_LLM_ENABLED = $AGENT_LLM_ENABLED
+    $env:AGENT_LLM_BASE_URL = $AGENT_LLM_BASE_URL
+    $env:AGENT_LLM_API_KEY = $AGENT_LLM_API_KEY
+    $env:AGENT_LLM_MODEL = $AGENT_LLM_MODEL
+    $env:AGENT_LLM_TIMEOUT_SECONDS = $AGENT_LLM_TIMEOUT_SECONDS
+    $env:AGENT_LLM_TEMPERATURE = $AGENT_LLM_TEMPERATURE
+    $env:AGENT_LLM_MAX_TOKENS = $AGENT_LLM_MAX_TOKENS
+    $env:AGENT_MAX_STEPS = $AGENT_MAX_STEPS
+    $env:AGENT_TIMEOUT_SECONDS = $AGENT_TIMEOUT_SECONDS
+
     Write-Host "==== Agent Startup Config ===="
     Write-Host "ProjectRoot                    : $ProjectRoot"
     Write-Host "SourceRoot                     : $SourceRoot"
@@ -192,6 +240,21 @@ try {
     Write-Host "WORKFLOW_OBS_ALERT_INSUFFICIENT_MAX    : $env:WORKFLOW_OBS_ALERT_INSUFFICIENT_RATE_MAX"
     Write-Host "WORKFLOW_OBS_ALERT_P95_LATENCY_MS_MAX  : $env:WORKFLOW_OBS_ALERT_P95_LATENCY_MS_MAX"
     Write-Host "WORKFLOW_OBS_ALERT_EXACT_LIKE_PASS_MIN : $env:WORKFLOW_OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN"
+    Write-Host ""
+    Write-Host "==== API Version Config ===="
+    Write-Host "API_BACKEND_VERSION            : $env:API_BACKEND_VERSION"
+    Write-Host "API_V2_FALLBACK_TO_V1          : $env:API_V2_FALLBACK_TO_V1"
+    Write-Host ""
+    Write-Host "==== Agent (v2) LLM Config ===="
+    Write-Host "AGENT_LLM_ENABLED              : $env:AGENT_LLM_ENABLED"
+    Write-Host "AGENT_LLM_BASE_URL             : $env:AGENT_LLM_BASE_URL"
+    Write-Host "AGENT_LLM_API_KEY              : $(Mask-Secret $env:AGENT_LLM_API_KEY)"
+    Write-Host "AGENT_LLM_MODEL                : $env:AGENT_LLM_MODEL"
+    Write-Host "AGENT_LLM_TIMEOUT_SECONDS      : $env:AGENT_LLM_TIMEOUT_SECONDS"
+    Write-Host "AGENT_LLM_TEMPERATURE          : $env:AGENT_LLM_TEMPERATURE"
+    Write-Host "AGENT_LLM_MAX_TOKENS           : $env:AGENT_LLM_MAX_TOKENS"
+    Write-Host "AGENT_MAX_STEPS                : $env:AGENT_MAX_STEPS"
+    Write-Host "AGENT_TIMEOUT_SECONDS          : $env:AGENT_TIMEOUT_SECONDS"
     Write-Host "==============================="
 
     $uvicornArgs = @(

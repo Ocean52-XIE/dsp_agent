@@ -1,0 +1,24 @@
+# MCP Server 配置文件
+# 用于配置广告引擎领域的 MCP 工具服务器
+
+servers:
+  # 广告指标查询服务
+  ad_metrics:
+    transport: stdio
+    command: python
+    args:
+      - "${DOMAIN_ROOT}/mcp_servers/ad_metrics_server.py"
+    description: 广告指标查询服务，支持查询 CTR、CVR、CPM、消耗等关键指标
+    enabled: true
+    timeout: 30
+    env:
+      PYTHONPATH: "${PROJECT_ROOT}/src"
+
+  # 可以添加更多 MCP Server
+  # ad_code_search:
+  #   transport: stdio
+  #   command: python
+  #   args:
+  #     - "${DOMAIN_ROOT}/mcp_servers/code_search_server.py"
+  #   description: 广告系统代码检索服务
+  #   enabled: true

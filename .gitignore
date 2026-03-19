@@ -2,5 +2,7 @@
 *.pyc
 .vscode
 .vectorstore
-test
+.claude
+.pytest_cache
+temp
 logs

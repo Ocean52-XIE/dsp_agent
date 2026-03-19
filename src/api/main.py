@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """FastAPI API entrypoint for the DSP agent."""
 from __future__ import annotations
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,8 @@ from workflow.engine import WorkflowService
 from workflow.observability import PostgresObservabilityStore
 from workflow.common.runtime_logging import get_file_logger
 from workflow.session import PostgresSessionStore
+from api.config import get_api_config, BackendVersion
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 SOURCE_DIR = BASE_DIR / 'src'
 WEB_DIR = SOURCE_DIR / 'web'
@@ -20,14 +23,96 @@ if not WEB_DIR.exists():
     WEB_DIR = BASE_DIR / 'web'
 ASSETS_DIR = WEB_DIR / 'assets'
 APP_LOGGER = get_file_logger(project_root=BASE_DIR)
-app = FastAPI(title='Engine Smart Agent Workflow API', version='0.2.0', description='LangGraph-driven orchestration and routing demo.')
-app.mount('/assets', StaticFiles(directory=ASSETS_DIR), name='assets')
+
+# 加载 API 配置
+API_CONFIG = get_api_config()
+
+# 初始化 v1 后端 (Workflow) - 同步初始化
 WORKFLOW = WorkflowService()
+
+# v2 后端 (Agent) - 在 lifespan 中异步初始化
+_AGENT_SERVICE_V2 = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI 生命周期管理
+
+    在服务启动时完成异步初始化（包括 MCP），
+    在服务关闭时释放资源。
+    """
+    global _AGENT_SERVICE_V2
+
+    # =========== 启动时初始化 ===========
+    APP_LOGGER.info('api.lifespan.startup.begin')
+
+    if API_CONFIG.use_v2:
+        try:
+            APP_LOGGER.info('api.lifespan.startup.v2_init')
+            from agent.service import AgentService
+            _AGENT_SERVICE_V2 = AgentService.from_env()
+            await _AGENT_SERVICE_V2.ainitialize()  # 异步初始化 MCP
+            APP_LOGGER.info('api.lifespan.startup.v2_ready')
+        except Exception as e:
+            APP_LOGGER.error('api.lifespan.startup.v2_failed', error=str(e))
+            # 如果 v2 初始化失败，根据配置决定是否回退到 v1
+            if not API_CONFIG.v2_fallback_to_v1:
+                raise
+
+    APP_LOGGER.info('api.lifespan.startup.complete',
+                    workflow_backend=WORKFLOW.backend_name,
+                    checkpointer=WORKFLOW.checkpointer_status(),
+                    api_backend_version=API_CONFIG.backend_version.value)
+
+    yield  # =========== 服务运行中 ===========
+
+    # =========== 关闭时清理 ===========
+    APP_LOGGER.info('api.lifespan.shutdown.begin')
+
+    if _AGENT_SERVICE_V2:
+        try:
+            await _AGENT_SERVICE_V2.ashutdown()
+            APP_LOGGER.info('api.lifespan.shutdown.v2_done')
+        except Exception as e:
+            APP_LOGGER.warning('api.lifespan.shutdown.v2_error', error=str(e))
+
+    APP_LOGGER.info('api.lifespan.shutdown.complete')
+
+
+# 创建 FastAPI 应用，使用 lifespan 管理生命周期
+app = FastAPI(
+    title='Engine Smart Agent Workflow API',
+    version='0.2.0',
+    description='LangGraph-driven orchestration and routing demo.',
+    lifespan=lifespan,
+)
+app.mount('/assets', StaticFiles(directory=ASSETS_DIR), name='assets')
+
+
+def _get_agent_service_v2():
+    """获取 v2 Agent 服务
+
+    注意：此函数假设 lifespan 已经完成初始化。
+    如果未初始化，将抛出 RuntimeError。
+
+    Returns:
+        AgentService 实例
+    """
+    if _AGENT_SERVICE_V2 is None:
+        raise RuntimeError(
+            "AgentService 未初始化。请检查：\n"
+            "1. API_BACKEND_VERSION 配置是否为 'v2' 或 'hybrid'\n"
+            "2. FastAPI lifespan 是否正确配置"
+        )
+    return _AGENT_SERVICE_V2
+
+
+# 初始化存储
 OBS_STORE = PostgresObservabilityStore.from_env()
 SESSION_STORE = PostgresSessionStore.from_env()
 SESSIONS: dict[str, dict[str, Any]] = {}
 TRACE_REFERENCES: dict[str, list[dict[str, Any]]] = {}
-APP_LOGGER.info('api.service.initialized', workflow_backend=WORKFLOW.backend_name, checkpointer=WORKFLOW.checkpointer_status(), session_store=SESSION_STORE.status(), observability=OBS_STORE.status(), runtime_logging=APP_LOGGER.status())
+APP_LOGGER.info('api.service.initialized', workflow_backend=WORKFLOW.backend_name, checkpointer=WORKFLOW.checkpointer_status(), session_store=SESSION_STORE.status(), observability=OBS_STORE.status(), runtime_logging=APP_LOGGER.status(), api_backend_version=API_CONFIG.backend_version.value)
 
 class SessionCreateRequest(BaseModel):
     title: str | None = None
@@ -131,7 +216,14 @@ def root() -> FileResponse:
 @app.get('/api/health')
 def health() -> dict[str, Any]:
     APP_LOGGER.debug('api.health.checked')
-    return {'status': 'ok', 'workflow_backend': WORKFLOW.backend_name, 'checkpointer': WORKFLOW.checkpointer_status(), 'debug_verbose_enabled': bool(getattr(WORKFLOW, 'debug_verbose_enabled', False)), 'runtime_logging': WORKFLOW.runtime_log_status(), 'observability': OBS_STORE.status(), 'session_store': SESSION_STORE.status()}
+    health_info = {'status': 'ok', 'workflow_backend': WORKFLOW.backend_name, 'checkpointer': WORKFLOW.checkpointer_status(), 'debug_verbose_enabled': bool(getattr(WORKFLOW, 'debug_verbose_enabled', False)), 'runtime_logging': WORKFLOW.runtime_log_status(), 'observability': OBS_STORE.status(), 'session_store': SESSION_STORE.status(), 'api_backend_version': API_CONFIG.backend_version.value, 'api_debug_verbose': API_CONFIG.debug_verbose}
+    if API_CONFIG.use_v2:
+        try:
+            agent_service = _get_agent_service_v2()
+            health_info['agent_service'] = agent_service.get_stats() if agent_service else None
+        except Exception as e:
+            health_info['agent_service_error'] = str(e)
+    return health_info
 
 @app.get('/api/sessions')
 def list_sessions(limit: int=20) -> dict[str, list[dict[str, Any]]]:
@@ -153,7 +245,13 @@ def get_session(session_id: str) -> dict[str, Any]:
     return {'session': serialize_session(session)}
 
 @app.post('/api/messages')
-def create_message(request: MessageCreateRequest) -> dict[str, Any]:
+async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
+    """创建消息
+
+    根据 API_BACKEND_VERSION 配置选择后端：
+    - v1: 使用 Workflow (WORKFLOW.run_user_message)
+    - v2: 使用 Agent (AgentService.arun)
+    """
     APP_LOGGER.info('api.message.create.requested', session_id=request.session_id, content_preview=text_preview(request.content, max_chars=120))
     session = ensure_session(request.session_id)
     if len([msg for msg in session['messages'] if msg['role'] == 'user']) == 0:
@@ -161,19 +259,57 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     user_message = build_user_message(request.content)
     session['messages'].append(user_message)
     trace_id = next_id('trace')
-    try:
-        workflow_payload = WORKFLOW.run_user_message(session_id=session['id'], trace_id=trace_id, user_query=request.content, history=session['messages'])
-    except Exception as exc:
-        APP_LOGGER.exception('api.message.create.failed', session_id=session.get('id', ''), trace_id=trace_id, error_type=type(exc).__name__)
-        raise
+
+    # 根据配置选择后端
+    if API_CONFIG.use_v2:
+        # 使用 v2 Agent 后端
+        APP_LOGGER.info('api.message.using_v2_backend', session_id=session['id'], trace_id=trace_id)
+        try:
+            agent_service = _get_agent_service_v2()
+            response = await agent_service.arun(
+                user_query=request.content,
+                session_id=session['id'],
+                trace_id=trace_id,
+                history=session['messages'],
+            )
+            workflow_payload = {
+                'role': 'assistant',
+                'kind': response.kind or 'agent_v2',
+                'intent': response.intent or 'agent_v2',
+                'status': response.status or 'completed',
+                'content': response.content,
+                'trace_id': trace_id,
+                'citations': response.citations or [],
+                'analysis': response.analysis or {},
+                'actions': [],
+                'debug': response.debug or {},
+            }
+        except Exception as exc:
+            APP_LOGGER.exception('api.message.v2_failed', session_id=session.get('id', ''), trace_id=trace_id, error_type=type(exc).__name__)
+            # 如果配置了回退到 v1
+            if API_CONFIG.v2_fallback_to_v1:
+                APP_LOGGER.info('api.message.fallback_to_v1', session_id=session.get('id', ''), trace_id=trace_id)
+                workflow_payload = WORKFLOW.run_user_message(session_id=session['id'], trace_id=trace_id, user_query=request.content, history=session['messages'])
+            else:
+                raise
+    else:
+        # 使用 v1 Workflow 后端
+        APP_LOGGER.info('api.message.using_v1_backend', session_id=session['id'], trace_id=trace_id)
+        try:
+            workflow_payload = WORKFLOW.run_user_message(session_id=session['id'], trace_id=trace_id, user_query=request.content, history=session['messages'])
+        except Exception as exc:
+            APP_LOGGER.exception('api.message.create.failed', session_id=session.get('id', ''), trace_id=trace_id, error_type=type(exc).__name__)
+            raise
+
     assistant_message = materialize_assistant_message(workflow_payload)
     TRACE_REFERENCES[trace_id] = assistant_message['citations']
     session['messages'].append(assistant_message)
     session['status'] = assistant_message['status']
     session['updated_at'] = now_iso()
     persist_session_record(session)
-    persist_observability_turn(turn_type='message', session=session, user_query=request.content, assistant_message=assistant_message)
-    APP_LOGGER.info('api.message.create.completed', session_id=session['id'], trace_id=trace_id, assistant_kind=assistant_message.get('kind', 'unknown'), assistant_status=assistant_message.get('status', 'unknown'), citation_count=len(assistant_message.get('citations', []) or []), session_message_count=len(session.get('messages', []) or []))
+    turn_type = 'v2_message' if API_CONFIG.use_v2 else 'message'
+    persist_observability_turn(turn_type=turn_type, session=session, user_query=request.content, assistant_message=assistant_message)
+    APP_LOGGER.info('api.message.create.completed', session_id=session['id'], trace_id=trace_id, assistant_kind=assistant_message.get('kind', 'unknown'), assistant_status=assistant_message.get('status', 'unknown'), citation_count=len(assistant_message.get('citations', []) or []), session_message_count=len(session.get('messages', []) or []), backend_version=API_CONFIG.backend_version.value)
     return {'session': serialize_session(session), 'summary': summarize_session(session), 'assistant_message_id': assistant_message['id']}
 
 @app.get('/api/references/{trace_id}')
@@ -199,6 +335,132 @@ def create_message_feedback(message_id: str, request: MessageFeedbackRequest) ->
     persist_session_record(session)
     APP_LOGGER.info('api.feedback.completed', message_id=message_id, session_id=session.get('id', ''))
     return {'ok': True, 'message_id': message_id}
+
+# =============================================================================
+# V2 API Endpoints (Agent 架构)
+# =============================================================================
+
+class V2MessageCreateRequest(BaseModel):
+    """V2 消息创建请求"""
+    session_id: str
+    content: str = Field(min_length=1, max_length=4000)
+
+@app.post('/v2/messages')
+async def create_v2_message(request: V2MessageCreateRequest) -> dict[str, Any]:
+    """创建消息 (使用 V2 Agent 架构)
+
+    使用新的 Agent 架构处理消息：
+    - 动态工具调用循环
+    - Skill 按需加载
+    - MCP 工具集成
+    """
+    APP_LOGGER.info(
+        'api.v2.message.create.requested',
+        session_id=request.session_id,
+        content_preview=text_preview(request.content, max_chars=120),
+    )
+
+    session = ensure_session(request.session_id)
+
+    # 首次消息时设置标题
+    if len([msg for msg in session['messages'] if msg['role'] == 'user']) == 0:
+        session['title'] = request.content[:24]
+
+    # 构建用户消息
+    user_message = build_user_message(request.content)
+    session['messages'].append(user_message)
+
+    trace_id = next_id('trace')
+
+    try:
+        # 使用 V2 Agent 服务处理
+        agent_service = _get_agent_service_v2()
+        response = await agent_service.arun(
+            user_query=request.content,
+            session_id=session['id'],
+            trace_id=trace_id,
+            history=session['messages'],
+        )
+
+        # 将 V2 响应转换为兼容格式
+        workflow_payload = {
+            'role': 'assistant',
+            'kind': response.kind or 'agent_v2',
+            'intent': response.intent or 'agent_v2',
+            'status': response.status or 'completed',
+            'content': response.content,
+            'trace_id': trace_id,
+            'citations': response.citations or [],
+            'analysis': response.analysis or {},
+            'actions': [],
+            'debug': response.debug or {},
+        }
+
+    except Exception as exc:
+        APP_LOGGER.exception(
+            'api.v2.message.create.failed',
+            session_id=session.get('id', ''),
+            trace_id=trace_id,
+            error_type=type(exc).__name__,
+        )
+
+        # 如果配置了回退到 v1
+        if API_CONFIG.v2_fallback_to_v1:
+            APP_LOGGER.info(
+                'api.v2.message.fallback_to_v1',
+                session_id=session.get('id', ''),
+                trace_id=trace_id,
+            )
+            workflow_payload = WORKFLOW.run_user_message(
+                session_id=session['id'],
+                trace_id=trace_id,
+                user_query=request.content,
+                history=session['messages'],
+            )
+        else:
+            raise
+
+    assistant_message = materialize_assistant_message(workflow_payload)
+    TRACE_REFERENCES[trace_id] = assistant_message['citations']
+    session['messages'].append(assistant_message)
+    session['status'] = assistant_message['status']
+    session['updated_at'] = now_iso()
+    persist_session_record(session)
+    persist_observability_turn(
+        turn_type='v2_message',
+        session=session,
+        user_query=request.content,
+        assistant_message=assistant_message,
+    )
+
+    APP_LOGGER.info(
+        'api.v2.message.create.completed',
+        session_id=session['id'],
+        trace_id=trace_id,
+        assistant_kind=assistant_message.get('kind', 'unknown'),
+        assistant_status=assistant_message.get('status', 'unknown'),
+        citation_count=len(assistant_message.get('citations', []) or []),
+        session_message_count=len(session.get('messages', []) or []),
+    )
+
+    return {
+        'session': serialize_session(session),
+        'summary': summarize_session(session),
+        'assistant_message_id': assistant_message['id'],
+    }
+
+@app.get('/api/config')
+def get_api_config_info() -> dict[str, Any]:
+    """获取 API 配置信息"""
+    return {
+        'backend_version': API_CONFIG.backend_version.value,
+        'debug_verbose': API_CONFIG.debug_verbose,
+        'v2_fallback_to_v1': API_CONFIG.v2_fallback_to_v1,
+        'endpoints': {
+            'v1': '/api/messages',
+            'v2': '/v2/messages',
+        },
+    }
 
 @app.get('/api/observability/summary')
 def get_observability_summary(window_minutes: int=60) -> dict[str, Any]:

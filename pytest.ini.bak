@@ -1,0 +1,47 @@
+# pytest 配置文件
+[pytest]
+# 测试目录
+testpaths = tests
+
+# Python 路径
+pythonpath = src
+
+# 默认命令行选项
+addopts = -v --tb=short
+
+# Python 文件搜索模式
+python_files = test_*.py *_test.py
+
+# 测试类搜索模式
+python_classes = Test*
+
+# 测试函数搜索模式
+python_functions = test_*
+
+# 最小 pytest 版本
+minversion = 7.0
+
+# 异步测试支持
+asyncio_mode = auto
+
+# 标记 (markers)
+markers =
+    asyncio: 异步测试标记
+    slow: 慢速测试标记
+    integration: 集成测试标记
+    unit: 单元测试标记
+
+# 忽略的目录
+norecursedirs = .git __pycache__ node_modules .venv venv
+
+# 日志配置
+log_cli = true
+log_cli_level = INFO
+log_cli_format = %(asctime)s [%(levelname)s] %(name)s: %(message)s
+log_cli_date_format = %Y-%m-%d %H:%M:%S
+
+# 环境变量
+env =
+    AGENT_LLM_MODEL=gpt-4o
+    AGENT_LLM_BASE_URL=https://api.openai.com/v1
+    AGENT_LLM_API_KEY=test-api-key

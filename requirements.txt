@@ -17,3 +17,7 @@ chromadb>=0.4.0
 pyyaml>=6.0
 # 序列化依赖（langchain/chromadb 等需要）
 protobuf>=4.25.0
+# MCP (Model Context Protocol) SDK
+mcp>=1.0.0
+fastmcp>=3.1.0
+langchain-mcp-adapters>=0.2.0
