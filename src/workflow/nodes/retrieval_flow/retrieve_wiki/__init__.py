@@ -1,26 +1,32 @@
 # -*- coding: utf-8 -*-
 """
 该模块实现工作流节点`retrieve_wiki` 的处理逻辑，负责读取状态并输出增量结果。
+
+提供两种接口：
+- run_with_retriever: 解耦版本，直接接收 retriever 参数
+- run: 兼容接口，从 service 获取 retriever
 """
 from __future__ import annotations
 
 """Wiki 检索节点（支持动态 TopK 与低置信重试）。"""
 
-from typing import Any
+import logging
+from typing import Any, Callable
 
 from workflow.nodes.retrieval_retry import dedupe_normalized_queries, run_with_retry
 from workflow.common.func_utils import env_float, env_int
 
+logger = logging.getLogger(__name__)
+
 
 def _grade_wiki_hits(items: list[dict[str, Any]]) -> str:
-    """
-    内部辅助函数，负责`grade wiki hits` 相关处理。
-    
-    参数:
-        items: 列表参数，用于承载批量输入数据。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
+    """评估 Wiki 检索结果质量
+
+    Args:
+        items: 检索结果列表
+
+    Returns:
+        质量评级：insufficient/medium/high
     """
     if not items:
         return "insufficient"
@@ -33,14 +39,13 @@ def _grade_wiki_hits(items: list[dict[str, Any]]) -> str:
 
 
 def _build_retry_queries(state: dict[str, Any]) -> list[str]:
-    """
-    构建当前步骤所需的数据结构或文本内容。
-    
-    参数:
-        state: 工作流状态字典，包含会话上下文与中间结果。
-    
-    返回:
-        返回类型为 `list[str]` 的处理结果。
+    """构建重试查询
+
+    Args:
+        state: 工作流状态
+
+    Returns:
+        去重后的查询列表
     """
     module_name = str(state.get("module_name", "")).strip()
     user_query = str(state.get("user_query", "")).strip()
@@ -53,19 +58,83 @@ def _build_retry_queries(state: dict[str, Any]) -> list[str]:
     return dedupe_normalized_queries(queries)
 
 
-def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
+def _log_retrieval_details(
+    trace_id: str,
+    phase: str,
+    *,
+    input_queries: list[str],
+    top_k: int,
+    hits: list[dict[str, Any]],
+    grade: str,
+) -> None:
+    """记录检索的详细日志
+
+    Args:
+        trace_id: 追踪 ID
+        phase: 阶段（input/output）
+        input_queries: 输入查询列表
+        top_k: TopK 配置
+        hits: 检索结果
+        grade: 质量评级
     """
-    执行`retrieve_wiki` 节点主流程，基于输入状态计算并返回状态增量。
-    
-    参数:
-        service: 工作流服务对象，提供检索、路由、日志与配置能力。
-        state: 工作流状态字典，包含会话上下文与中间结果。
-    
-    返回:
-        返回类型为 `dict[str, Any]` 的处理结果。
+    if phase == "input":
+        logger.info(
+            f"[retrieve_wiki] INPUT | trace_id={trace_id} | "
+            f"queries={input_queries} | top_k={top_k}"
+        )
+    else:
+        # 输出阶段：记录每个 hit 的详细信息
+        hit_summaries = []
+        for i, hit in enumerate(hits[:5], 1):  # 只记录前 5 个
+            path = hit.get("path", "")
+            section = hit.get("section", "")
+            score = hit.get("score", 0.0)
+            content = str(hit.get("content", ""))[:100].replace("\n", " ")
+            hit_summaries.append(
+                f"[{i}] score={score:.4f} | path={path} | section={section} | content={content}..."
+            )
+
+        logger.info(
+            f"[retrieve_wiki] OUTPUT | trace_id={trace_id} | "
+            f"hits={len(hits)} | grade={grade} | "
+            f"scores={[round(h.get('score', 0), 4) for h in hits[:5]]}"
+        )
+
+        # 每个 hit 单独一行详细日志
+        for summary in hit_summaries:
+            logger.info(f"[retrieve_wiki] HIT | trace_id={trace_id} | {summary}")
+
+
+def run_with_retriever(
+    retriever: Any,
+    state: dict[str, Any],
+    trace_fn: Callable[[dict[str, Any], str, str], list[dict[str, str]]] | None = None,
+) -> dict[str, Any]:
+    """执行 Wiki 检索（解耦版本）
+
+    直接接收 retriever 参数，不依赖 service 对象。
+    适用于子图内部调用场景。
+
+    Args:
+        retriever: Wiki 检索器实例
+        state: 工作流状态字典
+        trace_fn: 追踪函数（可选），签名为 (state, node_name, summary) -> node_trace
+
+    Returns:
+        状态增量字典
     """
+    trace_id = state.get("trace_id", "")
     retrieval_plan = state.get("retrieval_plan", {})
+
+    # 构建 node_trace 的辅助函数
+    def build_trace(summary: str) -> list[dict[str, str]]:
+        if trace_fn:
+            return trace_fn(state, "retrieve_wiki", summary)
+        existing_trace = list(state.get("node_trace", []) or [])
+        return existing_trace + [{"node": "retrieve_wiki", "summary": summary}]
+
     if not retrieval_plan.get("enable_wiki", True):
+        logger.info(f"[retrieve_wiki] DISABLED | trace_id={trace_id} | reason=disabled_by_plan")
         return {
             "wiki_hits": [],
             "wiki_retrieval_grade": "disabled",
@@ -76,7 +145,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
                 "strategy": retrieval_plan.get("strategy", "unknown"),
                 "retried": False,
             },
-            "node_trace": service._trace(state, "retrieve_wiki", "disabled_by_plan"),
+            "node_trace": build_trace("disabled_by_plan"),
         }
 
     top_k = int(retrieval_plan.get("wiki_top_k", 4))
@@ -84,13 +153,25 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     retry_max_top_k = env_int("WORKFLOW_WIKI_RETRY_MAX_TOPK", 14, minimum=1)
     retry_min_top1 = env_float("WORKFLOW_WIKI_RETRY_MIN_TOP1", 3.0, minimum=0.0)
 
+    base_queries = list(state.get("retrieval_queries", []))
+
+    # 记录输入日志
+    _log_retrieval_details(
+        trace_id=trace_id,
+        phase="input",
+        input_queries=base_queries,
+        top_k=top_k,
+        hits=[],
+        grade="",
+    )
+
     result = run_with_retry(
         top_k=top_k,
         retry_multiplier=retry_multiplier,
         retry_max_top_k=retry_max_top_k,
-        base_queries=list(state.get("retrieval_queries", [])),
+        base_queries=base_queries,
         retry_queries=_build_retry_queries(state),
-        search=lambda current_top_k, queries: service._wiki_retriever.search(
+        search=lambda current_top_k, queries: retriever.search(
             user_query=state["user_query"],
             retrieval_queries=queries,
             module_name=state["module_name"],
@@ -100,7 +181,26 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         should_retry=lambda first_grade, first_top1: first_grade in {"insufficient", "low"} or first_top1 < retry_min_top1,
     )
 
-    profile = dict(service._wiki_retriever.last_search_profile)
+    # 记录输出日志
+    _log_retrieval_details(
+        trace_id=trace_id,
+        phase="output",
+        input_queries=base_queries,
+        top_k=result.final_top_k,
+        hits=result.final_items,
+        grade=result.final_grade,
+    )
+
+    # 记录重试信息
+    if result.retried:
+        logger.info(
+            f"[retrieve_wiki] RETRY | trace_id={trace_id} | "
+            f"initial_top_k={result.initial_top_k} -> final_top_k={result.final_top_k} | "
+            f"first_grade={result.first_grade} -> final_grade={result.final_grade} | "
+            f"first_top1={result.first_top1:.4f}"
+        )
+
+    profile = dict(retriever.last_search_profile)
     profile.update(
         {
             "latency_ms": result.latency_ms,
@@ -114,16 +214,35 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
             "first_top1": round(result.first_top1, 4),
         }
     )
+
     return {
         "wiki_hits": result.final_items,
         "wiki_retrieval_grade": result.final_grade,
         "wiki_retrieval_profile": profile,
-        "node_trace": service._trace(
-            state,
-            "retrieve_wiki",
-            (
-                f"hits={len(result.final_items)},grade={result.final_grade},"
-                f"retried={result.retried},latency_ms={result.latency_ms}"
-            ),
+        "node_trace": build_trace(
+            f"hits={len(result.final_items)},grade={result.final_grade},"
+            f"retried={result.retried},latency_ms={result.latency_ms}"
         ),
     }
+
+
+def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
+    """执行 Wiki 检索（兼容接口）
+
+    从全局单例获取 retriever，不再依赖 service 传递。
+
+    Args:
+        service: 工作流服务对象，需要提供 _trace 方法
+        state: 工作流状态字典
+
+    Returns:
+        状态增量字典
+    """
+    # 从全局单例获取 retriever
+    from workflow.nodes.retrieval_flow.retrieve_wiki.wiki_retriever import get_wiki_retriever
+
+    return run_with_retriever(
+        retriever=get_wiki_retriever(),
+        state=state,
+        trace_fn=lambda s, n, d: service._trace(s, n, d),
+    )

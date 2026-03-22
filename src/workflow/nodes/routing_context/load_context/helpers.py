@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from workflow.common.domain_profile import DomainProfile
+from domain_profile import DomainProfile
 
 
 def build_history_summary(history: list[dict[str, Any]]) -> str:

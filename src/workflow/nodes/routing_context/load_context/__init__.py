@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from workflow.common.domain_profile import DomainProfile
+from domain_profile import DomainProfile
 from workflow.common.node_trace import append_node_trace
 from workflow.nodes.routing_context.load_context.helpers import (
     extract_module_from_message,

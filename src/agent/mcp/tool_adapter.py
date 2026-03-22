@@ -14,12 +14,17 @@
     # 获取 OpenAI Schema
     schema = adapters[0].get_openai_schema()
 
-    # 调用工具
+    # 调用工具（异步）
     result = await adapters[0].ainvoke({"query": "test"})
+
+    # 调用工具（同步，内部使用线程池包装）
+    result = adapters[0].invoke({"query": "test"})
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from langchain_core.tools import BaseTool, ToolException
@@ -28,6 +33,49 @@ from pydantic import BaseModel, Field, create_model
 from agent.mcp.client import MCPClient, MCPToolInfo
 
 logger = logging.getLogger(__name__)
+
+# 全局线程池，用于同步包装异步 MCP 工具调用
+_mcp_tool_executor: ThreadPoolExecutor | None = None
+
+
+def _get_mcp_tool_executor() -> ThreadPoolExecutor:
+    """获取全局 MCP 工具线程池
+
+    使用单例模式，延迟创建线程池。
+    与 MCPClient 中的 _mcp_executor 分离，避免线程池竞争。
+    """
+    global _mcp_tool_executor
+    if _mcp_tool_executor is None:
+        _mcp_tool_executor = ThreadPoolExecutor(
+            max_workers=4,
+            thread_name_prefix="mcp_tool_sync_"
+        )
+    return _mcp_tool_executor
+
+
+def _run_async_in_thread(coro: Any) -> Any:
+    """在线程池中运行异步协程
+
+    用于在同步上下文中调用异步 MCP 工具。
+    复制自 client.py 的 _run_async 逻辑，避免循环导入。
+
+    Args:
+        coro: 异步协程对象
+
+    Returns:
+        协程执行结果
+    """
+    executor = _get_mcp_tool_executor()
+
+    def run_in_new_loop():
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    future = executor.submit(run_in_new_loop)
+    return future.result()
 
 
 def _schema_to_pydantic_field(
@@ -202,14 +250,26 @@ class MCPToolAdapter(BaseTool):
         return self.get_openai_schema()
 
     def _run(self, *args: Any, **kwargs: Any) -> str:
-        """同步调用（不支持，抛出异常）
+        """同步调用工具
 
-        MCP 工具只支持异步调用。
+        使用线程池包装异步调用，使 MCP 工具可以在同步上下文中使用。
+
+        注意：此方法会阻塞当前线程直到工具调用完成。
+        如果在异步上下文中，建议直接使用 ainvoke()。
+
+        Args:
+            *args: 位置参数（忽略）
+            **kwargs: 工具参数
+
+        Returns:
+            工具调用结果
         """
-        raise NotImplementedError(
-            "MCPToolAdapter only supports async invocation. "
-            "Use ainvoke() instead."
+        logger.debug(
+            f"[MCPToolAdapter] 同步调用工具: {self.name}, args={kwargs}"
         )
+
+        # 使用线程池包装异步调用
+        return _run_async_in_thread(self._arun(*args, **kwargs))
 
     async def _arun(self, *args: Any, **kwargs: Any) -> str:
         """异步调用工具

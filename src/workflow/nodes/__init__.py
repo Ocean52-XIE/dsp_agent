@@ -7,4 +7,5 @@
 - `analysis`: 问答与问题分析节点
 - `control_response`: 控制型响应节点
 - `code_generation_flow`: 代码生成链路节点
+- `agent_loop`: Agent Loop 基础节点（LLM + Skill 调用）
 """

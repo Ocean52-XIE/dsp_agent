@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """Agent 状态定义
 
-参考 v1 WorkflowState 设计，独立实现以支持：
-- 动态工具调用循环
-- Skill 激活状态
-- 工具调用历史
-- Checkpoint 持久化
+简化版本：Agent 只负责 LLM 调用（含问答和工具使用）。
+路由、证据、调试信息由 Workflow 层处理。
+
+保留内容：
+- AgentStatus: Agent 状态枚举（loop.py 和 finalize.py 导入使用）
+- ToolCallRecord: 工具调用记录（loop.py 和 finalize.py 导入使用）
+- AgentState: Agent 输入状态（最小化，仅 4 个字段）
 """
 from dataclasses import dataclass, field
 from enum import Enum
@@ -14,9 +16,11 @@ from typing import Any, TypedDict
 
 
 class AgentStatus(str, Enum):
-    """Agent 状态枚举"""
+    """Agent 状态枚举
+
+    用于追踪 Agent 循环的当前状态。
+    """
     INIT = "init"                     # 初始化
-    ROUTING = "routing"               # 路由中
     RUNNING = "running"               # Agent Loop 运行中
     TOOL_CALLING = "tool_calling"     # 工具调用中
     COMPLETED = "completed"           # 已完成
@@ -48,7 +52,11 @@ class ToolCallRecord:
     timestamp: float = field(default_factory=perf_counter)
 
     def to_dict(self) -> dict[str, Any]:
-        """转换为字典"""
+        """转换为字典
+
+        Returns:
+            包含工具调用信息的字典
+        """
         return {
             "tool_name": self.tool_name,
             "arguments": self.arguments,
@@ -59,198 +67,28 @@ class ToolCallRecord:
         }
 
 
-@dataclass
-class AgentLoopResult:
-    """Agent Loop 执行结果
-
-    Agent 循环完成后的统一输出格式。
-
-    Attributes:
-        success: 是否成功
-        answer: 最终答案
-        tool_calls: 工具调用记录列表
-        steps: 总步数
-        active_skill: 激活的 Skill ID
-        error: 错误信息
-        latency_ms: 总耗时 (毫秒)
-    """
-    success: bool
-    answer: str = ""
-    tool_calls: list[ToolCallRecord] = field(default_factory=list)
-    steps: int = 0
-    active_skill: str | None = None
-    error: str = ""
-    latency_ms: int = 0
-
-    def to_dict(self) -> dict[str, Any]:
-        """转换为字典"""
-        return {
-            "success": self.success,
-            "answer": self.answer,
-            "tool_calls": [tc.to_dict() for tc in self.tool_calls],
-            "steps": self.steps,
-            "active_skill": self.active_skill,
-            "error": self.error,
-            "latency_ms": self.latency_ms,
-        }
-
-
 class AgentState(TypedDict, total=False):
-    """Agent 状态
+    """Agent 状态 - 最小化版本
 
-    参考 v1 WorkflowState 设计，但独立实现以支持 Agent 模式。
+    Agent 只负责 LLM 调用（含问答和工具使用）。
+    路由、证据、调试信息由 Workflow 层处理。
 
-    状态字段分为五类：
-    1. 会话上下文 - 请求级别信息
-    2. Domain Router 结果 - 规则路由决策信息
-    3. Agent Loop 状态 - 循环执行状态
-    4. LLM 决策结果 - LLM 自决策信息
-    5. 输出结果 - 最终输出
-
-    Attributes:
-        # 会话上下文
-        trace_id: 追踪 ID
-        session_id: 会话 ID
-        user_query: 用户查询
-        original_query: 原始查询 (改写前)
-        history: 历史对话
-
-        # Domain Router 结果 (规则层)
-        domain_route: Domain Router 路由类型
-        domain_relevance: 领域相关性分数
-        matched_module: 命中的模块名 (MODULE_ROUTED)
-
-        # Agent Loop 状态
-        status: 当前状态
-        messages: 对话消息列表
-        tool_calls: 工具调用记录
-        current_step: 当前步数
-        is_complete: 是否完成
-
-        # LLM 决策结果 (LLM 层，由 Agent Loop 填充)
-        route: LLM 决定的路由目标
-        active_skill_id: 激活的 Skill ID
+    保留字段（4个）：
+        trace_id: 追踪 ID（日志用）
+        user_query: 用户提示词（已构建）
+        history: 对话历史
         tool_whitelist: 可用工具白名单
 
-        # 输出结果
-        answer: 最终答案
-        citations: 引用列表
-        debug_info: 调试信息
+    设计说明：
+        - 所有字段都是可选的（total=False）
+        - AgentLoop 使用 state.get() 方式读取，兼容空值
+        - 循环内部状态（messages, tool_calls 等）由 AgentLoop 内部管理
+        - 输出通过 AgentLoopResult（定义在 loop.py）返回
     """
-    # 会话上下文
-    trace_id: str
-    session_id: str
-    user_query: str
-    original_query: str
-    history: list[dict[str, Any]]
+    # 必需输入
+    trace_id: str              # 追踪 ID（日志用）
+    user_query: str            # 用户提示词（已构建）
+    history: list[dict[str, Any]]  # 对话历史
 
-    # Domain Router 结果 (规则层)
-    domain_route: str
-    domain_relevance: float
-    matched_module: str | None
-
-    # Agent Loop 状态
-    status: str
-    messages: list[dict[str, Any]]
-    tool_calls: list[dict[str, Any]]
-    current_step: int
-    is_complete: bool
-
-    # LLM 决策结果 (LLM 层)
-    route: str
-    active_skill_id: str | None
-    tool_whitelist: list[str]
-
-    # 输出结果
-    answer: str
-    citations: list[dict[str, Any]]
-    debug_info: dict[str, Any]
-
-
-def create_initial_state(
-    trace_id: str,
-    session_id: str,
-    user_query: str,
-    history: list[dict[str, Any]] | None = None,
-) -> AgentState:
-    """创建初始 Agent 状态
-
-    Args:
-        trace_id: 追踪 ID
-        session_id: 会话 ID
-        user_query: 用户查询
-        history: 历史对话
-
-    Returns:
-        初始化的 AgentState
-    """
-    return AgentState(
-        # 会话上下文
-        trace_id=trace_id,
-        session_id=session_id,
-        user_query=user_query.strip(),
-        original_query=user_query.strip(),
-        history=history or [],
-
-        # Domain Router 结果 (默认值)
-        domain_route="",
-        domain_relevance=0.0,
-        matched_module=None,
-
-        # Agent Loop 状态
-        status=AgentStatus.INIT.value,
-        messages=[],
-        tool_calls=[],
-        current_step=0,
-        is_complete=False,
-
-        # LLM 决策结果 (默认值，由 Agent Loop 填充)
-        route="",
-        active_skill_id=None,
-        tool_whitelist=[],
-
-        # 输出结果
-        answer="",
-        citations=[],
-        debug_info={},
-    )
-
-
-def state_add_message(
-    state: AgentState,
-    role: str,
-    content: str,
-    tool_calls: list[dict[str, Any]] | None = None,
-    tool_call_id: str | None = None,
-) -> None:
-    """向状态添加消息
-
-    Args:
-        state: Agent 状态
-        role: 角色 (user/assistant/tool)
-        content: 内容
-        tool_calls: 工具调用 (assistant 角色时)
-        tool_call_id: 工具调用 ID (tool 角色时)
-    """
-    message: dict[str, Any] = {"role": role, "content": content}
-
-    if tool_calls:
-        message["tool_calls"] = tool_calls
-
-    if tool_call_id:
-        message["tool_call_id"] = tool_call_id
-
-    state["messages"].append(message)
-
-
-def state_add_tool_call(
-    state: AgentState,
-    record: ToolCallRecord,
-) -> None:
-    """向状态添加工具调用记录
-
-    Args:
-        state: Agent 状态
-        record: 工具调用记录
-    """
-    state["tool_calls"].append(record.to_dict())
+    # 可选配置
+    tool_whitelist: list[str]  # 可用工具白名单

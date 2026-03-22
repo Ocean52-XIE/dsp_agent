@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 该模块实现工作流节点`retrieve_code` 的处理逻辑，负责读取状态并输出增量结果。
+
+简化版检索策略：
+    - BM25：词项精确匹配（RRF 归一化）
+    - Embedding：语义向量匹配（RRF 归一化）
+    - Pattern：精确标识符匹配
+
+已移除的冗余路径：
+    - TFIDF：与 BM25 功能重复
+    - Ensemble：BM25+TFIDF 的融合，已移除
+    - RG (ripgrep)：外部依赖，已移除
 """
 from __future__ import annotations
 
@@ -10,47 +20,46 @@ from pathlib import Path
 from time import perf_counter
 import ast
 import hashlib
-import json
+import logging
 import os
 import re
-import shutil
-import subprocess
 from typing import Any, Iterator
 
-from langchain_community.retrievers import BM25Retriever, TFIDFRetriever
+from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
-
-from workflow.retrievers import WeightedFusionRetriever
-from workflow.common.runtime_logging import get_file_logger
+from log import get_file_logger
 from workflow.common.func_utils import env_bool, env_float, env_int
-from workflow.common.domain_profile import RerankerProfile
+from domain_profile import RerankerProfile, EmbeddingProfile
+
+# 模块级日志器
+logger = logging.getLogger(__name__)
 
 
-RG_STRATEGIES = {"rg_first", "rg_only", "no_rg"}
-
-
-def _resolve_rg_strategy(raw_value: str | None, *, default: str) -> str:
-    """
-    内部辅助函数，负责`resolve rg strategy` 相关处理。
-    
-    参数:
-        raw_value: 输入参数，用于控制当前处理逻辑。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
-    """
-    normalized = str(raw_value or "").strip().lower()
-    if normalized in RG_STRATEGIES:
-        return normalized
-    if default in RG_STRATEGIES:
-        return default
-    return "rg_first"
-
+# ==============================================================================
+# 数据类定义
+# ==============================================================================
 
 @dataclass
 class CodeParentChunk:
     """
-    定义`CodeParentChunk`，用于封装相关数据结构与处理行为。
+    代码父块（符号级别）
+
+    父块代表一个完整的符号（函数、类、方法等），用于提供符号级别的上下文，
+    在最终结果展示时使用。
+
+    Attributes:
+        parent_id: 父块唯一标识（基于路径和符号名生成的哈希）
+        source_path: 源文件路径
+        language: 编程语言
+        chunk_type: 类型（function/class/method/file）
+        symbol_name: 符号名称（函数名/类名）
+        signature: 函数签名（包含参数和返回类型）
+        start_line: 起始行号
+        end_line: 结束行号
+        content: 完整内容（符号的全部代码）
+        normalized_text: 归一化文本（用于检索）
+        normalized_path: 归一化路径（小写、统一分隔符）
+        normalized_symbol: 归一化符号名（小写）
     """
     parent_id: str
     source_path: Path
@@ -69,7 +78,25 @@ class CodeParentChunk:
 @dataclass
 class CodeChildChunk:
     """
-    定义`CodeChildChunk`，用于封装相关数据结构与处理行为。
+    代码子块（滑动窗口）
+
+    子块是父块的细分，使用滑动窗口方式生成，提供细粒度检索，
+    提高召回精度。每个子块约 36 行，重叠 8 行。
+
+    Attributes:
+        child_id: 子块唯一标识（基于父块 ID 和行号范围生成）
+        parent_id: 关联的父块 ID
+        source_path: 源文件路径
+        language: 编程语言
+        chunk_type: 类型
+        symbol_name: 符号名称
+        signature: 函数签名
+        start_line: 起始行号
+        end_line: 结束行号
+        content: 内容（约 36 行）
+        normalized_text: 归一化文本（用于检索）
+        normalized_path: 归一化路径
+        normalized_symbol: 归一化符号名
     """
     child_id: str
     parent_id: str
@@ -86,67 +113,89 @@ class CodeChildChunk:
     normalized_symbol: str
 
 
+# ==============================================================================
+# 配置类定义
+# ==============================================================================
+
 @dataclass
 class CodeRetrieverRuntimeConfig:
     """
-    定义`CodeRetrieverRuntimeConfig`，用于封装相关数据结构与处理行为。
+    Code 检索器运行时配置（简化版）
+
+    简化后的检索策略：BM25 + Embedding + Pattern
+    移除了 TFIDF、Ensemble、RG 等冗余路径
+
+    分数归一化：
+        所有检索路径统一使用 RRF(k=60) 归一化，确保分数在 [0, 1] 范围内。
+
+    Attributes:
+        default_top_k: 默认返回结果数
+        max_child_candidates: 最大子块候选数
+        max_results_per_path: 每个路径最大结果数
+        bm25_weight: BM25 检索权重（RRF 归一化后）
+        pattern_weight: 模式匹配权重
+        parent_best_pattern_weight: 父块最佳模式权重
+        parent_avg_pattern_weight: 父块平均模式权重
+        min_final_score: 最低最终分数阈值
+        grade_high_top1_threshold: 高质量评级 Top1 阈值
+        grade_medium_top1_threshold: 中等质量评级 Top1 阈值
+        enable_embedding: 是否启用向量检索
+        embedding_model: 向量模型名称
+        embedding_device: 向量模型运行设备
+        embedding_top_k: 向量检索返回数量
+        embedding_persist_root: 向量索引持久化目录
+        embedding_weight: 向量检索权重
     """
     default_top_k: int = 4
     max_child_candidates: int = 64
     max_results_per_path: int = 2
-    semantic_weight: float = 4.0
-    pattern_weight: float = 1.6
-    parent_best_pattern_weight: float = 0.9
-    parent_avg_pattern_weight: float = 0.35
-    min_final_score: float = 0.25
-    grade_high_top1_threshold: float = 8.0
-    grade_medium_top1_threshold: float = 4.0
-    rg_strategy: str = "rg_first"
-    rg_max_terms: int = 10
-    rg_timeout_ms: int = 1200
-    rg_path_boost: float = 1.0
-    rg_line_boost: float = 2.2
-    rg_max_matches_per_term: int = 120
-    rg_max_lines_per_path: int = 40
+
+    # BM25 检索权重（RRF 分数 [0,1]）
+    bm25_weight: float = 0.35
+
+    # 模式匹配权重
+    pattern_weight: float = 0.20
+    parent_best_pattern_weight: float = 0.15
+    parent_avg_pattern_weight: float = 0.08
+
+    # 质量评级阈值
+    min_final_score: float = 0.30
+    grade_high_top1_threshold: float = 0.85
+    grade_medium_top1_threshold: float = 0.55
+
+    # 向量检索配置
+    enable_embedding: bool = True
+    embedding_model: str = "BAAI/bge-base-zh-v1.5"
+    embedding_device: str = "cpu"
+    embedding_top_k: int = 4
+    embedding_persist_root: str = ".vectorstore_code"
+    embedding_weight: float = 0.40
+
+    # RRF 常量：k=60 是信息检索领域验证的标准参数
+    RRF_K: int = 60
 
     @classmethod
     def from_env(cls) -> "CodeRetrieverRuntimeConfig":
-        """
-        执行`from env` 相关处理逻辑。
-        
-        参数:
-            cls: 当前类对象。
-        
-        返回:
-            返回类型为 `'CodeRetrieverRuntimeConfig'` 的处理结果。
-        """
-        legacy_flag = os.getenv("WORKFLOW_CODE_RG_FIRST_ENABLED")
-        if legacy_flag is None:
-            default_strategy = "rg_first"
-        else:
-            default_strategy = "rg_first" if env_bool("WORKFLOW_CODE_RG_FIRST_ENABLED", True) else "no_rg"
-        strategy = _resolve_rg_strategy(
-            os.getenv("WORKFLOW_CODE_RG_STRATEGY"),
-            default=default_strategy,
-        )
+        """从环境变量加载配置"""
         return cls(
             default_top_k=env_int("WORKFLOW_CODE_RETRIEVER_TOP_K", 4, minimum=1),
             max_child_candidates=env_int("WORKFLOW_CODE_RETRIEVER_MAX_CHILD_CANDIDATES", 64, minimum=8),
             max_results_per_path=env_int("WORKFLOW_CODE_RETRIEVER_MAX_PER_PATH", 2, minimum=1),
-            semantic_weight=env_float("WORKFLOW_CODE_RETRIEVER_SEMANTIC_WEIGHT", 4.0, minimum=0.0),
-            pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PATTERN_WEIGHT", 1.6, minimum=0.0),
-            parent_best_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_BEST_PATTERN_WEIGHT", 0.9, minimum=0.0),
-            parent_avg_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_AVG_PATTERN_WEIGHT", 0.35, minimum=0.0),
-            min_final_score=env_float("WORKFLOW_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.25, minimum=0.0),
-            grade_high_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 8.0, minimum=0.0),
-            grade_medium_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 4.0, minimum=0.0),
-            rg_strategy=strategy,
-            rg_max_terms=env_int("WORKFLOW_CODE_RG_MAX_TERMS", 10, minimum=1),
-            rg_timeout_ms=env_int("WORKFLOW_CODE_RG_TIMEOUT_MS", 1200, minimum=100),
-            rg_path_boost=env_float("WORKFLOW_CODE_RG_PATH_BOOST", 1.0, minimum=0.0),
-            rg_line_boost=env_float("WORKFLOW_CODE_RG_LINE_BOOST", 2.2, minimum=0.0),
-            rg_max_matches_per_term=env_int("WORKFLOW_CODE_RG_MAX_MATCHES_PER_TERM", 120, minimum=1),
-            rg_max_lines_per_path=env_int("WORKFLOW_CODE_RG_MAX_LINES_PER_PATH", 40, minimum=1),
+            # RRF 归一化后的权重（范围 [0, 1]）
+            bm25_weight=env_float("WORKFLOW_CODE_RETRIEVER_BM25_WEIGHT", 0.35, minimum=0.0),
+            pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PATTERN_WEIGHT", 0.20, minimum=0.0),
+            parent_best_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_BEST_PATTERN_WEIGHT", 0.15, minimum=0.0),
+            parent_avg_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_AVG_PATTERN_WEIGHT", 0.08, minimum=0.0),
+            min_final_score=env_float("WORKFLOW_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.30, minimum=0.0),
+            grade_high_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 0.85, minimum=0.0),
+            grade_medium_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 0.55, minimum=0.0),
+            # 向量检索配置
+            enable_embedding=env_bool("WORKFLOW_CODE_EMBEDDING_ENABLED", True),
+            embedding_model=os.getenv("WORKFLOW_CODE_EMBEDDING_MODEL", "BAAI/bge-base-zh-v1.5"),
+            embedding_device=os.getenv("WORKFLOW_CODE_EMBEDDING_DEVICE", "cpu"),
+            embedding_top_k=env_int("WORKFLOW_CODE_EMBEDDING_TOP_K", 4, minimum=1),
+            embedding_persist_root=os.getenv("WORKFLOW_CODE_EMBEDDING_PERSIST_ROOT", ".vectorstore_code"),
+            embedding_weight=env_float("WORKFLOW_CODE_EMBEDDING_WEIGHT", 0.40, minimum=0.0),
         )
 
 
@@ -170,6 +219,7 @@ class LocalCodeRetriever:
         default_top_k: int = 4,
         runtime_config: CodeRetrieverRuntimeConfig | None = None,
         reranker_profile: RerankerProfile | None = None,
+        embedding_profile: "EmbeddingProfile | None" = None,
     ) -> None:
         """
         初始化代码检索器。
@@ -180,6 +230,7 @@ class LocalCodeRetriever:
             default_top_k: 默认返回结果数
             runtime_config: 运行时配置
             reranker_profile: Cross-Encoder 重排器配置
+            embedding_profile: Embedding 向量检索配置（可选）
         """
         self.project_root = project_root
         self._logger = get_file_logger(project_root=project_root)
@@ -198,17 +249,19 @@ class LocalCodeRetriever:
         self._child_chunks: list[CodeChildChunk] = []
         self._child_by_id: dict[str, CodeChildChunk] = {}
         self._child_docs: list[Document] = []
+        self._semantic_docs: list[Document] = []  # 语义化文档（用于 Embedding 检索）
         self._children_by_path: defaultdict[str, list[CodeChildChunk]] = defaultdict(list)
         self._symbol_index: dict[str, set[str]] = defaultdict(set)
         self._path_token_index: dict[str, set[str]] = defaultdict(set)
         self.last_search_profile: dict[str, Any] = {}
         self._index_read_error_count = 0
-        self._rg_executable = shutil.which("rg") if self.runtime_config.rg_strategy != "no_rg" else None
-        self._rg_unavailable_warned = False
 
         self._bm25: BM25Retriever | None = None
-        self._tfidf: TFIDFRetriever | None = None
-        self._ensemble: WeightedFusionRetriever | None = None
+        # 移除 TFIDF、Ensemble（与 BM25 功能重复）和 RG（外部依赖）
+
+        # Embedding 向量检索器（可选）
+        self._embedding_retriever: Any = None
+        self._embedding_profile = embedding_profile
 
         # Cross-Encoder 重排器（可选）
         self._reranker: Any = None
@@ -226,15 +279,6 @@ class LocalCodeRetriever:
             read_error_count=self._index_read_error_count,
             latency_ms=int((perf_counter() - started_at) * 1000),
         )
-        self._logger.info(
-            "workflow.code_rg.status",
-            strategy=self.runtime_config.rg_strategy,
-            enabled=self.runtime_config.rg_strategy != "no_rg",
-            available=bool(self._rg_executable),
-            executable=self._rg_executable or "",
-        )
-        if self.runtime_config.rg_strategy in {"rg_first", "rg_only"} and self._rg_executable is None:
-            self._warn_rg_unavailable("rg is unavailable; retrieve_code falls back to BM25/TFIDF only.")
 
         # 初始化 Cross-Encoder 重排器（可选）
         if self._reranker_profile and self._reranker_profile.enabled and not self._reranker:
@@ -247,6 +291,17 @@ class LocalCodeRetriever:
             model=self._reranker_profile.model if self._reranker_profile else None,
         )
 
+        # 初始化 Embedding 向量检索器（可选）
+        if self._embedding_profile and self._embedding_profile.enabled and not self._embedding_retriever:
+            self._init_embedding_retriever()
+
+        # 记录 Embedding 检索器状态
+        self._logger.info(
+            "workflow.code_embedding.status",
+            enabled=self._embedding_retriever is not None,
+            model=self._embedding_profile.model if self._embedding_profile else None,
+        )
+
     def _init_reranker(self) -> None:
         """初始化 Cross-Encoder 重排器。
 
@@ -257,7 +312,7 @@ class LocalCodeRetriever:
             return
 
         try:
-            from workflow.retrievers.cross_encoder_reranker import (
+            from retrievers.cross_encoder_reranker import (
                 CrossEncoderReranker,
                 CrossEncoderRerankerConfig,
             )
@@ -288,6 +343,231 @@ class LocalCodeRetriever:
             )
             self._reranker = None
 
+    def _init_embedding_retriever(self) -> None:
+        """初始化 Embedding 向量检索器。
+
+        该方法为代码块生成语义化文本，并构建向量索引。
+        语义化文本包含：符号名、签名、注释摘要、关键代码片段。
+        """
+        if not self._embedding_profile or not self._embedding_profile.enabled:
+            return
+
+        if not self._child_chunks:
+            self._logger.warning(
+                "workflow.code_embedding.no_chunks",
+                message="没有代码块，跳过 Embedding 检索器初始化",
+            )
+            return
+
+        try:
+            from retrievers import EmbeddingRetriever, EmbeddingRetrieverConfig
+
+            # 为每个子块生成语义化文本
+            self._semantic_docs = []
+            for child in self._child_chunks:
+                semantic_text = self._build_semantic_text(child)
+                if not semantic_text.strip():
+                    continue
+                self._semantic_docs.append(
+                    Document(
+                        page_content=semantic_text,
+                        metadata={
+                            "child_id": child.child_id,
+                            "parent_id": child.parent_id,
+                            "path": self._to_relative_path(child.source_path),
+                            "symbol_name": child.symbol_name,
+                            "chunk_type": child.chunk_type,
+                            "language": child.language,
+                        },
+                    )
+                )
+
+            if not self._semantic_docs:
+                self._logger.warning(
+                    "workflow.code_embedding.no_semantic_docs",
+                    message="没有生成语义化文档，跳过 Embedding 检索器初始化",
+                )
+                return
+
+            # 创建 Embedding 检索器配置
+            config = EmbeddingRetrieverConfig.from_profile(
+                profile=self._embedding_profile,
+                collection_name="code_semantic",
+                persist_root=self._embedding_profile.persist_root,
+            )
+
+            # 初始化 Embedding 检索器
+            self._embedding_retriever = EmbeddingRetriever(
+                project_root=self.project_root,
+                config=config,
+            )
+            index_stats = self._embedding_retriever.initialize(self._semantic_docs)
+
+            self._logger.info(
+                "workflow.code_embedding.initialized",
+                model=self._embedding_profile.model,
+                doc_count=index_stats.get("doc_count", 0),
+                persist_dir=index_stats.get("persist_dir", "memory"),
+            )
+
+            # 控制台输出，方便验证
+            print(f"[CodeEmbedding] 向量检索器初始化完成: {len(self._semantic_docs)} 个代码块")
+
+        except ImportError as e:
+            self._logger.warning(
+                "workflow.code_embedding.import_error",
+                error=str(e),
+                message="EmbeddingRetriever 未安装，跳过向量检索器初始化",
+            )
+            self._embedding_retriever = None
+        except Exception as e:
+            self._logger.error(
+                "workflow.code_embedding.init_error",
+                error=str(e),
+            )
+            self._embedding_retriever = None
+
+    def _build_semantic_text(self, child: CodeChildChunk) -> str:
+        """为代码块生成语义化文本，用于向量检索。
+
+        语义化文本包含多个维度的信息，以便于语义匹配：
+        1. 符号类型和名称（如 "函数 get_user_info"）
+        2. 签名信息（如 "def get_user_info(db: Session, user_id: int) -> User"）
+        3. 提取的注释摘要
+        4. 关键代码片段（去除重复的样板代码）
+
+        参数:
+            child: 代码子块
+
+        返回:
+            语义化文本字符串
+        """
+        parts: list[str] = []
+
+        # 1. 符号类型和名称
+        type_map = {
+            "function": "函数",
+            "class": "类",
+            "method": "方法",
+            "file": "文件",
+        }
+        symbol_type = type_map.get(child.chunk_type, child.chunk_type)
+        parts.append(f"{symbol_type} {child.symbol_name}")
+
+        # 2. 签名信息
+        if child.signature and child.signature != child.symbol_name:
+            parts.append(child.signature)
+
+        # 3. 提取注释摘要
+        comments = self._extract_comments(child.content, child.language)
+        if comments:
+            parts.append(comments)
+
+        # 4. 关键代码片段（前 300 字符，去除过长行）
+        content_preview = self._extract_key_code(child.content)
+        if content_preview:
+            parts.append(content_preview)
+
+        # 5. 添加路径信息（帮助理解上下文）
+        relative_path = self._to_relative_path(child.source_path)
+        parts.append(f"文件路径: {relative_path}")
+
+        return " ".join(parts)
+
+    def _extract_comments(self, content: str, language: str) -> str:
+        """从代码中提取注释摘要。
+
+        参数:
+            content: 代码内容
+            language: 编程语言
+
+        返回:
+            注释摘要字符串
+        """
+        comments: list[str] = []
+
+        if language == "python":
+            # Python: 提取 docstring 和 # 注释
+            # 提取三引号 docstring
+            docstring_patterns = [
+                r'"""([\s\S]*?)"""',
+                r"'''([\s\S]*?)'''",
+            ]
+            for pattern in docstring_patterns:
+                matches = re.findall(pattern, content)
+                for match in matches:
+                    cleaned = match.strip()
+                    if cleaned and len(cleaned) > 10:
+                        comments.append(cleaned[:200])
+
+            # 提取 # 注释
+            for line in content.split("\n"):
+                if "#" in line:
+                    comment = line.split("#", 1)[1].strip()
+                    if comment and len(comment) > 5:
+                        comments.append(comment[:100])
+
+        else:
+            # 通用: 提取 // 和 /* */ 注释
+            # 单行注释
+            for line in content.split("\n"):
+                if "//" in line:
+                    comment = line.split("//", 1)[1].strip()
+                    if comment and len(comment) > 5:
+                        comments.append(comment[:100])
+
+            # 多行注释
+            block_comments = re.findall(r"/\*([\s\S]*?)\*/", content)
+            for match in block_comments:
+                cleaned = match.strip()
+                if cleaned and len(cleaned) > 10:
+                    comments.append(cleaned[:200])
+
+        # 合并注释，限制总长度
+        if not comments:
+            return ""
+
+        merged = " ".join(comments[:5])  # 最多取前 5 条注释
+        return merged[:500] if len(merged) > 500 else merged
+
+    def _extract_key_code(self, content: str) -> str:
+        """提取关键代码片段。
+
+        去除过长的行，保留核心代码逻辑。
+
+        参数:
+            content: 代码内容
+
+        返回:
+            关键代码片段
+        """
+        lines = content.split("\n")
+        key_lines: list[str] = []
+
+        for line in lines:
+            # 去除空行和过长的行
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if len(stripped) > 120:
+                # 过长的行截断
+                stripped = stripped[:120] + "..."
+
+            # 保留有意义的代码行
+            # 跳过纯 import 语句、纯 pass、纯 ...
+            if stripped.startswith(("import ", "from ")) and len(key_lines) > 0:
+                continue
+            if stripped in ("pass", "...", "break", "continue"):
+                continue
+
+            key_lines.append(stripped)
+
+            # 限制行数
+            if len(key_lines) >= 15:
+                break
+
+        return " ".join(key_lines)[:300]
+
     def search(self, *, user_query: str, retrieval_queries: list[str] | None = None, module_name: str | None = None, top_k: int | None = None) -> list[dict[str, Any]]:
         """
         执行`search` 相关处理逻辑。
@@ -300,10 +580,9 @@ class LocalCodeRetriever:
         """
         started = perf_counter()
         query = user_query.strip()
-        rg_strategy = self.runtime_config.rg_strategy
-        use_rg = rg_strategy in {"rg_first", "rg_only"}
-        use_semantic = rg_strategy in {"rg_first", "no_rg"}
-        if not query or not self._child_chunks or (use_semantic and (self._bm25 is None or self._tfidf is None or self._ensemble is None)):
+
+        # 简化后只使用 BM25 + Embedding（移除 TFIDF/Ensemble/RG）
+        if not query or not self._child_chunks or self._bm25 is None:
             self.last_search_profile = {"latency_ms": round((perf_counter() - started) * 1000, 3)}
             return []
 
@@ -311,60 +590,46 @@ class LocalCodeRetriever:
         merged_query = " ".join([*query_phrases, module_name or ""]).strip()
         patterns = self._extract_patterns(merged_query)
         module_tokens = {tok for tok in re.split(r"[._\-/\s]+", self._normalize(module_name or "")) if len(tok) >= 2}
-        rg_terms = self._build_rg_terms(patterns=patterns, module_tokens=module_tokens) if use_rg else []
-        rg_path_hits, rg_line_hits_by_path, rg_profile = self._run_rg_line_hits(terms=rg_terms)
-        rg_path_boost_by_child: dict[str, float] = {}
-        rg_line_boost_by_child: dict[str, float] = {}
-        rg_candidate_child_ids: list[str] = []
-        for path, hit_count in rg_path_hits.items():
-            children = self._children_by_path.get(path, [])
-            if not children:
-                continue
-            path_boost = min(
-                self.runtime_config.rg_path_boost * (1.0 + 0.2 * max(hit_count - 1, 0)),
-                self.runtime_config.rg_path_boost * 2.5,
-            )
-            path_lines = set(rg_line_hits_by_path.get(path, []))
-            path_candidates = 0
-            for child in children:
-                rg_path_boost_by_child[child.child_id] = max(rg_path_boost_by_child.get(child.child_id, 0.0), path_boost)
-                line_hit_count = 0
-                for line_no in path_lines:
-                    if child.start_line <= line_no <= child.end_line:
-                        line_hit_count += 1
-                if line_hit_count > 0:
-                    line_boost = min(
-                        self.runtime_config.rg_line_boost * line_hit_count,
-                        self.runtime_config.rg_line_boost * 3.0,
-                    )
-                    rg_line_boost_by_child[child.child_id] = max(rg_line_boost_by_child.get(child.child_id, 0.0), line_boost)
-                    rg_candidate_child_ids.append(child.child_id)
-                    continue
-                if path_candidates < 2:
-                    rg_candidate_child_ids.append(child.child_id)
-                    path_candidates += 1
 
         candidate_k = max(self.runtime_config.max_child_candidates, (top_k or self.runtime_config.default_top_k) * 8)
         bm25_docs: list[Document] = []
-        tfidf_docs: list[Document] = []
-        ens_docs: list[Document] = []
-        if use_semantic:
-            assert self._bm25 is not None and self._tfidf is not None and self._ensemble is not None
-            self._bm25.k = candidate_k
-            self._tfidf.k = candidate_k
-            bm25_docs = self._bm25.invoke(merged_query)
-            tfidf_docs = self._tfidf.invoke(merged_query)
-            ens_docs = self._ensemble.invoke(merged_query)
+        embedding_docs: list[Document] = []
+
+        # BM25 检索
+        self._bm25.k = candidate_k
+        bm25_docs = self._bm25.invoke(merged_query)
+
+        # Embedding 向量检索
+        embedding_start = perf_counter()
+        if self._embedding_retriever and self._embedding_retriever.is_initialized:
+            try:
+                embedding_results = self._embedding_retriever.search_with_scores(
+                    merged_query,
+                    top_k=candidate_k,
+                )
+                for doc, score in embedding_results:
+                    child_id = str(doc.metadata.get("child_id", ""))
+                    if child_id:
+                        embedding_docs.append(doc)
+                self._logger.debug(
+                    "workflow.code_embedding.search",
+                    query_preview=merged_query[:50],
+                    hits=len(embedding_docs),
+                    latency_ms=round((perf_counter() - embedding_start) * 1000, 2),
+                )
+            except Exception as e:
+                self._logger.warning(
+                    "workflow.code_embedding.search_error",
+                    error=str(e),
+                    query_preview=merged_query[:50],
+                )
 
         bm25_rank = self._rank_map(bm25_docs)
-        tfidf_rank = self._rank_map(tfidf_docs)
-        ens_rank = self._rank_map(ens_docs)
+        embedding_rank = self._rank_map(embedding_docs)
 
         candidate_child_ids = list(dict.fromkeys([
-            *(rg_candidate_child_ids if rg_strategy in {"rg_first", "rg_only"} else []),
-            *[str(doc.metadata.get("child_id", "")) for doc in ens_docs],
             *[str(doc.metadata.get("child_id", "")) for doc in bm25_docs],
-            *[str(doc.metadata.get("child_id", "")) for doc in tfidf_docs],
+            *[str(doc.metadata.get("child_id", "")) for doc in embedding_docs],
         ]))[: self.runtime_config.max_child_candidates]
 
         scored_children: list[dict[str, Any]] = []
@@ -374,19 +639,25 @@ class LocalCodeRetriever:
                 continue
             lexical, matched_terms = self._score_lexical(child, patterns)
             if module_tokens and any(tok in child.normalized_path for tok in module_tokens):
-                lexical += 0.8
+                lexical += 0.15
             pattern_score, matched_patterns = self._score_pattern(child, patterns)
-            rg_path_boost = rg_path_boost_by_child.get(child_id, 0.0)
-            rg_line_boost = rg_line_boost_by_child.get(child_id, 0.0)
-            score = lexical
-            if use_semantic:
-                score += self._rank_score(bm25_rank.get(child_id)) * 0.6
-                score += self._rank_score(max(tfidf_rank.get(child_id, 10**9), ens_rank.get(child_id, 10**9))) * self.runtime_config.semantic_weight
-                score += pattern_score * self.runtime_config.pattern_weight
-            if rg_strategy == "rg_first":
-                score += rg_path_boost + rg_line_boost
-            elif rg_strategy == "rg_only":
-                score = rg_path_boost * 1.4 + rg_line_boost * 1.2 + lexical * 0.7 + pattern_score * 0.8
+
+            # 计算各路检索分数（RRF 归一化，范围 [0, 1]）
+            bm25_score = self._rank_score(bm25_rank.get(child_id))
+            embedding_score = self._rank_score(embedding_rank.get(child_id))
+
+            # 简化后的混合评分公式
+            # lexical [0,1] + bm25 [0,1] + embedding [0,1] + pattern [0,1]
+            score = lexical * 0.20
+            if embedding_rank:
+                # 有 Embedding 时
+                score += bm25_score * 0.35
+                score += embedding_score * self.runtime_config.embedding_weight
+            else:
+                # 无 Embedding 时
+                score += bm25_score * 0.70
+            score += pattern_score * self.runtime_config.pattern_weight
+
             if score < self.runtime_config.min_final_score:
                 continue
             scored_children.append(
@@ -396,9 +667,10 @@ class LocalCodeRetriever:
                     "pattern_score": pattern_score,
                     "matched_terms": matched_terms,
                     "matched_patterns": matched_patterns,
-                    "rg_path_boost": rg_path_boost,
-                    "rg_line_boost": rg_line_boost,
-                    "rg_strategy": rg_strategy,
+                    # 各路检索分数（用于调试）
+                    "bm25_score": bm25_score,
+                    "embedding_score": embedding_score,
+                    "lexical_score": lexical,
                 }
             )
 
@@ -421,8 +693,6 @@ class LocalCodeRetriever:
                     "matched_terms": set(),
                     "matched_patterns": set(),
                     "hit_count": 0,
-                    "best_rg_path_boost": item["rg_path_boost"],
-                    "best_rg_line_boost": item["rg_line_boost"],
                 },
             )
             bucket["scores"].append(item["score"])
@@ -435,14 +705,11 @@ class LocalCodeRetriever:
                 bucket["best_child_score"] = item["score"]
             if item["pattern_score"] > bucket["best_pattern_score"]:
                 bucket["best_pattern_score"] = item["pattern_score"]
-            bucket["best_rg_path_boost"] = max(bucket["best_rg_path_boost"], item["rg_path_boost"])
-            bucket["best_rg_line_boost"] = max(bucket["best_rg_line_boost"], item["rg_line_boost"])
 
         parent_items: list[dict[str, Any]] = []
         for bucket in parent_buckets.values():
             top_scores = sorted(bucket["scores"], reverse=True)[:2]
             top_pattern = sorted(bucket["pattern_scores"], reverse=True)[:2]
-            parent_path = self._to_relative_path(bucket["parent"].source_path)
             final_score = bucket["best_child_score"] + (sum(top_scores) / max(len(top_scores), 1)) * 0.25
             final_score += bucket["best_pattern_score"] * self.runtime_config.parent_best_pattern_weight
             final_score += (sum(top_pattern) / max(len(top_pattern), 1)) * self.runtime_config.parent_avg_pattern_weight
@@ -456,10 +723,6 @@ class LocalCodeRetriever:
                     "matched_terms": sorted(bucket["matched_terms"], key=len, reverse=True),
                     "matched_patterns": sorted(bucket["matched_patterns"], key=len, reverse=True),
                     "hit_count": bucket["hit_count"],
-                    "rg_path_boost": bucket["best_rg_path_boost"],
-                    "rg_line_boost": bucket["best_rg_line_boost"],
-                    "rg_path_hits": int(rg_path_hits.get(parent_path, 0)),
-                    "rg_strategy": rg_strategy,
                 }
             )
         parent_items.sort(key=lambda item: (item["final_score"], item["best_pattern_score"]), reverse=True)
@@ -490,6 +753,7 @@ class LocalCodeRetriever:
                     "excerpt": excerpt["excerpt_text"],
                     "excerpt_lines": excerpt["excerpt_lines"],
                     "highlight_lines": excerpt["highlight_lines"],
+                    "content": best_child.content,  # 始终包含完整内容，供下游节点使用
                     "section": f"{parent.chunk_type}:{parent.symbol_name or 'file'}",
                     "language": parent.language,
                     "chunk_type": parent.chunk_type,
@@ -503,10 +767,6 @@ class LocalCodeRetriever:
                         "matched_patterns": item["matched_patterns"][:8],
                         "parent_hit_count": item["hit_count"],
                         "pattern_score": round(float(item["best_pattern_score"]), 4),
-                        "rg_path_boost": round(float(item["rg_path_boost"]), 4),
-                        "rg_line_boost": round(float(item["rg_line_boost"]), 4),
-                        "rg_path_hits": int(item["rg_path_hits"]),
-                        "rg_strategy": str(item["rg_strategy"]),
                     },
                 }
             )
@@ -516,11 +776,16 @@ class LocalCodeRetriever:
             "child_candidates": len(scored_children),
             "parent_candidates": len(parent_items),
             "selected_count": len(hits),
-            "rg_strategy": rg_strategy,
-            "rg": {
-                **rg_profile,
-                "matched_paths": len(rg_path_hits),
-                "matched_children": len(rg_candidate_child_ids),
+            # BM25 检索状态
+            "bm25": {
+                "hits": len(bm25_docs),
+                "weight": self.runtime_config.bm25_weight,
+            },
+            # Embedding 检索状态
+            "embedding": {
+                "enabled": self._embedding_retriever is not None and self._embedding_retriever.is_initialized,
+                "hits": len(embedding_docs),
+                "weight": self.runtime_config.embedding_weight,
             },
         }
 
@@ -658,14 +923,9 @@ class LocalCodeRetriever:
         stats["parent_chunk_count"] = len(self._parent_chunks)
         stats["child_chunk_count"] = len(self._child_chunks)
 
+        # 只保留 BM25 索引（移除 TFIDF 和 Ensemble）
         if self._child_docs:
             self._bm25 = BM25Retriever.from_documents(self._child_docs)
-            self._tfidf = TFIDFRetriever.from_documents(self._child_docs)
-            self._ensemble = WeightedFusionRetriever(
-                retrievers=[self._bm25, self._tfidf],
-                weights=[0.6, 0.4],
-                id_key="child_id",
-            )
         return stats
 
     def _iter_code_files(self) -> Iterator[Path]:
@@ -876,153 +1136,28 @@ class LocalCodeRetriever:
 
     def _rank_score(self, rank: int | None) -> float:
         """
-        内部辅助函数，负责`rank score` 相关处理。
-        
+        基于排名的分数归一化（Reciprocal Rank Fusion）。
+
+        将检索排名转换为归一化分数，范围 [0, 1]。
+        使用 RRF 公式: score = k / (rank + k)，k=60 是业界标准参数。
+
+        RRF 的优势：
+        1. 消除不同检索器原始分数量级差异
+        2. 对异常值鲁棒（只依赖排名顺序）
+        3. k=60 使衰减平缓，Top-K 结果间差距合理
+
         参数:
-            self: 当前对象实例。
-            rank: 输入参数，用于控制当前处理逻辑。
-        
+            rank: 检索排名（从 1 开始），None 表示未命中
+
         返回:
-            返回类型为 `float` 的处理结果。
+            归一化分数，范围 [0, 1]
+            rank=1 → 0.984, rank=10 → 0.857, rank=50 → 0.545
         """
         if rank is None:
             return 0.0
-        return 14.0 / (rank + 1.0)
-
-    def _build_rg_terms(self, *, patterns: dict[str, Any], module_tokens: set[str]) -> list[str]:
-        """
-        构建当前步骤所需的数据结构或文本内容。
-        
-        参数:
-            self: 当前对象实例。
-        
-        返回:
-            返回类型为 `list[str]` 的处理结果。
-        """
-        terms: list[str] = []
-        terms.extend(patterns.get("exact_identifiers", []))
-        terms.extend(patterns.get("field_like_tokens", []))
-        terms.extend(patterns.get("identifiers", [])[:24])
-        terms.extend(sorted(module_tokens))
-        deduped = list(dict.fromkeys([term.strip() for term in terms if len(term.strip()) >= 2]))
-        return deduped[: self.runtime_config.rg_max_terms]
-
-    def _run_rg_line_hits(self, *, terms: list[str]) -> tuple[Counter[str], dict[str, list[int]], dict[str, Any]]:
-        """
-        内部辅助函数，负责`run rg line hits` 相关处理。
-        
-        参数:
-            self: 当前对象实例。
-        
-        返回:
-            返回类型为 `tuple[Counter[str], dict[str, list[int]], dict[str, Any]]` 的处理结果。
-        """
-        rg_enabled = self.runtime_config.rg_strategy in {"rg_first", "rg_only"}
-        profile: dict[str, Any] = {
-            "strategy": self.runtime_config.rg_strategy,
-            "enabled": bool(rg_enabled),
-            "available": bool(self._rg_executable),
-            "term_count": len(terms),
-            "timeout_ms": int(self.runtime_config.rg_timeout_ms),
-        }
-        if not rg_enabled:
-            return Counter(), {}, profile
-        if self._rg_executable is None:
-            warning = "rg is unavailable; retrieve_code falls back to BM25/TFIDF only."
-            if self.runtime_config.rg_strategy == "rg_only":
-                warning = "rg is unavailable; retrieve_code rg_only strategy cannot run."
-            self._warn_rg_unavailable(warning)
-            profile["warning"] = warning
-            return Counter(), {}, profile
-        if not terms or not self.code_dirs:
-            return Counter(), {}, profile
-
-        command: list[str] = [
-            self._rg_executable,
-            "--json",
-            "--line-number",
-            "--no-heading",
-            "--smart-case",
-            "--fixed-strings",
-            "--max-count",
-            str(self.runtime_config.rg_max_matches_per_term),
-        ]
-        for term in terms:
-            command.extend(["-e", term])
-        for ext in sorted(self.SUPPORTED_EXTENSIONS):
-            command.extend(["--glob", f"*{ext}"])
-        command.extend([str(path) for path in self.code_dirs])
-
-        started = perf_counter()
-        try:
-            result = subprocess.run(
-                command,
-                cwd=self.project_root,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="ignore",
-                timeout=float(self.runtime_config.rg_timeout_ms) / 1000.0,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            warning = "rg timed out during code retrieval; fallback to BM25/TFIDF only."
-            if self.runtime_config.rg_strategy == "rg_only":
-                warning = "rg timed out during code retrieval; rg_only strategy cannot return results."
-            self._logger.warning(
-                "workflow.code_rg.timeout",
-                timeout_ms=int(self.runtime_config.rg_timeout_ms),
-                term_count=len(terms),
-            )
-            profile["warning"] = warning
-            profile["timed_out"] = True
-            return Counter(), {}, profile
-        except Exception as exc:
-            warning = "rg failed during code retrieval; fallback to BM25/TFIDF only."
-            if self.runtime_config.rg_strategy == "rg_only":
-                warning = "rg failed during code retrieval; rg_only strategy cannot return results."
-            self._logger.warning(
-                "workflow.code_rg.error",
-                reason=str(exc),
-                term_count=len(terms),
-            )
-            profile["warning"] = warning
-            return Counter(), {}, profile
-
-        path_hits: Counter[str] = Counter()
-        line_hits_by_path: dict[str, list[int]] = defaultdict(list)
-        for line in result.stdout.splitlines():
-            try:
-                payload = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if str(payload.get("type", "")) != "match":
-                continue
-            data = payload.get("data", {})
-            path_raw = str(data.get("path", {}).get("text", "")).strip()
-            normalized_path = self._normalize_rg_path(path_raw)
-            if not normalized_path:
-                continue
-            path_hits[normalized_path] += 1
-            line_no = int(data.get("line_number", 0) or 0)
-            if line_no <= 0:
-                continue
-            rows = line_hits_by_path.setdefault(normalized_path, [])
-            if len(rows) >= self.runtime_config.rg_max_lines_per_path:
-                continue
-            rows.append(line_no)
-
-        if result.returncode not in (0, 1):
-            stderr = result.stderr.strip().splitlines()
-            self._logger.warning(
-                "workflow.code_rg.nonzero_exit",
-                returncode=int(result.returncode),
-                stderr=(stderr[0] if stderr else ""),
-            )
-            profile["warning"] = "rg exited with non-zero status during code retrieval; fallback results may degrade."
-        profile["latency_ms"] = round((perf_counter() - started) * 1000, 3)
-        profile["raw_match_count"] = sum(path_hits.values())
-        return path_hits, line_hits_by_path, profile
+        # RRF(k=60) - 信息检索领域验证的标准归一化方法
+        k = 60
+        return k / (rank + k)
 
     def _extract_patterns(self, merged_query: str) -> dict[str, Any]:
         """
@@ -1056,15 +1191,23 @@ class LocalCodeRetriever:
 
     def _score_lexical(self, child: CodeChildChunk, patterns: dict[str, Any]) -> tuple[float, list[str]]:
         """
-        内部辅助函数，负责`score lexical` 相关处理。
-        
+        计算词法匹配分数。
+
+        基于查询词在代码块中的匹配情况计算分数，范围 [0, 1]。
+        与 RRF 归一化保持一致，确保与其他检索分数可比。
+
+        评分规则：
+        - 文本匹配：+0.15（长词 +0.25）
+        - 符号匹配：+0.20
+        - 路径匹配：+0.15
+        - 签名匹配：+0.10
+
         参数:
-            self: 当前对象实例。
-            child: 输入参数，用于控制当前处理逻辑。
-            patterns: 列表参数，用于承载批量输入数据。
-        
+            child: 代码子块
+            patterns: 查询模式（包含 identifiers）
+
         返回:
-            返回类型为 `tuple[float, list[str]]` 的处理结果。
+            (分数, 匹配的词列表)
         """
         score = 0.0
         matched: list[str] = []
@@ -1075,51 +1218,66 @@ class LocalCodeRetriever:
             cnt = child.normalized_text.count(token)
             if cnt > 0:
                 matched.append(token)
-                score += min(cnt, 3) * (1.8 if len(token) >= 4 else 1.0)
+                # 文本匹配：限制最大贡献，长词权重更高
+                score += min(cnt, 3) * (0.08 if len(token) >= 4 else 0.05)
             if token in child.normalized_symbol:
-                score += 1.4
+                score += 0.20  # 符号匹配权重高
             if token in child.normalized_path:
-                score += 1.1
+                score += 0.15  # 路径匹配
             if token in self._normalize(child.signature):
-                score += 0.9
-        return score, matched
+                score += 0.10  # 签名匹配
+
+        # 限制最大分数为 1.0
+        return min(score, 1.0), matched
 
     def _score_pattern(self, child: CodeChildChunk, patterns: dict[str, Any]) -> tuple[float, list[str]]:
         """
-        内部辅助函数，负责`score pattern` 相关处理。
-        
+        计算模式匹配分数。
+
+        基于精确标识符匹配计算分数，范围 [0, 1]。
+        与 RRF 归一化保持一致，确保与其他检索分数可比。
+
+        评分规则：
+        - 精确符号匹配：+0.50
+        - 部分符号匹配：+0.25（位置查询 +0.35）
+        - 路径匹配：+0.20（位置查询 +0.30）
+        - 字段匹配：+0.08
+        - 公式表达式：+0.10
+        - 位置意图：+0.05
+
         参数:
-            self: 当前对象实例。
-            child: 输入参数，用于控制当前处理逻辑。
-            patterns: 列表参数，用于承载批量输入数据。
-        
+            child: 代码子块
+            patterns: 查询模式
+
         返回:
-            返回类型为 `tuple[float, list[str]]` 的处理结果。
+            (分数, 匹配的模式列表)
         """
         score = 0.0
         matched: list[str] = []
         is_location = bool(patterns.get("is_location_query"))
         for token in patterns.get("exact_identifiers", []):
             if token == child.normalized_symbol:
-                score += 6.0
+                score += 0.50  # 精确符号匹配，权重最高
                 matched.append(f"exact_symbol:{token}")
             elif token in child.normalized_symbol:
-                score += 3.6 if is_location else 2.2
+                score += 0.35 if is_location else 0.25
                 matched.append(f"symbol_like:{token}")
             elif token in child.normalized_path:
-                score += 2.8 if is_location else 1.6
+                score += 0.30 if is_location else 0.20
                 matched.append(f"path_like:{token}")
         for token in patterns.get("field_like_tokens", []):
             if token in child.normalized_text:
-                score += 0.8
+                score += 0.08
                 matched.append(token)
         if patterns.get("is_formula_query") and "=" in child.content:
-            score += 1.2
+            score += 0.10
             matched.append("formula_expression")
         if is_location:
-            score += 0.6
+            score += 0.05
             matched.append("location_intent")
-        return score, sorted(set(matched), key=len, reverse=True)
+
+        # 限制最大分数为 1.0
+        return min(score, 1.0), sorted(set(matched), key=len, reverse=True)
 
     def _build_excerpt(self, content: str, content_start_line: int, matched_terms: list[str], matched_patterns: list[str]) -> dict[str, Any]:
         """
@@ -1233,41 +1391,6 @@ class LocalCodeRetriever:
         except ValueError:
             return path.as_posix()
 
-    def _normalize_rg_path(self, raw_path: str) -> str:
-        """
-        内部辅助函数，负责`normalize rg path` 相关处理。
-        
-        参数:
-            self: 当前对象实例。
-            raw_path: 路径参数，用于定位文件或目录。
-        
-        返回:
-            返回类型为 `str` 的处理结果。
-        """
-        try:
-            candidate = Path(raw_path)
-            if not candidate.is_absolute():
-                candidate = (self.project_root / candidate).resolve()
-            return self._to_relative_path(candidate)
-        except Exception:
-            return ""
-
-    def _warn_rg_unavailable(self, warning: str) -> None:
-        """
-        内部辅助函数，负责`warn rg unavailable` 相关处理。
-        
-        参数:
-            self: 当前对象实例。
-            warning: 输入参数，用于控制当前处理逻辑。
-        
-        返回:
-            无返回值。
-        """
-        if self._rg_unavailable_warned:
-            return
-        self._rg_unavailable_warned = True
-        self._logger.warning("workflow.code_rg.unavailable", warning=warning)
-
     def _normalize(self, text: str) -> str:
         """
         内部辅助函数，负责`normalize` 相关处理。
@@ -1285,7 +1408,7 @@ class LocalCodeRetriever:
 def parse_code_dirs_from_env(*, project_root: Path) -> list[Path] | None:
     """
     执行`parse code dirs from env` 相关处理逻辑。
-    
+
     返回:
         返回类型为 `list[Path] | None` 的处理结果。
     """
@@ -1303,3 +1426,34 @@ def parse_code_dirs_from_env(*, project_root: Path) -> list[Path] | None:
         if path.exists():
             dirs.append(path)
     return dirs or None
+
+
+# ============================================================================
+# 全局单例模式
+# ============================================================================
+
+# 全局 Code 检索器实例（单例）
+_code_retriever_instance: LocalCodeRetriever | None = None
+
+
+def get_code_retriever() -> LocalCodeRetriever | None:
+    """获取全局 Code 检索器实例
+
+    Returns:
+        LocalCodeRetriever 实例，如果未初始化则返回 None
+    """
+    return _code_retriever_instance
+
+
+def set_code_retriever(retriever: LocalCodeRetriever | None) -> None:
+    """设置全局 Code 检索器实例
+
+    Args:
+        retriever: LocalCodeRetriever 实例
+    """
+    global _code_retriever_instance
+    _code_retriever_instance = retriever
+    if retriever:
+        logger.info("[CodeRetriever] 全局单例已设置")
+    else:
+        logger.info("[CodeRetriever] 全局单例已清除")

@@ -7,7 +7,20 @@ from agent.core.finalize import (
     FinalizeConfig,
     AgentResponse,
 )
-from agent.state import create_initial_state, ToolCallRecord, AgentStatus
+from agent.state import AgentState, ToolCallRecord, AgentStatus
+
+
+def create_test_finalize_state(
+    trace_id: str = "test-trace",
+    route: str = "knowledge_qa",
+    citations: list | None = None,
+) -> AgentState:
+    """创建测试用的 Finalize 状态"""
+    return {
+        "trace_id": trace_id,
+        "route": route,
+        "citations": citations or [],
+    }
 
 
 class TestFinalizeConfig:
@@ -202,8 +215,8 @@ class TestAgentFinalize:
     def test_run_with_citations(self, sample_state):
         """测试带引用"""
         sample_state["citations"] = [
-            {"source": "wiki", "title": "文档1"},
-            {"source": "wiki", "title": "文档2"},
+            {"source_type": "wiki", "path": "/docs/doc1.md", "section": "概述", "title": "文档1"},
+            {"source_type": "wiki", "path": "/docs/doc2.md", "section": "安装", "title": "文档2"},
         ]
 
         finalize = AgentFinalize()
@@ -217,7 +230,7 @@ class TestAgentFinalize:
     def test_run_citation_limit(self, sample_state):
         """测试引用数量限制"""
         sample_state["citations"] = [
-            {"source": f"wiki_{i}", "title": f"文档{i}"}
+            {"source_type": "wiki", "path": f"/docs/doc{i}.md", "section": f"章节{i}", "title": f"文档{i}"}
             for i in range(10)
         ]
 

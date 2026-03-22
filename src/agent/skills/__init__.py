@@ -45,6 +45,7 @@ from agent.skills.registry import (
     SkillRegistry,
     CandidateMatch,
     get_skill_registry,
+    set_skill_registry,
     reset_skill_registry,
 )
 
@@ -53,6 +54,9 @@ from agent.skills.executor import (
     SkillExecutor,
     SkillExecutionResult,
     ToolCallRecord,
+    get_skill_executor,
+    set_skill_executor,
+    reset_skill_executor,
 )
 
 # 管理工具
@@ -76,11 +80,15 @@ __all__ = [
     "SkillRegistry",
     "CandidateMatch",
     "get_skill_registry",
+    "set_skill_registry",
     "reset_skill_registry",
     # 执行器
     "SkillExecutor",
     "SkillExecutionResult",
     "ToolCallRecord",
+    "get_skill_executor",
+    "set_skill_executor",
+    "reset_skill_executor",
     # 管理工具
     "SkillManager",
     "SkillManagerInput",

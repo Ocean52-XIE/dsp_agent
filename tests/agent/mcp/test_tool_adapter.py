@@ -19,7 +19,7 @@ from agent.mcp.tool_adapter import (
     create_mcp_tool_adapters,
     get_all_openai_schemas,
 )
-from agent.mcp.session import MCPToolInfo
+from agent.mcp.client import MCPToolInfo
 from agent.mcp.client import MCPClient
 from agent.mcp.config_loader import MCPServerConfig
 
@@ -266,14 +266,38 @@ class TestMCPToolAdapter:
         assert schema["function"]["parameters"]["type"] == "object"
         assert schema["function"]["parameters"]["properties"] == {}
 
-    def test_run_not_supported(self, mock_client, echo_tool_info):
-        """测试同步调用不支持"""
+    def test_run_sync_success(self, mock_client, echo_tool_info):
+        """测试同步调用成功（使用线程池包装异步调用）"""
+        # 配置 mock 返回值
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.content = "Echo: hello sync"
+        mock_client.call_tool = AsyncMock(return_value=mock_result)
+
         adapter = MCPToolAdapter(mock_client, echo_tool_info)
 
-        with pytest.raises(NotImplementedError) as exc_info:
-            adapter._run()
+        # 同步调用应该成功（内部使用线程池包装异步调用）
+        result = adapter._run(message="hello sync")
 
-        assert "only supports async" in str(exc_info.value)
+        assert result == "Echo: hello sync"
+        mock_client.call_tool.assert_called_once_with("echo", {"message": "hello sync"})
+
+    def test_run_sync_failure(self, mock_client, echo_tool_info):
+        """测试同步调用失败"""
+        from langchain_core.tools import ToolException
+
+        mock_result = MagicMock()
+        mock_result.success = False
+        mock_result.error = "Sync tool execution failed"
+        mock_client.call_tool = AsyncMock(return_value=mock_result)
+
+        adapter = MCPToolAdapter(mock_client, echo_tool_info)
+
+        # 同步调用失败时应该抛出 ToolException
+        with pytest.raises(ToolException) as exc_info:
+            adapter._run(message="hello")
+
+        assert "Tool call failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_arun_success(self, mock_client, echo_tool_info):

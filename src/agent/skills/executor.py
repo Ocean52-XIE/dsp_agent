@@ -545,3 +545,34 @@ class SkillExecutor:
 
         # 默认返回文本
         return {"text": output}
+
+
+# ============================================================================
+# 全局单例
+# ============================================================================
+
+_skill_executor: SkillExecutor | None = None
+
+
+def get_skill_executor() -> SkillExecutor:
+    """获取全局技能执行器单例"""
+    global _skill_executor
+    if _skill_executor is None:
+        _skill_executor = SkillExecutor()
+    return _skill_executor
+
+
+def set_skill_executor(executor: SkillExecutor) -> None:
+    """设置全局技能执行器（启动时初始化使用）
+
+    Args:
+        executor: 技能执行器实例
+    """
+    global _skill_executor
+    _skill_executor = executor
+
+
+def reset_skill_executor() -> None:
+    """重置全局技能执行器（用于测试）"""
+    global _skill_executor
+    _skill_executor = None

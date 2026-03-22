@@ -84,10 +84,20 @@ def mock_llm_response_with_tool():
 
 @pytest.fixture
 def mock_llm_client():
-    """Mock LLM 客户端"""
+    """Mock LLM 客户端（支持同步和异步方法）"""
     client = MagicMock()
+    # 异步方法（已弃用，保留向后兼容）
     client.ainvoke = AsyncMock(return_value=MagicMock(content="测试响应", latency_ms=100))
     client.ainvoke_with_tools = AsyncMock(
+        return_value=MagicMock(
+            content="测试响应",
+            tool_calls=[],
+            latency_ms=100,
+        )
+    )
+    # 同步方法（当前使用）
+    client.invoke = MagicMock(return_value=MagicMock(content="测试响应", latency_ms=100))
+    client.invoke_with_tools = MagicMock(
         return_value=MagicMock(
             content="测试响应",
             tool_calls=[],
@@ -113,31 +123,29 @@ def mock_tool_registry():
 
 @pytest.fixture
 def sample_state():
-    """示例 Agent 状态"""
-    from agent.state import create_initial_state
+    """示例 Agent 状态（简化版）"""
+    from agent.state import AgentState
 
-    return create_initial_state(
-        trace_id="test-trace-123",
-        session_id="test-session-456",
-        user_query="这是一个测试查询",
-        history=[],
-    )
+    return {
+        "trace_id": "test-trace-123",
+        "user_query": "这是一个测试查询",
+        "history": [],
+        "tool_whitelist": None,
+    }
 
 
 @pytest.fixture
 def sample_state_with_history():
     """带历史的 Agent 状态"""
-    from agent.state import create_initial_state
-
-    return create_initial_state(
-        trace_id="test-trace-123",
-        session_id="test-session-456",
-        user_query="继续上一个问题",
-        history=[
+    return {
+        "trace_id": "test-trace-123",
+        "user_query": "继续上一个问题",
+        "history": [
             {"role": "user", "content": "之前的问题"},
             {"role": "assistant", "content": "之前的回答"},
         ],
-    )
+        "tool_whitelist": None,
+    }
 
 
 # =============================================================================
@@ -147,10 +155,11 @@ def sample_state_with_history():
 @pytest.fixture
 def sample_tool():
     """示例工具"""
-    from agent.tools.base import FunctionTool
+    from langchain_core.tools import tool
 
-    def test_function(query: str) -> str:
-        """测试工具函数
+    @tool
+    def test_tool(query: str) -> str:
+        """这是一个测试工具
 
         Args:
             query: 查询字符串
@@ -160,20 +169,17 @@ def sample_tool():
         """
         return f"处理结果: {query}"
 
-    return FunctionTool.from_function(
-        func=test_function,
-        name="test_tool",
-        description="这是一个测试工具",
-    )
+    return test_tool
 
 
 @pytest.fixture
 def sample_tool_with_params():
     """带参数的示例工具"""
-    from agent.tools.base import FunctionTool
+    from langchain_core.tools import tool
 
-    def search_tool(query: str, top_k: int = 5) -> str:
-        """搜索工具
+    @tool
+    def search(query: str, top_k: int = 5) -> str:
+        """搜索相关内容
 
         Args:
             query: 搜索查询
@@ -184,11 +190,7 @@ def sample_tool_with_params():
         """
         return f"找到 {top_k} 条结果: {query}"
 
-    return FunctionTool.from_function(
-        func=search_tool,
-        name="search",
-        description="搜索相关内容",
-    )
+    return search
 
 
 # =============================================================================

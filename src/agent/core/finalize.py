@@ -15,7 +15,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from agent.state import AgentState, AgentStatus, ToolCallRecord
-from agent.core.router import DomainRouteType
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class FinalizeConfig:
         truncate_answer: 是否截断答案
         max_answer_length: 最大答案长度
     """
-    max_citations: int = 4
+    max_citations: int = 6
     include_tool_calls: bool = True
     include_debug_info: bool = False
     truncate_answer: bool = False
@@ -234,12 +233,12 @@ class AgentFinalize:
         # 优先使用 domain_route (新架构)
         domain_route = state.get("domain_route", "")
         if domain_route:
-            # 映射 DomainRouteType 到场景类型
+            # 映射 domain_route 字符串到场景类型
             domain_kind_mapping = {
-                DomainRouteType.OUT_OF_SCOPE.value: "out_of_scope",
-                DomainRouteType.SMALL_TALK.value: "small_talk",
-                DomainRouteType.PASS_TO_AGENT.value: "agent_loop",
-                DomainRouteType.MODULE_ROUTED.value: "module_routed",
+                "out_of_scope": "out_of_scope",
+                "small_talk": "small_talk",
+                "pass_to_agent": "agent_loop",
+                "module_routed": "module_routed",
             }
             return domain_kind_mapping.get(domain_route, domain_route)
 
@@ -325,6 +324,9 @@ class AgentFinalize:
         result: list[dict[str, Any]] = []
 
         for item in citations:
+            # 跳过 None 或非字典类型的项
+            if item is None or not isinstance(item, dict):
+                continue
             key = (
                 str(item.get("source_type", "")),
                 str(item.get("path", "")),

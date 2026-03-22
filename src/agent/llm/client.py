@@ -585,3 +585,39 @@ class LLMClient:
         """
         config = LLMConfig.from_env(prefix)
         return cls(config)
+
+
+# ============================================================================
+# 全局单例
+# ============================================================================
+
+_llm_client: LLMClient | None = None
+
+
+def get_llm_client() -> LLMClient:
+    """获取全局 LLM 客户端单例
+
+    注意：如果未通过 set_llm_client 设置，会使用默认配置创建客户端。
+    建议在启动时通过 set_llm_client 设置正确的配置。
+    """
+    global _llm_client
+    if _llm_client is None:
+        # 使用默认配置创建
+        _llm_client = LLMClient.from_env()
+    return _llm_client
+
+
+def set_llm_client(client: LLMClient) -> None:
+    """设置全局 LLM 客户端（启动时初始化使用）
+
+    Args:
+        client: LLM 客户端实例
+    """
+    global _llm_client
+    _llm_client = client
+
+
+def reset_llm_client() -> None:
+    """重置全局 LLM 客户端（用于测试）"""
+    global _llm_client
+    _llm_client = None

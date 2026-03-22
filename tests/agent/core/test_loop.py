@@ -1,13 +1,28 @@
 # -*- coding: utf-8 -*-
-"""测试 AgentLoop 核心循环"""
+"""测试 AgentLoop 核心循环（同步版本）"""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from agent.core.loop import AgentLoop, AgentLoopConfig, AgentLoopResult
-from agent.state import create_initial_state, ToolCallRecord
+from agent.state import AgentState, ToolCallRecord
 from agent.tools.registry import ToolRegistry
 from agent.llm.client import LLMClient, LLMResponse, ToolCall
 from agent.llm.config import LLMConfig
+
+
+def create_test_state(
+    trace_id: str = "test-trace",
+    user_query: str = "测试查询",
+    history: list | None = None,
+    tool_whitelist: list | None = None,
+) -> AgentState:
+    """创建测试用的 Agent 状态"""
+    return {
+        "trace_id": trace_id,
+        "user_query": user_query,
+        "history": history or [],
+        "tool_whitelist": tool_whitelist,
+    }
 
 
 class TestAgentLoopConfig:
@@ -109,13 +124,13 @@ class TestAgentLoopResult:
 
 
 class TestAgentLoop:
-    """测试 AgentLoop"""
+    """测试 AgentLoop（同步版本）"""
 
     @pytest.fixture
     def mock_llm_client(self):
         """Mock LLM 客户端"""
         client = MagicMock(spec=LLMClient)
-        client.ainvoke_with_tools = AsyncMock(
+        client.invoke_with_tools = MagicMock(
             return_value=LLMResponse(
                 content="这是最终回答",
                 tool_calls=[],
@@ -130,6 +145,9 @@ class TestAgentLoop:
         registry = MagicMock(spec=ToolRegistry)
         registry.get_tools = MagicMock(return_value=[])
         registry.get_default_tools = MagicMock(return_value=[])
+        registry.total_count = 0
+        registry.list_local_tool_names = MagicMock(return_value=[])
+        registry.list_mcp_tool_names = MagicMock(return_value=[])
         return registry
 
     def test_create_loop(self, mock_llm_client, mock_tool_registry):
@@ -143,28 +161,25 @@ class TestAgentLoop:
 
         assert loop.config.max_steps == 5
 
-    @pytest.mark.asyncio
-    async def test_run_simple_query(self, mock_llm_client, mock_tool_registry):
-        """测试简单查询（无工具调用）"""
+    def test_run_simple_query(self, mock_llm_client, mock_tool_registry):
+        """测试简单查询（无工具调用）- 同步版本"""
         loop = AgentLoop(
             llm_client=mock_llm_client,
             tool_registry=mock_tool_registry,
         )
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="你好",
         )
 
-        result = await loop.run(state)
+        result = loop.run(state)
 
         assert result.success is True
         assert result.answer == "这是最终回答"
         assert result.steps == 1
 
-    @pytest.mark.asyncio
-    async def test_run_with_tool_call(self, mock_llm_client, mock_tool_registry, sample_tool):
-        """测试带工具调用的查询"""
+    def test_run_with_tool_call(self, mock_llm_client, mock_tool_registry, sample_tool):
+        """测试带工具调用的查询 - 同步版本"""
         # 第一次返回工具调用，第二次返回最终答案
         tool_call_response = LLMResponse(
             content="",
@@ -179,7 +194,7 @@ class TestAgentLoop:
             latency_ms=100,
         )
 
-        mock_llm_client.ainvoke_with_tools = AsyncMock(
+        mock_llm_client.invoke_with_tools = MagicMock(
             side_effect=[tool_call_response, final_response]
         )
 
@@ -190,21 +205,19 @@ class TestAgentLoop:
             llm_client=mock_llm_client,
             tool_registry=mock_tool_registry,
         )
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="使用工具查询",
         )
 
-        result = await loop.run(state)
+        result = loop.run(state)
 
         assert result.success is True
         assert result.steps == 2
         assert len(result.tool_calls) == 1
 
-    @pytest.mark.asyncio
-    async def test_run_max_steps_reached(self, mock_llm_client, mock_tool_registry):
-        """测试达到最大步数"""
+    def test_run_max_steps_reached(self, mock_llm_client, mock_tool_registry):
+        """测试达到最大步数 - 同步版本"""
         # 总是返回工具调用
         tool_call_response = LLMResponse(
             content="",
@@ -214,7 +227,7 @@ class TestAgentLoop:
             latency_ms=100,
         )
 
-        mock_llm_client.ainvoke_with_tools = AsyncMock(
+        mock_llm_client.invoke_with_tools = MagicMock(
             return_value=tool_call_response
         )
 
@@ -223,20 +236,18 @@ class TestAgentLoop:
             tool_registry=mock_tool_registry,
             config=AgentLoopConfig(max_steps=3),
         )
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="测试",
         )
 
-        result = await loop.run(state)
+        result = loop.run(state)
 
         assert result.steps == 3  # 达到最大步数
 
-    @pytest.mark.asyncio
-    async def test_run_with_error(self, mock_llm_client, mock_tool_registry):
-        """测试执行出错"""
-        mock_llm_client.ainvoke_with_tools = AsyncMock(
+    def test_run_with_error(self, mock_llm_client, mock_tool_registry):
+        """测试执行出错 - 同步版本"""
+        mock_llm_client.invoke_with_tools = MagicMock(
             side_effect=Exception("LLM 调用失败")
         )
 
@@ -244,24 +255,22 @@ class TestAgentLoop:
             llm_client=mock_llm_client,
             tool_registry=mock_tool_registry,
         )
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="测试",
         )
 
-        result = await loop.run(state)
+        result = loop.run(state)
 
         assert result.success is False
         assert "LLM 调用失败" in result.error
 
-    @pytest.mark.asyncio
-    async def test_run_with_tool_error(self, mock_llm_client, mock_tool_registry):
-        """测试工具执行出错"""
+    def test_run_with_tool_error(self, mock_llm_client, mock_tool_registry):
+        """测试工具执行出错 - 同步版本"""
         # 创建一个会报错的工具
         error_tool = MagicMock()
         error_tool.name = "error_tool"
-        error_tool.arun = AsyncMock(side_effect=Exception("工具执行失败"))
+        error_tool.invoke = MagicMock(side_effect=Exception("工具执行失败"))
 
         tool_call_response = LLMResponse(
             content="",
@@ -276,7 +285,7 @@ class TestAgentLoop:
             latency_ms=100,
         )
 
-        mock_llm_client.ainvoke_with_tools = AsyncMock(
+        mock_llm_client.invoke_with_tools = MagicMock(
             side_effect=[tool_call_response, final_response]
         )
 
@@ -287,44 +296,39 @@ class TestAgentLoop:
             llm_client=mock_llm_client,
             tool_registry=mock_tool_registry,
         )
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="测试",
         )
 
-        result = await loop.run(state)
+        result = loop.run(state)
 
         # 即使工具出错，循环也应该继续
         assert result.tool_calls[0].success is False
 
-    @pytest.mark.asyncio
-    async def test_run_with_system_prompt(self, mock_llm_client, mock_tool_registry):
-        """测试带系统提示词的执行"""
+    def test_run_with_system_prompt(self, mock_llm_client, mock_tool_registry):
+        """测试带系统提示词的执行 - 同步版本"""
         loop = AgentLoop(
             llm_client=mock_llm_client,
             tool_registry=mock_tool_registry,
             config=AgentLoopConfig(system_prompt="你是专业助手"),
         )
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="你好",
         )
 
-        result = await loop.run(state)
+        result = loop.run(state)
 
         assert result.success is True
 
 
 class TestAgentLoopIntegration:
-    """测试 AgentLoop 集成场景"""
+    """测试 AgentLoop 集成场景（同步版本）"""
 
-    @pytest.mark.asyncio
-    async def test_multi_tool_workflow(self):
-        """测试多工具工作流"""
+    def test_multi_tool_workflow(self):
+        """测试多工具工作流 - 同步版本"""
         # 这个测试验证接口设计
-        config = LLMConfig(model="gpt-4o")
         llm_client = MagicMock(spec=LLMClient)
         tool_registry = ToolRegistry()
 
@@ -339,16 +343,15 @@ class TestAgentLoopIntegration:
             LLMResponse(content="最终答案", tool_calls=[], latency_ms=100),
         ]
 
-        llm_client.ainvoke_with_tools = AsyncMock(side_effect=responses)
+        llm_client.invoke_with_tools = MagicMock(side_effect=responses)
 
         loop = AgentLoop(
             llm_client=llm_client,
             tool_registry=tool_registry,
         )
 
-        state = create_initial_state(
+        state = create_test_state(
             trace_id="test",
-            session_id="test",
             user_query="测试",
         )
 

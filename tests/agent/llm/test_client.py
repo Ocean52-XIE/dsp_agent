@@ -7,6 +7,16 @@ from agent.llm.client import LLMClient, LLMResponse, ToolCall
 from agent.llm.config import LLMConfig
 
 
+# 全局 Mock ChatOpenAI，避免所有测试都需要真实 API key
+@pytest.fixture(autouse=True)
+def mock_chat_openai():
+    """自动 Mock ChatOpenAI 类"""
+    with patch("agent.llm.client.ChatOpenAI") as mock:
+        mock_llm = MagicMock()
+        mock.return_value = mock_llm
+        yield mock
+
+
 class TestToolCall:
     """测试 ToolCall"""
 
@@ -110,10 +120,28 @@ class TestLLMClient:
 
     def test_create_client_from_env(self):
         """测试从环境变量创建客户端"""
-        client = LLMClient.from_env("AGENT_LLM")
+        # 设置环境变量进行测试
+        import os
+        old_model = os.environ.get("AGENT_LLM_MODEL")
+        old_key = os.environ.get("AGENT_LLM_API_KEY")
+        os.environ["AGENT_LLM_MODEL"] = "gpt-4o"
+        os.environ["AGENT_LLM_API_KEY"] = "test-api-key"
 
-        assert client is not None
-        assert client.config.model == "gpt-4o"
+        try:
+            client = LLMClient.from_env("AGENT_LLM")
+
+            assert client is not None
+            assert client.config.model == "gpt-4o"
+        finally:
+            # 恢复环境变量
+            if old_model is None:
+                os.environ.pop("AGENT_LLM_MODEL", None)
+            else:
+                os.environ["AGENT_LLM_MODEL"] = old_model
+            if old_key is None:
+                os.environ.pop("AGENT_LLM_API_KEY", None)
+            else:
+                os.environ["AGENT_LLM_API_KEY"] = old_key
 
     @pytest.mark.asyncio
     async def test_ainvoke(self, mock_llm_client):

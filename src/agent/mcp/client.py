@@ -3,7 +3,11 @@
 
 使用 langchain-mcp-adapters 的 MultiServerMCPClient 管理多个 MCP Server 连接。
 
-使用示例：
+重要说明：
+    langchain-mcp-adapters 使用 anyio 库，需要正确的异步上下文。
+    本模块只提供异步方法，不支持同步调用。
+
+使用示例（异步）：
     from agent.mcp import MCPClient, MCPServerConfigLoader
 
     # 加载配置
@@ -13,17 +17,23 @@
     # 创建客户端
     client = MCPClient(configs)
 
-    # 初始化连接
+    # 初始化连接（异步）
     await client.initialize()
 
-    # 获取工具适配器
-    adapters = client.get_tool_adapters()
+    # 调用工具（异步）
+    result = await client.call_tool("query_metrics", {"start_date": "2024-03-01"})
 
-    # 调用工具
-    result = await client.call_tool("search_code", {"query": "test"})
-
-    # 关闭连接
+    # 关闭连接（异步）
     await client.shutdown()
+
+在 FastAPI 中使用：
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        client = MCPClient(configs)
+        await client.initialize()
+        set_mcp_client(client)
+        yield
+        await client.shutdown()
 """
 from __future__ import annotations
 
@@ -106,6 +116,7 @@ class MCPClient:
     2. 发现并缓存所有工具
     3. 路由工具调用到正确的 Server
     4. 提供 Tool Adapter 供 AgentLoop 使用
+
     """
 
     def __init__(
@@ -233,8 +244,13 @@ class MCPClient:
                         f"tools={len(tools)}"
                     )
                 except Exception as e:
+                    import traceback
                     logger.error(
                         f"[MCPClient] Failed to get tools from server '{server_name}': {e}"
+                    )
+                    logger.debug(
+                        f"[MCPClient] Full traceback for server '{server_name}':\n"
+                        f"{traceback.format_exc()}"
                     )
 
             self._initialized = True
@@ -433,3 +449,34 @@ class MCPClient:
             "servers": list(self._server_configs.keys()),
             "tools": list(self._tools.keys()),
         }
+
+
+# ============================================================================
+# 全局单例模式
+# ============================================================================
+
+# 全局 MCP 客户端实例（单例）
+_mcp_client_instance: MCPClient | None = None
+
+
+def get_mcp_client() -> MCPClient | None:
+    """获取全局 MCP 客户端实例
+
+    Returns:
+        MCPClient 实例，如果未初始化则返回 None
+    """
+    return _mcp_client_instance
+
+
+def set_mcp_client(client: MCPClient | None) -> None:
+    """设置全局 MCP 客户端实例
+
+    Args:
+        client: MCPClient 实例
+    """
+    global _mcp_client_instance
+    _mcp_client_instance = client
+    if client:
+        logger.info("[MCPClient] 全局单例已设置")
+    else:
+        logger.info("[MCPClient] 全局单例已清除")

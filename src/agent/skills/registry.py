@@ -296,6 +296,16 @@ def get_skill_registry() -> SkillRegistry:
     return _skill_registry
 
 
+def set_skill_registry(registry: SkillRegistry) -> None:
+    """设置全局技能注册中心（启动时初始化使用）
+
+    Args:
+        registry: 技能注册中心实例
+    """
+    global _skill_registry
+    _skill_registry = registry
+
+
 def reset_skill_registry() -> None:
     """重置全局技能注册中心（用于测试）"""
     global _skill_registry

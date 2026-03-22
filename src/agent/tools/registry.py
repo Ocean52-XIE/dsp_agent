@@ -272,6 +272,15 @@ class ToolRegistry:
         names.update(self._mcp_tools.keys())
         return sorted(names)
 
+    @property
+    def total_count(self) -> int:
+        """获取工具总数
+
+        Returns:
+            本地工具 + MCP 工具的总数
+        """
+        return len(self._local_tools) + len(self._mcp_tools)
+
     def list_local_tool_names(self) -> list[str]:
         """列出所有本地工具名称
 
@@ -291,3 +300,36 @@ class ToolRegistry:
     def __repr__(self) -> str:
         stats = self.get_stats()
         return f"ToolRegistry(total={stats['total_tools']}, local={stats['local_tools']}, mcp={stats['mcp_tools']})"
+
+
+# ============================================================================
+# 全局单例
+# ============================================================================
+
+_tool_registry: ToolRegistry | None = None
+
+
+def get_tool_registry() -> ToolRegistry:
+    """获取全局工具注册中心单例"""
+    global _tool_registry
+    if _tool_registry is None:
+        _tool_registry = ToolRegistry()
+    return _tool_registry
+
+
+def set_tool_registry(registry: ToolRegistry) -> None:
+    """设置全局工具注册中心（启动时初始化使用）
+
+    Args:
+        registry: 工具注册中心实例
+    """
+    global _tool_registry
+    _tool_registry = registry
+
+
+def reset_tool_registry() -> None:
+    """重置全局工具注册中心（用于测试）"""
+    global _tool_registry
+    if _tool_registry is not None:
+        _tool_registry.clear()
+    _tool_registry = None
