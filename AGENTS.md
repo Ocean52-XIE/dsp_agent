@@ -1,92 +1,91 @@
-# CLAUDE.md
+# AGENTS.md
 
-本文件用于约束本仓库后续的代码生成行为，目标是让改动可落位、可维护、可评估。
+本文件用于约束本仓库后续的代码生成与改动落位。
 
-## 1. 目录职责
+## 1. 当前架构
 
-### 顶层目录
+### 主链路
 
-| 目录 | 职责 |
-| --- | --- |
-| `src/` | 生产代码（API、Agent、工作流、基础设施） |
-| `domain/` | 领域数据（profile、wiki、codes、skills、prompts） |
-| `tests/` | 自动化测试（pytest） |
-| `docs/` | 设计文档 |
-| `tools/` | 辅助脚本 |
-| `logs/` | 运行日志 |
-
-### `src/` 核心模块
-
-| 目录 | 职责 |
-| --- | --- |
-| `api/` | FastAPI 接口层，只做协议转换和调用 WorkflowService |
-| `init/` | 统一初始化入口，新增组件需补充对应初始化器 |
-| `agent/` | **通用 Agent 能力**：AgentLoop、LLMClient、MCPClient、ToolRegistry、SkillRegistry |
-| `workflow/` | **业务流程编排**：engine.py（主图）、nodes/（节点）、subgraph/（子图）、common/（工具） |
-| `domain_profile/` | 领域配置管理，支持模块推断、查询归一化 |
-| `retrievers/` | 检索器（向量检索、重排、融合） |
-| `session/` | 会话存储（PostgreSQL/内存） |
-| `observability/` | 可观测性（交互记录、反馈、告警） |
-| `eval/` | 离线评测脚本 |
-
-### `domain/` 领域目录
-
-| 目录 | 职责 |
-| --- | --- |
-| `profile.json` | 领域配置中心（路由、检索、阈值、词表） |
-| `wiki/` | 知识文档语料 |
-| `codes/` | 代码检索语料 |
-| `skills/` | 技能配置 |
-| `mcp_servers/` | MCP Server 配置 |
-| `prompts/` | 提示词模板 |
-
-## 2. 核心架构
-
-```
-主工作流: load_context -> intent_routing -> [knowledge_qa | issue_analysis | code_generation | out_of_scope] -> finalize_response
-
-初始化流程: DomainProfile -> LLM -> Skills -> MCP -> Retrievers -> ToolRegistry
-
-全局单例: get_llm_client() | get_domain_profile() | get_skill_registry() | get_tool_registry() | get_mcp_client()
+```text
+启动: src/api/main.py -> lifespan() -> init.initialize_async() -> DeepAgentService.create_async()
+请求: /api/messages -> DeepAgentService.run_user_message_async() -> agent.factory.create_agent()
+工具: domain_retrieve + MCP tools
+检索: wiki/code retrieval -> orchestration fusion -> citations
+持久化: session + observability + checkpointer(memory/postgres)
 ```
 
-## 3. 代码生成约束
+### 当前真实入口
 
-### 架构约束
-1. **分层**：API 层不写业务推理，节点层不处理 HTTP
-2. **Agent 隔离**：`src/agent/` 只提供通用能力，业务逻辑放 `src/workflow/`
-3. **节点契约**：`run(service, state) -> dict`，返回状态增量
-4. **图结构**：新增/删除节点需同步更新 `engine.py`
+- 服务入口：`src/agent/service.py`
+- Agent 装配：`src/agent/factory.py`
+- 初始化入口：`src/init/initializer.py`
+- 领域配置：`src/domain_profile/profile.py`
+- 统一检索工具：`src/retrievers/tools/domain_retrieve_tool.py`
+- MCP：`src/agent/mcp/` + `domain/<id>/mcp_servers/`
 
-### 配置约束
-5. **配置优先**：阈值、TopK 放 `profile.json`，密钥放环境变量
-6. **领域隔离**：业务词表、提示词放 `domain/<domain_id>/`
+### 全局单例
 
-### 质量约束
-7. **可追踪**：检索命中需保留 source/path/score
-8. **向后兼容**：保持 `/api/messages` 等接口响应结构
-9. **测试覆盖**：代码覆盖率 ≥ 85%
-10. **框架**：使用 LangChain/LangGraph 1.x
+- `domain_profile.get_domain_profile()`
+- `agent.mcp.get_mcp_client()`
+- `retrievers.wiki.retriever.get_wiki_retriever()`
+- `retrievers.code.retriever.get_code_retriever()`
 
-### 编码规范
-11. 类型标注 + 中文注释 + 关键模块日志 + utf-8 编码
+## 2. 目录职责
+
+| 路径 | 职责 |
+| --- | --- |
+| `src/api/` | FastAPI 接口与协议映射 |
+| `src/init/` | 领域配置、MCP、Retriever、Checkpointer 初始化 |
+| `src/agent/` | Deep Agent 运行时封装 |
+| `src/retrievers/` | Wiki/Code 检索、重试、融合、工具暴露 |
+| `src/domain_profile/` | `profile.json` 解析、模块推断、路径解析 |
+| `src/session/` | 会话存储 |
+| `src/observability/` | 观测、反馈、告警 |
+| `src/log/` | 日志初始化 |
+| `src/web/` | 前端静态资源 |
+| `domain/<id>/profile.json` | 领域路由、检索、提示词、deep_agents 配置 |
+| `domain/<id>/skills/` | Deep Agent skills |
+| `domain/<id>/wiki/` | Wiki 语料 |
+| `domain/<id>/codes/` | Code 语料 |
+| `domain/<id>/prompts/` | Prompt 模板 |
+| `domain/<id>/mcp_servers/` | MCP server 配置 |
+| `tests/` | pytest 测试 |
+
+## 3. 改动原则
+
+1. `src/api/` 不写业务检索策略，也不直接拼 Agent 工具。
+2. `src/agent/` 负责运行时封装，不承载领域语料。
+3. 领域规则优先放到 `domain/<id>/profile.json`，不要把阈值和路由硬编码进 service/api。
+4. 新增 Agent tool 时，优先落在 `src/retrievers/tools/` 或 `src/agent/tools/`，并在 `src/agent/factory.py` 中显式装配。
+5. 检索相关改动统一落在 `src/retrievers/orchestration/`、`src/retrievers/wiki/`、`src/retrievers/code/`。
+6. citation 必须保留最少字段：`source`/`source_type`、`path`、`score`、`excerpt`；代码定位类结果尽量保留 `symbol_name`、`start_line`、`end_line`。
+7. `/api/messages`、`/api/sessions`、`/api/references/{trace_id}`、`/api/messages/{message_id}/feedback` 的响应结构保持兼容。
+8. 初始化改动统一进 `src/init/`，不要把全局初始化散落到 API 或工厂内部。
+9. 保持类型标注、UTF-8、中文注释和关键日志。
+10. 不要提交明文密钥；敏感配置统一走环境变量。
 
 ## 4. 变更落位
 
 | 变更类型 | 落位 |
 | --- | --- |
-| API | `src/api/main.py` |
-| 路由/检索策略 | `src/workflow/nodes/` + `src/retrievers/` |
-| Agent 能力 | `src/agent/core/` 或 `src/agent/tools/` |
-| 技能 | `domain/<id>/skills/` |
-| MCP 工具 | `domain/<id>/mcp_servers/` |
-| 新领域 | `domain/<new_id>/` 全套目录 |
+| API/响应结构 | `src/api/main.py`、`src/api/message_mapper.py` |
+| Deep Agent 服务编排 | `src/agent/service.py` |
+| Agent 创建/模型/工具/技能装配 | `src/agent/factory.py`、`src/agent/config.py` |
+| MCP | `src/agent/mcp/` + `domain/<id>/mcp_servers/` |
+| 初始化/Checkpointer | `src/init/` |
+| DomainProfile | `src/domain_profile/profile.py` |
+| Wiki/Code 检索 | `src/retrievers/wiki/`、`src/retrievers/code/` |
+| 检索融合/重试 | `src/retrievers/orchestration/` |
+| 统一检索工具 | `src/retrievers/tools/domain_retrieve_tool.py` |
+| 会话/观测 | `src/session/`、`src/observability/` |
+| 领域技能/提示词/语料 | `domain/<id>/` |
 
-## 5. 提交前自检
+## 5. 提交前检查
 
-- [ ] 目录落位正确，未破坏分层边界
-- [ ] 同步更新 `engine.py`、`state.py`
-- [ ] 补充测试用例（`tests/`）
-- [ ] 配置项有默认值（`profile.json` 或环境变量）
-- [ ] 无明文敏感信息
-- [ ] 新增全局组件已加入 `src/init/`
+- [ ] 是否仍然沿用当前 Deep Agent 架构，而不是重新引入旧 workflow 设计
+- [ ] 新增初始化逻辑是否已接入 `src/init/`
+- [ ] 新增 Agent tool 是否已在 `src/agent/factory.py` 装配
+- [ ] citation 或 assistant message 改动后，是否同步检查 API 映射与兼容性
+- [ ] 新配置是否优先放进 `profile.json` 或环境变量
+- [ ] 是否补了对应 pytest 用例
+- [ ] 是否避免提交明文敏感信息
