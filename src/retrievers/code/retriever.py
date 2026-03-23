@@ -177,24 +177,24 @@ class CodeRetrieverRuntimeConfig:
     def from_env(cls) -> "CodeRetrieverRuntimeConfig":
         """从环境变量加载配置"""
         return cls(
-            default_top_k=env_int("WORKFLOW_CODE_RETRIEVER_TOP_K", 4, minimum=1),
-            max_child_candidates=env_int("WORKFLOW_CODE_RETRIEVER_MAX_CHILD_CANDIDATES", 64, minimum=8),
-            max_results_per_path=env_int("WORKFLOW_CODE_RETRIEVER_MAX_PER_PATH", 2, minimum=1),
+            default_top_k=env_int("AGENT_CODE_RETRIEVER_TOP_K", 4, minimum=1),
+            max_child_candidates=env_int("AGENT_CODE_RETRIEVER_MAX_CHILD_CANDIDATES", 64, minimum=8),
+            max_results_per_path=env_int("AGENT_CODE_RETRIEVER_MAX_PER_PATH", 2, minimum=1),
             # RRF 归一化后的权重（范围 [0, 1]）
-            bm25_weight=env_float("WORKFLOW_CODE_RETRIEVER_BM25_WEIGHT", 0.35, minimum=0.0),
-            pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PATTERN_WEIGHT", 0.20, minimum=0.0),
-            parent_best_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_BEST_PATTERN_WEIGHT", 0.15, minimum=0.0),
-            parent_avg_pattern_weight=env_float("WORKFLOW_CODE_RETRIEVER_PARENT_AVG_PATTERN_WEIGHT", 0.08, minimum=0.0),
-            min_final_score=env_float("WORKFLOW_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.30, minimum=0.0),
-            grade_high_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 0.85, minimum=0.0),
-            grade_medium_top1_threshold=env_float("WORKFLOW_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 0.55, minimum=0.0),
+            bm25_weight=env_float("AGENT_CODE_RETRIEVER_BM25_WEIGHT", 0.35, minimum=0.0),
+            pattern_weight=env_float("AGENT_CODE_RETRIEVER_PATTERN_WEIGHT", 0.20, minimum=0.0),
+            parent_best_pattern_weight=env_float("AGENT_CODE_RETRIEVER_PARENT_BEST_PATTERN_WEIGHT", 0.15, minimum=0.0),
+            parent_avg_pattern_weight=env_float("AGENT_CODE_RETRIEVER_PARENT_AVG_PATTERN_WEIGHT", 0.08, minimum=0.0),
+            min_final_score=env_float("AGENT_CODE_RETRIEVER_MIN_FINAL_SCORE", 0.30, minimum=0.0),
+            grade_high_top1_threshold=env_float("AGENT_CODE_RETRIEVER_GRADE_HIGH_TOP1_THRESHOLD", 0.85, minimum=0.0),
+            grade_medium_top1_threshold=env_float("AGENT_CODE_RETRIEVER_GRADE_MEDIUM_TOP1_THRESHOLD", 0.55, minimum=0.0),
             # 向量检索配置
-            enable_embedding=env_bool("WORKFLOW_CODE_EMBEDDING_ENABLED", True),
-            embedding_model=os.getenv("WORKFLOW_CODE_EMBEDDING_MODEL", "BAAI/bge-base-zh-v1.5"),
-            embedding_device=os.getenv("WORKFLOW_CODE_EMBEDDING_DEVICE", "cpu"),
-            embedding_top_k=env_int("WORKFLOW_CODE_EMBEDDING_TOP_K", 4, minimum=1),
-            embedding_persist_root=os.getenv("WORKFLOW_CODE_EMBEDDING_PERSIST_ROOT", ".vectorstore_code"),
-            embedding_weight=env_float("WORKFLOW_CODE_EMBEDDING_WEIGHT", 0.40, minimum=0.0),
+            enable_embedding=env_bool("AGENT_CODE_EMBEDDING_ENABLED", True),
+            embedding_model=os.getenv("AGENT_CODE_EMBEDDING_MODEL", "BAAI/bge-base-zh-v1.5"),
+            embedding_device=os.getenv("AGENT_CODE_EMBEDDING_DEVICE", "cpu"),
+            embedding_top_k=env_int("AGENT_CODE_EMBEDDING_TOP_K", 4, minimum=1),
+            embedding_persist_root=os.getenv("AGENT_CODE_EMBEDDING_PERSIST_ROOT", ".vectorstore_code"),
+            embedding_weight=env_float("AGENT_CODE_EMBEDDING_WEIGHT", 0.40, minimum=0.0),
         )
 
 
@@ -1412,7 +1412,7 @@ def parse_code_dirs_from_env(*, project_root: Path) -> list[Path] | None:
     返回:
         返回类型为 `list[Path] | None` 的处理结果。
     """
-    raw = os.getenv("WORKFLOW_CODE_RETRIEVER_DIRS", "").strip()
+    raw = os.getenv("AGENT_CODE_RETRIEVER_DIRS", "").strip()
     if not raw:
         default_codes_dir = (project_root / "codes").resolve()
         if default_codes_dir.exists():

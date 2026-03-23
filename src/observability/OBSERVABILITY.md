@@ -45,11 +45,11 @@
 - `OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN`
 
 对应环境变量名（脚本会自动 export）：
-- `WORKFLOW_OBS_PG_ENABLED`
-- `WORKFLOW_OBS_PG_DSN`
-- `WORKFLOW_OBS_PG_SCHEMA`
-- `WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS`
-- `WORKFLOW_OBS_ALERT_*`
+- `AGENT_OBS_PG_ENABLED`
+- `AGENT_OBS_PG_DSN`
+- `AGENT_OBS_PG_SCHEMA`
+- `AGENT_OBS_PG_CONNECT_TIMEOUT_SECONDS`
+- `AGENT_OBS_ALERT_*`
 
 ## 4. 指标定义（窗口）
 
@@ -71,7 +71,7 @@
 - 服务启动时会先尝试“自动建库”再“自动建表”：
   - 自动建库：若 DSN 指向的数据库不存在，会自动连接 bootstrap 库创建数据库。
   - 自动建表：会自动创建 observability 所需表与索引。
-- bootstrap 库默认使用 `postgres`，可通过 `WORKFLOW_PG_BOOTSTRAP_DB` 覆盖。
+- bootstrap 库默认使用 `postgres`，可通过 `AGENT_PG_BOOTSTRAP_DB` 覆盖。
 - 若当前账号无 `CREATE DATABASE` 权限，health 中会出现 `observability.init_error`，需由 DBA 预建数据库后重启服务。
 
 ## 7. 运行日志文件（Workflow Runtime Logging）
@@ -84,11 +84,11 @@
 
 可用环境变量：
 
-- `WORKFLOW_FILE_LOG_ENABLED`：是否启用文件日志（默认 `true`）
-- `WORKFLOW_FILE_LOG_LEVEL`：日志级别（默认 `INFO`，可选 `DEBUG/INFO/WARNING/ERROR`）
-- `WORKFLOW_FILE_LOG_DIR`：日志目录（默认 `logs`）
-- `WORKFLOW_FILE_LOG_FILE`：日志文件名（默认 `workflow.log`）
-- `WORKFLOW_FILE_LOG_MAX_BYTES`：单文件滚动大小（默认 `5242880`）
-- `WORKFLOW_FILE_LOG_BACKUP_COUNT`：滚动保留份数（默认 `3`）
+- `AGENT_FILE_LOG_ENABLED`：是否启用文件日志（默认 `true`）
+- `AGENT_FILE_LOG_LEVEL`：日志级别（默认 `INFO`，可选 `DEBUG/INFO/WARNING/ERROR`）
+- `AGENT_FILE_LOG_DIR`：日志目录（默认 `logs`）
+- `AGENT_FILE_LOG_FILE`：日志文件名（默认 `workflow.log`）
+- `AGENT_FILE_LOG_MAX_BYTES`：单文件滚动大小（默认 `5242880`）
+- `AGENT_FILE_LOG_BACKUP_COUNT`：滚动保留份数（默认 `3`）
 
 可通过 `GET /api/health` 的 `runtime_logging` 字段查看当前生效状态与日志文件路径。

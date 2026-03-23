@@ -117,7 +117,7 @@ class HybridScoreWeights:
             weights.source = "profile"
 
         # 2. 从配置文件读取（覆盖 profile）
-        path = os.getenv("WORKFLOW_WIKI_HYBRID_WEIGHTS_PATH", "").strip()
+        path = os.getenv("AGENT_WIKI_HYBRID_WEIGHTS_PATH", "").strip()
         if path:
             file_path = Path(path)
             if file_path.exists():
@@ -131,9 +131,9 @@ class HybridScoreWeights:
                     pass
 
         # 3. 环境变量优先级最高
-        weights.bm25 = env_float("WORKFLOW_WIKI_WEIGHT_BM25", weights.bm25)
-        weights.embedding = env_float("WORKFLOW_WIKI_WEIGHT_EMBEDDING", weights.embedding)
-        weights.lexical = env_float("WORKFLOW_WIKI_WEIGHT_LEXICAL", weights.lexical)
+        weights.bm25 = env_float("AGENT_WIKI_WEIGHT_BM25", weights.bm25)
+        weights.embedding = env_float("AGENT_WIKI_WEIGHT_EMBEDDING", weights.embedding)
+        weights.lexical = env_float("AGENT_WIKI_WEIGHT_LEXICAL", weights.lexical)
         return weights.normalized()
 
     def normalized(self) -> "HybridScoreWeights":
@@ -226,28 +226,28 @@ class WikiRetrieverRuntimeConfig:
         """
         # 向量检索配置：环境变量优先级高于 profile 配置
         if embedding_profile:
-            enable_embedding = env_bool("WORKFLOW_WIKI_EMBEDDING_ENABLED", embedding_profile.enabled)
-            embedding_model = os.getenv("WORKFLOW_EMBEDDING_MODEL", embedding_profile.model)
-            embedding_top_k = env_int("WORKFLOW_WIKI_EMBEDDING_TOP_K", embedding_profile.top_k, minimum=1)
-            embedding_device = os.getenv("WORKFLOW_EMBEDDING_DEVICE", embedding_profile.device)
-            embedding_persist_root = os.getenv("WORKFLOW_EMBEDDING_PERSIST_ROOT", embedding_profile.persist_root)
-            embedding_cache_dir = os.getenv("WORKFLOW_EMBEDDING_CACHE_DIR", embedding_profile.cache_dir or "")
+            enable_embedding = env_bool("AGENT_WIKI_EMBEDDING_ENABLED", embedding_profile.enabled)
+            embedding_model = os.getenv("AGENT_EMBEDDING_MODEL", embedding_profile.model)
+            embedding_top_k = env_int("AGENT_WIKI_EMBEDDING_TOP_K", embedding_profile.top_k, minimum=1)
+            embedding_device = os.getenv("AGENT_EMBEDDING_DEVICE", embedding_profile.device)
+            embedding_persist_root = os.getenv("AGENT_EMBEDDING_PERSIST_ROOT", embedding_profile.persist_root)
+            embedding_cache_dir = os.getenv("AGENT_EMBEDDING_CACHE_DIR", embedding_profile.cache_dir or "")
         else:
-            enable_embedding = env_bool("WORKFLOW_WIKI_EMBEDDING_ENABLED", True)
-            embedding_model = os.getenv("WORKFLOW_EMBEDDING_MODEL", "BAAI/bge-base-zh-v1.5")
-            embedding_top_k = env_int("WORKFLOW_WIKI_EMBEDDING_TOP_K", 4, minimum=1)
-            embedding_device = os.getenv("WORKFLOW_EMBEDDING_DEVICE", "cpu")
-            embedding_persist_root = os.getenv("WORKFLOW_EMBEDDING_PERSIST_ROOT", ".vectorstore")
-            embedding_cache_dir = os.getenv("WORKFLOW_EMBEDDING_CACHE_DIR", "")
+            enable_embedding = env_bool("AGENT_WIKI_EMBEDDING_ENABLED", True)
+            embedding_model = os.getenv("AGENT_EMBEDDING_MODEL", "BAAI/bge-base-zh-v1.5")
+            embedding_top_k = env_int("AGENT_WIKI_EMBEDDING_TOP_K", 4, minimum=1)
+            embedding_device = os.getenv("AGENT_EMBEDDING_DEVICE", "cpu")
+            embedding_persist_root = os.getenv("AGENT_EMBEDDING_PERSIST_ROOT", ".vectorstore")
+            embedding_cache_dir = os.getenv("AGENT_EMBEDDING_CACHE_DIR", "")
 
         return cls(
-            default_top_k=env_int("WORKFLOW_WIKI_TOP_K", default_top_k, minimum=1),
-            max_chunks_per_doc=env_int("WORKFLOW_WIKI_MAX_CHUNKS_PER_DOC", 1, minimum=1),
-            chunk_size=env_int("WORKFLOW_WIKI_PARAGRAPH_MAX_CHARS", 520, minimum=120),
-            chunk_overlap=env_int("WORKFLOW_WIKI_PARAGRAPH_MIN_CHARS", 80, minimum=0),
-            excerpt_max_chars=env_int("WORKFLOW_WIKI_EXCERPT_MAX_CHARS", 220, minimum=60),
-            candidate_multiplier=env_int("WORKFLOW_WIKI_STAGE2_MULTIPLIER", 6, minimum=1),
-            min_candidates=env_int("WORKFLOW_WIKI_STAGE2_MIN_CANDIDATES", 12, minimum=1),
+            default_top_k=env_int("AGENT_WIKI_TOP_K", default_top_k, minimum=1),
+            max_chunks_per_doc=env_int("AGENT_WIKI_MAX_CHUNKS_PER_DOC", 1, minimum=1),
+            chunk_size=env_int("AGENT_WIKI_PARAGRAPH_MAX_CHARS", 520, minimum=120),
+            chunk_overlap=env_int("AGENT_WIKI_PARAGRAPH_MIN_CHARS", 80, minimum=0),
+            excerpt_max_chars=env_int("AGENT_WIKI_EXCERPT_MAX_CHARS", 220, minimum=60),
+            candidate_multiplier=env_int("AGENT_WIKI_STAGE2_MULTIPLIER", 6, minimum=1),
+            min_candidates=env_int("AGENT_WIKI_STAGE2_MIN_CANDIDATES", 12, minimum=1),
             enable_embedding=enable_embedding,
             embedding_model=embedding_model,
             embedding_top_k=embedding_top_k,
@@ -255,12 +255,12 @@ class WikiRetrieverRuntimeConfig:
             embedding_persist_root=embedding_persist_root,
             embedding_cache_dir=embedding_cache_dir or None,
             # 语义分块配置
-            enable_semantic_chunking=env_bool("WORKFLOW_WIKI_SEMANTIC_CHUNKING_ENABLED", False),
-            semantic_min_chunk_chars=env_int("WORKFLOW_WIKI_SEMANTIC_MIN_CHARS", 200, minimum=50),
-            semantic_max_chunk_chars=env_int("WORKFLOW_WIKI_SEMANTIC_MAX_CHARS", 800, minimum=100),
-            semantic_preserve_code_blocks=env_bool("WORKFLOW_WIKI_SEMANTIC_PRESERVE_CODE", True),
-            semantic_preserve_tables=env_bool("WORKFLOW_WIKI_SEMANTIC_PRESERVE_TABLES", True),
-            semantic_include_hierarchy=env_bool("WORKFLOW_WIKI_SEMANTIC_INCLUDE_HIERARCHY", True),
+            enable_semantic_chunking=env_bool("AGENT_WIKI_SEMANTIC_CHUNKING_ENABLED", False),
+            semantic_min_chunk_chars=env_int("AGENT_WIKI_SEMANTIC_MIN_CHARS", 200, minimum=50),
+            semantic_max_chunk_chars=env_int("AGENT_WIKI_SEMANTIC_MAX_CHARS", 800, minimum=100),
+            semantic_preserve_code_blocks=env_bool("AGENT_WIKI_SEMANTIC_PRESERVE_CODE", True),
+            semantic_preserve_tables=env_bool("AGENT_WIKI_SEMANTIC_PRESERVE_TABLES", True),
+            semantic_include_hierarchy=env_bool("AGENT_WIKI_SEMANTIC_INCLUDE_HIERARCHY", True),
         )
 
 

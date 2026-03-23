@@ -738,14 +738,14 @@ def _load_json_file(path: Path) -> dict[str, Any]:
 
 
 def _resolve_profile_path(project_root: Path) -> Path:
-    explicit = os.getenv("WORKFLOW_DOMAIN_PROFILE_PATH", "").strip()
+    explicit = os.getenv("AGENT_DOMAIN_PROFILE_PATH", "").strip()
     if explicit:
         custom = Path(explicit)
         if not custom.is_absolute():
             custom = (project_root / custom).resolve()
         return custom
 
-    domain_dir = os.getenv("WORKFLOW_DOMAIN_DIR", "").strip()
+    domain_dir = os.getenv("AGENT_DOMAIN_DIR", "").strip()
     if domain_dir:
         domain_path = Path(domain_dir)
         if not domain_path.is_absolute():
@@ -754,8 +754,8 @@ def _resolve_profile_path(project_root: Path) -> Path:
             return domain_path
         return domain_path / "profile.json"
 
-    profile_id = os.getenv("WORKFLOW_DOMAIN_PROFILE", DEFAULT_PROFILE_ID).strip() or DEFAULT_PROFILE_ID
-    profile_dir = os.getenv("WORKFLOW_DOMAIN_PROFILE_DIR", DEFAULT_PROFILE_DIR).strip() or DEFAULT_PROFILE_DIR
+    profile_id = os.getenv("AGENT_DOMAIN_PROFILE", DEFAULT_PROFILE_ID).strip() or DEFAULT_PROFILE_ID
+    profile_dir = os.getenv("AGENT_DOMAIN_PROFILE_DIR", DEFAULT_PROFILE_DIR).strip() or DEFAULT_PROFILE_DIR
     base_dir = Path(profile_dir)
     if not base_dir.is_absolute():
         base_dir = (project_root / base_dir).resolve()

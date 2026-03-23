@@ -12,9 +12,9 @@ async def init_mcp_client_async(domain_profile: Any) -> None:
     """异步初始化 MCP 客户端并设置全局单例。"""
     import os
 
-    mcp_enabled = os.getenv("WORKFLOW_MCP_ENABLED", "false").lower().strip()
+    mcp_enabled = os.getenv("AGENT_MCP_ENABLED", "false").lower().strip()
     if mcp_enabled not in {"true", "1", "yes"}:
-        logger.info("[MCPInit] MCP disabled by WORKFLOW_MCP_ENABLED")
+        logger.info("[MCPInit] MCP disabled by AGENT_MCP_ENABLED")
         return
 
     try:

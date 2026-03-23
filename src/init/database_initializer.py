@@ -83,7 +83,7 @@ def _ensure_database_exists(
     if not target_db:
         raise ValueError("invalid_dsn_missing_db_name")
 
-    bootstrap_db = os.getenv("WORKFLOW_PG_BOOTSTRAP_DB", "postgres").strip() or "postgres"
+    bootstrap_db = os.getenv("AGENT_PG_BOOTSTRAP_DB", "postgres").strip() or "postgres"
     bootstrap_dsn = _build_bootstrap_dsn(normalized_dsn, bootstrap_db)
 
     # 使用 bootstrap 库检查并创建目标数据库
@@ -125,11 +125,11 @@ def _parse_database_config() -> DatabaseConfig:
     """从环境变量解析数据库配置"""
     from common.func_utils import to_bool, to_int
 
-    explicit_backend = str(os.getenv("WORKFLOW_CHECKPOINTER_BACKEND", "") or "").strip().lower()
-    explicit_dsn = str(os.getenv("WORKFLOW_CHECKPOINTER_PG_DSN", "") or "").strip()
+    explicit_backend = str(os.getenv("AGENT_CHECKPOINTER_BACKEND", "") or "").strip().lower()
+    explicit_dsn = str(os.getenv("AGENT_CHECKPOINTER_PG_DSN", "") or "").strip()
     fallback_dsn = (
-        str(os.getenv("WORKFLOW_SESSION_PG_DSN", "") or "").strip()
-        or str(os.getenv("WORKFLOW_OBS_PG_DSN", "") or "").strip()
+        str(os.getenv("AGENT_SESSION_PG_DSN", "") or "").strip()
+        or str(os.getenv("AGENT_OBS_PG_DSN", "") or "").strip()
     )
     resolved_dsn = explicit_dsn or fallback_dsn
 
@@ -140,9 +140,9 @@ def _parse_database_config() -> DatabaseConfig:
 
     pg_enabled_default = bool(resolved_dsn) and backend == "postgres"
     connect_timeout_raw = (
-        str(os.getenv("WORKFLOW_CHECKPOINTER_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
-        or str(os.getenv("WORKFLOW_SESSION_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
-        or str(os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
+        str(os.getenv("AGENT_CHECKPOINTER_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
+        or str(os.getenv("AGENT_SESSION_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
+        or str(os.getenv("AGENT_OBS_PG_CONNECT_TIMEOUT_SECONDS", "") or "").strip()
     )
 
     connect_timeout_seconds = max(1, to_int(connect_timeout_raw, 5))
@@ -151,8 +151,8 @@ def _parse_database_config() -> DatabaseConfig:
     return DatabaseConfig(
         backend=backend,
         pg_dsn=dsn_with_timeout,
-        pg_enabled=to_bool(os.getenv("WORKFLOW_CHECKPOINTER_PG_ENABLED"), pg_enabled_default),
-        pg_setup=to_bool(os.getenv("WORKFLOW_CHECKPOINTER_PG_SETUP"), True),
+        pg_enabled=to_bool(os.getenv("AGENT_CHECKPOINTER_PG_ENABLED"), pg_enabled_default),
+        pg_setup=to_bool(os.getenv("AGENT_CHECKPOINTER_PG_SETUP"), True),
         connect_timeout_seconds=connect_timeout_seconds,
     )
 

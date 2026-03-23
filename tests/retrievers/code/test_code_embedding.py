@@ -108,9 +108,9 @@ class TestCodeEmbeddingConfig:
         from retrievers.code.retriever import CodeRetrieverRuntimeConfig
 
         # 设置环境变量
-        monkeypatch.setenv("WORKFLOW_CODE_EMBEDDING_ENABLED", "true")
-        monkeypatch.setenv("WORKFLOW_CODE_EMBEDDING_MODEL", "custom-model")
-        monkeypatch.setenv("WORKFLOW_CODE_EMBEDDING_WEIGHT", "0.5")
+        monkeypatch.setenv("AGENT_CODE_EMBEDDING_ENABLED", "true")
+        monkeypatch.setenv("AGENT_CODE_EMBEDDING_MODEL", "custom-model")
+        monkeypatch.setenv("AGENT_CODE_EMBEDDING_WEIGHT", "0.5")
 
         config = CodeRetrieverRuntimeConfig.from_env()
 

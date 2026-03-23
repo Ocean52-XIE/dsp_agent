@@ -49,38 +49,38 @@ class PostgresObservabilityConfig:
 
     @classmethod
     def from_env(cls) -> "PostgresObservabilityConfig":
-        dsn = os.getenv("WORKFLOW_OBS_PG_DSN", "").strip()
+        dsn = os.getenv("AGENT_OBS_PG_DSN", "").strip()
         enabled_default = bool(dsn)
         return cls(
-            enabled=to_bool(os.getenv("WORKFLOW_OBS_PG_ENABLED"), enabled_default),
+            enabled=to_bool(os.getenv("AGENT_OBS_PG_ENABLED"), enabled_default),
             dsn=dsn,
-            schema=_sanitize_identifier(os.getenv("WORKFLOW_OBS_PG_SCHEMA", "public"), "public"),
-            connect_timeout_seconds=max(1, to_int(os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS"), 5)),
-            alert_window_minutes=max(5, to_int(os.getenv("WORKFLOW_OBS_ALERT_WINDOW_MINUTES"), 30)),
-            alert_min_samples=max(1, to_int(os.getenv("WORKFLOW_OBS_ALERT_MIN_SAMPLES"), 20)),
-            alert_suppress_minutes=max(1, to_int(os.getenv("WORKFLOW_OBS_ALERT_SUPPRESS_MINUTES"), 30)),
+            schema=_sanitize_identifier(os.getenv("AGENT_OBS_PG_SCHEMA", "public"), "public"),
+            connect_timeout_seconds=max(1, to_int(os.getenv("AGENT_OBS_PG_CONNECT_TIMEOUT_SECONDS"), 5)),
+            alert_window_minutes=max(5, to_int(os.getenv("AGENT_OBS_ALERT_WINDOW_MINUTES"), 30)),
+            alert_min_samples=max(1, to_int(os.getenv("AGENT_OBS_ALERT_MIN_SAMPLES"), 20)),
+            alert_suppress_minutes=max(1, to_int(os.getenv("AGENT_OBS_ALERT_SUPPRESS_MINUTES"), 30)),
             alert_empty_response_rate_max=max(
                 0.0,
-                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_EMPTY_RESPONSE_RATE_MAX"), 0.05)),
+                min(1.0, to_float(os.getenv("AGENT_OBS_ALERT_EMPTY_RESPONSE_RATE_MAX"), 0.05)),
             ),
             alert_fallback_rate_max=max(
                 0.0,
-                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_FALLBACK_RATE_MAX"), 0.25)),
+                min(1.0, to_float(os.getenv("AGENT_OBS_ALERT_FALLBACK_RATE_MAX"), 0.25)),
             ),
             alert_insufficient_rate_max=max(
                 0.0,
-                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_INSUFFICIENT_RATE_MAX"), 0.20)),
+                min(1.0, to_float(os.getenv("AGENT_OBS_ALERT_INSUFFICIENT_RATE_MAX"), 0.20)),
             ),
             alert_p95_latency_ms_max=max(
                 1.0,
-                to_float(os.getenv("WORKFLOW_OBS_ALERT_P95_LATENCY_MS_MAX"), 3000.0),
+                to_float(os.getenv("AGENT_OBS_ALERT_P95_LATENCY_MS_MAX"), 3000.0),
             ),
             alert_exact_like_pass_rate_min=max(
                 0.0,
-                min(1.0, to_float(os.getenv("WORKFLOW_OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN"), 0.70)),
+                min(1.0, to_float(os.getenv("AGENT_OBS_ALERT_EXACT_LIKE_PASS_RATE_MIN"), 0.70)),
             ),
-            pool_min_size=max(1, to_int(os.getenv("WORKFLOW_OBS_PG_POOL_MIN_SIZE"), 1)),
-            pool_max_size=max(1, to_int(os.getenv("WORKFLOW_OBS_PG_POOL_MAX_SIZE"), 10)),
+            pool_min_size=max(1, to_int(os.getenv("AGENT_OBS_PG_POOL_MIN_SIZE"), 1)),
+            pool_max_size=max(1, to_int(os.getenv("AGENT_OBS_PG_POOL_MAX_SIZE"), 10)),
         )
 
 

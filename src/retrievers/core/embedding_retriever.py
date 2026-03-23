@@ -67,7 +67,7 @@ class EmbeddingRetrieverConfig:
         """从 profile 配置创建
 
         支持的配置来源 (优先级从高到低):
-            1. 环境变量 (WORKFLOW_EMBEDDING_*)
+            1. 环境变量 (AGENT_EMBEDDING_*)
             2. profile 配置
             3. 默认值
 
@@ -80,10 +80,10 @@ class EmbeddingRetrieverConfig:
             配置实例
         """
         # 环境变量优先级最高
-        model_name = os.getenv("WORKFLOW_EMBEDDING_MODEL", profile.model)
-        device = os.getenv("WORKFLOW_EMBEDDING_DEVICE", profile.device)
-        top_k = env_int("WORKFLOW_EMBEDDING_TOP_K", profile.top_k, minimum=1)
-        cache_dir = os.getenv("WORKFLOW_EMBEDDING_CACHE_DIR", profile.cache_dir or "")
+        model_name = os.getenv("AGENT_EMBEDDING_MODEL", profile.model)
+        device = os.getenv("AGENT_EMBEDDING_DEVICE", profile.device)
+        top_k = env_int("AGENT_EMBEDDING_TOP_K", profile.top_k, minimum=1)
+        cache_dir = os.getenv("AGENT_EMBEDDING_CACHE_DIR", profile.cache_dir or "")
 
         # 确定持久化目录
         root = persist_root or profile.persist_root
@@ -110,10 +110,10 @@ class EmbeddingRetrieverConfig:
         """从环境变量加载配置
 
         支持的环境变量:
-            WORKFLOW_EMBEDDING_MODEL: Embedding 模型名称
-            WORKFLOW_EMBEDDING_DEVICE: 运行设备 (cpu/cuda)
-            WORKFLOW_EMBEDDING_TOP_K: 默认返回结果数
-            WORKFLOW_EMBEDDING_CACHE_DIR: 模型缓存目录
+            AGENT_EMBEDDING_MODEL: Embedding 模型名称
+            AGENT_EMBEDDING_DEVICE: 运行设备 (cpu/cuda)
+            AGENT_EMBEDDING_TOP_K: 默认返回结果数
+            AGENT_EMBEDDING_CACHE_DIR: 模型缓存目录
 
         参数:
             collection_name: Collection 名称，用于区分不同知识库
@@ -122,10 +122,10 @@ class EmbeddingRetrieverConfig:
         返回:
             配置实例
         """
-        model_name = os.getenv("WORKFLOW_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
-        device = os.getenv("WORKFLOW_EMBEDDING_DEVICE", DEFAULT_EMBEDDING_DEVICE)
-        top_k = env_int("WORKFLOW_EMBEDDING_TOP_K", DEFAULT_TOP_K, minimum=1)
-        cache_dir = os.getenv("WORKFLOW_EMBEDDING_CACHE_DIR", "")
+        model_name = os.getenv("AGENT_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
+        device = os.getenv("AGENT_EMBEDDING_DEVICE", DEFAULT_EMBEDDING_DEVICE)
+        top_k = env_int("AGENT_EMBEDDING_TOP_K", DEFAULT_TOP_K, minimum=1)
+        cache_dir = os.getenv("AGENT_EMBEDDING_CACHE_DIR", "")
 
         # 确定持久化目录
         if persist_root is None:

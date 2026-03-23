@@ -54,29 +54,29 @@ class PostgresSessionConfig:
 
     @classmethod
     def from_env(cls) -> "PostgresSessionConfig":
-        explicit_dsn = os.getenv("WORKFLOW_SESSION_PG_DSN", "").strip()
-        fallback_dsn = os.getenv("WORKFLOW_OBS_PG_DSN", "").strip()
+        explicit_dsn = os.getenv("AGENT_SESSION_PG_DSN", "").strip()
+        fallback_dsn = os.getenv("AGENT_OBS_PG_DSN", "").strip()
         dsn = explicit_dsn or fallback_dsn
         enabled_default = bool(dsn)
         schema_env = (
-            os.getenv("WORKFLOW_SESSION_PG_SCHEMA")
-            or os.getenv("WORKFLOW_OBS_PG_SCHEMA")
+            os.getenv("AGENT_SESSION_PG_SCHEMA")
+            or os.getenv("AGENT_OBS_PG_SCHEMA")
             or "public"
         )
         return cls(
-            enabled=to_bool(os.getenv("WORKFLOW_SESSION_PG_ENABLED"), enabled_default),
+            enabled=to_bool(os.getenv("AGENT_SESSION_PG_ENABLED"), enabled_default),
             dsn=dsn,
             schema=_sanitize_identifier(schema_env, "public"),
             connect_timeout_seconds=max(
                 1,
                 to_int(
-                    os.getenv("WORKFLOW_SESSION_PG_CONNECT_TIMEOUT_SECONDS")
-                    or os.getenv("WORKFLOW_OBS_PG_CONNECT_TIMEOUT_SECONDS"),
+                    os.getenv("AGENT_SESSION_PG_CONNECT_TIMEOUT_SECONDS")
+                    or os.getenv("AGENT_OBS_PG_CONNECT_TIMEOUT_SECONDS"),
                     5,
                 ),
             ),
-            pool_min_size=max(1, to_int(os.getenv("WORKFLOW_SESSION_PG_POOL_MIN_SIZE"), 1)),
-            pool_max_size=max(1, to_int(os.getenv("WORKFLOW_SESSION_PG_POOL_MAX_SIZE"), 10)),
+            pool_min_size=max(1, to_int(os.getenv("AGENT_SESSION_PG_POOL_MIN_SIZE"), 1)),
+            pool_max_size=max(1, to_int(os.getenv("AGENT_SESSION_PG_POOL_MAX_SIZE"), 10)),
         )
 
 

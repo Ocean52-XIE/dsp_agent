@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Deep Agent 配置测试。"""
+"""Tests for DeepAgentConfig."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,14 +8,13 @@ from types import SimpleNamespace
 from agent.config import DeepAgentConfig
 
 
-def test_deep_agent_config_prefers_deep_agent_env(monkeypatch) -> None:
-    """优先读取 Deep Agent 专用环境变量。"""
-    monkeypatch.setenv("DEEP_AGENT_MODEL", "gpt-5-mini")
-    monkeypatch.setenv("DEEP_AGENT_API_KEY", "deep-key")
-    monkeypatch.setenv("DEEP_AGENT_BASE_URL", "https://example.com/v1")
-    monkeypatch.setenv("DEEP_AGENT_TEMPERATURE", "0.25")
-    monkeypatch.setenv("DEEP_AGENT_MAX_TOKENS", "2048")
-    monkeypatch.setenv("DEEP_AGENT_TIMEOUT_SECONDS", "90")
+def test_deep_agent_config_reads_agent_env(monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LLM_MODEL", "gpt-5-mini")
+    monkeypatch.setenv("AGENT_LLM_API_KEY", "deep-key")
+    monkeypatch.setenv("AGENT_LLM_BASE_URL", "https://example.com/v1")
+    monkeypatch.setenv("AGENT_LLM_TEMPERATURE", "0.25")
+    monkeypatch.setenv("AGENT_LLM_MAX_TOKENS", "2048")
+    monkeypatch.setenv("AGENT_LLM_TIMEOUT_SECONDS", "90")
 
     profile = SimpleNamespace(
         profile_id="ad_engine",
@@ -38,20 +37,13 @@ def test_deep_agent_config_prefers_deep_agent_env(monkeypatch) -> None:
     assert config.skills_root == "/domain/ad_engine/skills"
 
 
-def test_deep_agent_config_falls_back_to_agent_env(monkeypatch) -> None:
-    """当 Deep Agent 环境变量为空时回退到历史 Agent 配置。"""
-    monkeypatch.delenv("DEEP_AGENT_MODEL", raising=False)
-    monkeypatch.delenv("DEEP_AGENT_API_KEY", raising=False)
-    monkeypatch.delenv("DEEP_AGENT_BASE_URL", raising=False)
-    monkeypatch.delenv("DEEP_AGENT_TEMPERATURE", raising=False)
-    monkeypatch.delenv("DEEP_AGENT_MAX_TOKENS", raising=False)
-    monkeypatch.delenv("DEEP_AGENT_TIMEOUT_SECONDS", raising=False)
+def test_deep_agent_config_uses_defaults_for_invalid_agent_env(monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LLM_MODEL", "fallback-model")
     monkeypatch.setenv("AGENT_LLM_API_KEY", "fallback-key")
     monkeypatch.setenv("AGENT_LLM_BASE_URL", "https://fallback.test")
     monkeypatch.setenv("AGENT_LLM_TEMPERATURE", "bad-float")
     monkeypatch.setenv("AGENT_LLM_MAX_TOKENS", "bad-int")
-    monkeypatch.setenv("AGENT_LLM_TIMEOUT", "77")
+    monkeypatch.setenv("AGENT_LLM_TIMEOUT_SECONDS", "77")
 
     profile = SimpleNamespace(
         profile_id="ad_engine",

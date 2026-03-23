@@ -203,8 +203,7 @@ class DeepAgentService:
         if fallback_reason == "llm_authentication_failed":
             answer = (
                 "当前 LLM 服务鉴权失败，系统已降级返回。"
-                "请检查 `DEEP_AGENT_API_KEY`、`WORKFLOW_QA_LLM_API_KEY` "
-                "或 `AGENT_LLM_API_KEY` 是否配置正确后重试。"
+                "请检查 `AGENT_LLM_API_KEY` 是否配置正确后重试。"
             )
         else:
             answer = (

@@ -44,4 +44,4 @@ def setup_env(monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LLM_API_KEY", "test-api-key")
     monkeypatch.setenv("AGENT_LLM_TEMPERATURE", "0.1")
     monkeypatch.setenv("AGENT_LLM_MAX_TOKENS", "4096")
-    monkeypatch.setenv("AGENT_LLM_TIMEOUT", "120")
+    monkeypatch.setenv("AGENT_LLM_TIMEOUT_SECONDS", "120")

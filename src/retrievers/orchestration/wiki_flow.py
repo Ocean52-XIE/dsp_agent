@@ -142,9 +142,9 @@ def execute_wiki_retrieval(
         }
 
     top_k = int(retrieval_plan.get("wiki_top_k", 4))
-    retry_multiplier = env_int("WORKFLOW_WIKI_RETRY_TOPK_MULTIPLIER", 2, minimum=1)
-    retry_max_top_k = env_int("WORKFLOW_WIKI_RETRY_MAX_TOPK", 14, minimum=1)
-    retry_min_top1 = env_float("WORKFLOW_WIKI_RETRY_MIN_TOP1", 3.0, minimum=0.0)
+    retry_multiplier = env_int("AGENT_WIKI_RETRY_TOPK_MULTIPLIER", 2, minimum=1)
+    retry_max_top_k = env_int("AGENT_WIKI_RETRY_MAX_TOPK", 14, minimum=1)
+    retry_min_top1 = env_float("AGENT_WIKI_RETRY_MIN_TOP1", 3.0, minimum=0.0)
 
     base_queries = list(state.get("retrieval_queries", []))
 

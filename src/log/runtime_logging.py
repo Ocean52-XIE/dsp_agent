@@ -62,15 +62,15 @@ def _configure_global_logging(project_root: Path) -> RotatingFileHandler | None:
         return _GLOBAL_HANDLER
 
     # 读取配置
-    enabled = _env_bool("WORKFLOW_FILE_LOG_ENABLED", True)
+    enabled = _env_bool("AGENT_FILE_LOG_ENABLED", True)
     if not enabled:
         _GLOBAL_LOG_CONFIGURED = True
         return None
 
-    level_name = str(os.getenv("WORKFLOW_FILE_LOG_LEVEL", "INFO") or "INFO").upper()
-    max_bytes = max(1024, _env_int("WORKFLOW_FILE_LOG_MAX_BYTES", 5 * 1024 * 1024))
-    backup_count = max(1, _env_int("WORKFLOW_FILE_LOG_BACKUP_COUNT", 3))
-    log_dir = Path(os.getenv("WORKFLOW_FILE_LOG_DIR", str(project_root / "logs")))
+    level_name = str(os.getenv("AGENT_FILE_LOG_LEVEL", "INFO") or "INFO").upper()
+    max_bytes = max(1024, _env_int("AGENT_FILE_LOG_MAX_BYTES", 5 * 1024 * 1024))
+    backup_count = max(1, _env_int("AGENT_FILE_LOG_BACKUP_COUNT", 3))
+    log_dir = Path(os.getenv("AGENT_FILE_LOG_DIR", str(project_root / "logs")))
     # 固定使用 agent.log
     file_name = "agent.log"
 
@@ -155,11 +155,11 @@ class WorkflowFileLogger:
             project_root: 项目根目录
         """
         self.project_root = Path(project_root)
-        self.enabled = _env_bool("WORKFLOW_FILE_LOG_ENABLED", True)
-        self.level_name = str(os.getenv("WORKFLOW_FILE_LOG_LEVEL", "INFO") or "INFO").upper()
-        self.max_bytes = max(1024, _env_int("WORKFLOW_FILE_LOG_MAX_BYTES", 5 * 1024 * 1024))
-        self.backup_count = max(1, _env_int("WORKFLOW_FILE_LOG_BACKUP_COUNT", 3))
-        self.log_dir = Path(os.getenv("WORKFLOW_FILE_LOG_DIR", str(self.project_root / "logs")))
+        self.enabled = _env_bool("AGENT_FILE_LOG_ENABLED", True)
+        self.level_name = str(os.getenv("AGENT_FILE_LOG_LEVEL", "INFO") or "INFO").upper()
+        self.max_bytes = max(1024, _env_int("AGENT_FILE_LOG_MAX_BYTES", 5 * 1024 * 1024))
+        self.backup_count = max(1, _env_int("AGENT_FILE_LOG_BACKUP_COUNT", 3))
+        self.log_dir = Path(os.getenv("AGENT_FILE_LOG_DIR", str(self.project_root / "logs")))
         # 固定使用 agent.log
         self.file_name = "agent.log"
         self.log_path = self.log_dir / self.file_name

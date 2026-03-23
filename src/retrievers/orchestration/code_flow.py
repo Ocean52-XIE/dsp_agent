@@ -128,8 +128,8 @@ def execute_code_retrieval(
 
     config = retriever.runtime_config
     top_k = int(retrieval_plan.get("code_top_k", 4))
-    retry_multiplier = env_int("WORKFLOW_CODE_RETRY_TOPK_MULTIPLIER", 2, minimum=1)
-    retry_max_top_k = env_int("WORKFLOW_CODE_RETRY_MAX_TOPK", 14, minimum=1)
+    retry_multiplier = env_int("AGENT_CODE_RETRY_TOPK_MULTIPLIER", 2, minimum=1)
+    retry_max_top_k = env_int("AGENT_CODE_RETRY_MAX_TOPK", 14, minimum=1)
 
     base_queries = list(state.get("retrieval_queries", []))
 

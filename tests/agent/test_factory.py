@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Deep Agent 工厂测试。"""
+"""Tests for the deep agent factory."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,8 +10,7 @@ from agent.factory import create_agent
 
 
 def test_create_agent_assembles_deep_agent(monkeypatch) -> None:
-    """工厂应按配置装配模型、工具、技能目录和 backend。"""
-    monkeypatch.setenv("DEEP_AGENT_MODEL", "factory-model")
+    monkeypatch.setenv("AGENT_LLM_MODEL", "factory-model")
 
     class _FakeFilesystemBackend:
         def __init__(self, *, root_dir: str, virtual_mode: bool) -> None:
@@ -24,7 +23,7 @@ def test_create_agent_assembles_deep_agent(monkeypatch) -> None:
 
     def _fake_create_deep_agent(**kwargs):
         created.update(kwargs)
-        return {"agent": "ok"}
+        return SimpleNamespace(agent="ok")
 
     deepagents_module.create_deep_agent = _fake_create_deep_agent
     backends_module.FilesystemBackend = _FakeFilesystemBackend
@@ -41,12 +40,15 @@ def test_create_agent_assembles_deep_agent(monkeypatch) -> None:
     )
     monkeypatch.setattr("agent.factory.create_domain_retrieve_tool", lambda: "retrieve-tool")
     monkeypatch.setattr("agent.factory.get_mcp_tools", lambda: ["mcp-tool"])
-    monkeypatch.setattr("agent.factory._build_model", lambda config: {"model": config.model})
+    monkeypatch.setattr(
+        "agent.factory._build_model",
+        lambda *, config, project_root: {"model": config.model, "project_root": project_root},
+    )
 
     agent = create_agent(project_root=Path("."), checkpointer="checkpoint")
 
-    assert agent == {"agent": "ok"}
-    assert created["model"] == {"model": "factory-model"}
+    assert agent.agent == "ok"
+    assert created["model"]["model"] == "factory-model"
     assert created["tools"] == ["retrieve-tool", "mcp-tool"]
     assert created["system_prompt"] == "system"
     assert created["skills"] == ["/domain/ad_engine/skills"]

@@ -604,13 +604,13 @@ class TestConfigWithCacheDir:
         from retrievers.core.embedding_retriever import EmbeddingRetrieverConfig
 
         # 设置环境变量
-        os.environ["WORKFLOW_EMBEDDING_CACHE_DIR"] = "/env/cache"
+        os.environ["AGENT_EMBEDDING_CACHE_DIR"] = "/env/cache"
 
         try:
             config = EmbeddingRetrieverConfig.from_env()
             assert config.cache_dir == "/env/cache"
         finally:
-            del os.environ["WORKFLOW_EMBEDDING_CACHE_DIR"]
+            del os.environ["AGENT_EMBEDDING_CACHE_DIR"]
 
     def test_reranker_config_cache_dir_from_profile(self):
         """测试 CrossEncoderRerankerConfig 从 profile 读取 cache_dir"""
@@ -632,10 +632,10 @@ class TestConfigWithCacheDir:
         from retrievers.core.cross_encoder_reranker import CrossEncoderRerankerConfig
 
         # 设置环境变量
-        os.environ["WORKFLOW_RERANKER_CACHE_DIR"] = "/env/cache"
+        os.environ["AGENT_RERANKER_CACHE_DIR"] = "/env/cache"
 
         try:
             config = CrossEncoderRerankerConfig.from_env()
             assert config.cache_dir == "/env/cache"
         finally:
-            del os.environ["WORKFLOW_RERANKER_CACHE_DIR"]
+            del os.environ["AGENT_RERANKER_CACHE_DIR"]

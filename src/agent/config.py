@@ -71,25 +71,17 @@ class DeepAgentConfig:
 
         return cls(
             model=_first_env(
-                "DEEP_AGENT_MODEL",
-                "WORKFLOW_QA_LLM_MODEL",
                 "AGENT_LLM_MODEL",
                 default="gpt-4o-mini",
             ),
             api_key=_first_env(
-                "DEEP_AGENT_API_KEY",
-                "WORKFLOW_QA_LLM_API_KEY",
                 "AGENT_LLM_API_KEY",
             ),
             base_url=_first_env(
-                "DEEP_AGENT_BASE_URL",
-                "WORKFLOW_QA_LLM_BASE_URL",
                 "AGENT_LLM_BASE_URL",
             ),
             temperature=_as_float(
                 _first_env(
-                    "DEEP_AGENT_TEMPERATURE",
-                    "WORKFLOW_QA_LLM_TEMPERATURE",
                     "AGENT_LLM_TEMPERATURE",
                     default="0.1",
                 ),
@@ -97,8 +89,6 @@ class DeepAgentConfig:
             ),
             max_tokens=_as_int(
                 _first_env(
-                    "DEEP_AGENT_MAX_TOKENS",
-                    "WORKFLOW_QA_LLM_MAX_TOKENS",
                     "AGENT_LLM_MAX_TOKENS",
                     default="4096",
                 ),
@@ -106,9 +96,7 @@ class DeepAgentConfig:
             ),
             timeout_seconds=_as_int(
                 _first_env(
-                    "DEEP_AGENT_TIMEOUT_SECONDS",
-                    "WORKFLOW_QA_LLM_TIMEOUT",
-                    "AGENT_LLM_TIMEOUT",
+                    "AGENT_LLM_TIMEOUT_SECONDS",
                     default="60",
                 ),
                 60,

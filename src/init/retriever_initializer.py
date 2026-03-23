@@ -100,7 +100,7 @@ def init_code_retriever(
         )
 
         # 优先从环境变量读取代码目录
-        env_code_dirs = os.getenv("WORKFLOW_CODE_RETRIEVER_DIRS", "").strip()
+        env_code_dirs = os.getenv("AGENT_CODE_RETRIEVER_DIRS", "").strip()
         if env_code_dirs:
             code_dirs = parse_code_dirs_from_env(project_root=project_root)
         else:

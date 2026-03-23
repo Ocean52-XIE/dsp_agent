@@ -70,7 +70,7 @@ class CrossEncoderRerankerConfig:
         """从 profile 配置创建，支持环境变量覆盖。
 
         配置优先级 (从高到低):
-            1. 环境变量 (WORKFLOW_RERANKER_*)
+            1. 环境变量 (AGENT_RERANKER_*)
             2. profile 配置
             3. 默认值
 
@@ -81,13 +81,13 @@ class CrossEncoderRerankerConfig:
             CrossEncoderRerankerConfig 实例
         """
         # 环境变量优先级最高
-        model_name = os.getenv("WORKFLOW_RERANKER_MODEL", profile.model)
-        device = os.getenv("WORKFLOW_RERANKER_DEVICE", profile.device)
-        top_k = env_int("WORKFLOW_RERANKER_TOP_K", profile.top_k, minimum=1)
-        candidate_top_k = env_int("WORKFLOW_RERANKER_CANDIDATE_TOP_K", profile.candidate_top_k, minimum=1)
-        batch_size = env_int("WORKFLOW_RERANKER_BATCH_SIZE", profile.batch_size, minimum=1)
-        max_length = env_int("WORKFLOW_RERANKER_MAX_LENGTH", profile.max_length, minimum=64)
-        cache_dir = os.getenv("WORKFLOW_RERANKER_CACHE_DIR", profile.cache_dir or "")
+        model_name = os.getenv("AGENT_RERANKER_MODEL", profile.model)
+        device = os.getenv("AGENT_RERANKER_DEVICE", profile.device)
+        top_k = env_int("AGENT_RERANKER_TOP_K", profile.top_k, minimum=1)
+        candidate_top_k = env_int("AGENT_RERANKER_CANDIDATE_TOP_K", profile.candidate_top_k, minimum=1)
+        batch_size = env_int("AGENT_RERANKER_BATCH_SIZE", profile.batch_size, minimum=1)
+        max_length = env_int("AGENT_RERANKER_MAX_LENGTH", profile.max_length, minimum=64)
+        cache_dir = os.getenv("AGENT_RERANKER_CACHE_DIR", profile.cache_dir or "")
 
         return cls(
             model_name=model_name,
@@ -105,25 +105,25 @@ class CrossEncoderRerankerConfig:
         """从环境变量加载配置。
 
         支持的环境变量:
-            WORKFLOW_RERANKER_MODEL: 模型名称
-            WORKFLOW_RERANKER_DEVICE: 运行设备
-            WORKFLOW_RERANKER_TOP_K: 返回结果数
-            WORKFLOW_RERANKER_CANDIDATE_TOP_K: 候选集大小
-            WORKFLOW_RERANKER_BATCH_SIZE: 批处理大小
-            WORKFLOW_RERANKER_MAX_LENGTH: 最大序列长度
-            WORKFLOW_RERANKER_CACHE_DIR: 模型缓存目录
+            AGENT_RERANKER_MODEL: 模型名称
+            AGENT_RERANKER_DEVICE: 运行设备
+            AGENT_RERANKER_TOP_K: 返回结果数
+            AGENT_RERANKER_CANDIDATE_TOP_K: 候选集大小
+            AGENT_RERANKER_BATCH_SIZE: 批处理大小
+            AGENT_RERANKER_MAX_LENGTH: 最大序列长度
+            AGENT_RERANKER_CACHE_DIR: 模型缓存目录
 
         返回:
             CrossEncoderRerankerConfig 实例
         """
         return cls(
-            model_name=os.getenv("WORKFLOW_RERANKER_MODEL", DEFAULT_RERANKER_MODEL),
-            device=os.getenv("WORKFLOW_RERANKER_DEVICE", DEFAULT_RERANKER_DEVICE),
-            top_k=env_int("WORKFLOW_RERANKER_TOP_K", DEFAULT_RERANKER_TOP_K, minimum=1),
-            candidate_top_k=env_int("WORKFLOW_RERANKER_CANDIDATE_TOP_K", DEFAULT_CANDIDATE_TOP_K, minimum=1),
-            batch_size=env_int("WORKFLOW_RERANKER_BATCH_SIZE", DEFAULT_BATCH_SIZE, minimum=1),
-            max_length=env_int("WORKFLOW_RERANKER_MAX_LENGTH", DEFAULT_MAX_LENGTH, minimum=64),
-            cache_dir=os.getenv("WORKFLOW_RERANKER_CACHE_DIR", "") or None,
+            model_name=os.getenv("AGENT_RERANKER_MODEL", DEFAULT_RERANKER_MODEL),
+            device=os.getenv("AGENT_RERANKER_DEVICE", DEFAULT_RERANKER_DEVICE),
+            top_k=env_int("AGENT_RERANKER_TOP_K", DEFAULT_RERANKER_TOP_K, minimum=1),
+            candidate_top_k=env_int("AGENT_RERANKER_CANDIDATE_TOP_K", DEFAULT_CANDIDATE_TOP_K, minimum=1),
+            batch_size=env_int("AGENT_RERANKER_BATCH_SIZE", DEFAULT_BATCH_SIZE, minimum=1),
+            max_length=env_int("AGENT_RERANKER_MAX_LENGTH", DEFAULT_MAX_LENGTH, minimum=64),
+            cache_dir=os.getenv("AGENT_RERANKER_CACHE_DIR", "") or None,
             _config_source="env",
         )
 

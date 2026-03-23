@@ -34,16 +34,16 @@
 会话存储支持独立配置，也支持复用 observability 的 DSN。
 
 优先读取：
-1. `WORKFLOW_SESSION_PG_*`
-2. `WORKFLOW_OBS_PG_*`
+1. `AGENT_SESSION_PG_*`
+2. `AGENT_OBS_PG_*`
 
 可用变量：
-- `WORKFLOW_SESSION_PG_ENABLED`
-- `WORKFLOW_SESSION_PG_DSN`
-- `WORKFLOW_SESSION_PG_SCHEMA`
-- `WORKFLOW_SESSION_PG_CONNECT_TIMEOUT_SECONDS`
+- `AGENT_SESSION_PG_ENABLED`
+- `AGENT_SESSION_PG_DSN`
+- `AGENT_SESSION_PG_SCHEMA`
+- `AGENT_SESSION_PG_CONNECT_TIMEOUT_SECONDS`
 
-如果未显式配置 `WORKFLOW_SESSION_PG_DSN`，会自动回退到 `WORKFLOW_OBS_PG_DSN`。
+如果未显式配置 `AGENT_SESSION_PG_DSN`，会自动回退到 `AGENT_OBS_PG_DSN`。
 
 ## 4. 代码位置
 
@@ -62,4 +62,4 @@
   - 自动建库（若目标数据库不存在）。
   - 自动建表（`qa_session`）。
 - 自动建库依赖当前数据库账号具备 `CREATE DATABASE` 权限。
-- bootstrap 库默认是 `postgres`，可通过 `WORKFLOW_PG_BOOTSTRAP_DB` 修改。
+- bootstrap 库默认是 `postgres`，可通过 `AGENT_PG_BOOTSTRAP_DB` 修改。
