@@ -9,6 +9,7 @@ from typing import Any
 from langchain_openai import ChatOpenAI
 
 from agent.config import DeepAgentConfig
+from agent.llm_logging import LLMCallLoggingCallback
 from agent.tools.mcp_tools import get_mcp_tools
 from domain_profile import get_domain_profile
 from retrievers.tools.domain_retrieve_tool import create_domain_retrieve_tool
@@ -16,12 +17,13 @@ from retrievers.tools.domain_retrieve_tool import create_domain_retrieve_tool
 logger = logging.getLogger(__name__)
 
 
-def _build_model(config: DeepAgentConfig) -> ChatOpenAI:
+def _build_model(*, config: DeepAgentConfig, project_root: Path) -> ChatOpenAI:
     kwargs: dict[str, Any] = {
         "model": config.model,
         "temperature": config.temperature,
         "max_tokens": config.max_tokens,
         "timeout": config.timeout_seconds,
+        "callbacks": [LLMCallLoggingCallback(project_root=project_root)],
     }
     if config.api_key:
         kwargs["api_key"] = config.api_key
@@ -50,7 +52,7 @@ def create_agent(
         project_root=project_root,
     )
     tools = [create_domain_retrieve_tool(), *get_mcp_tools()]
-    model = _build_model(config)
+    model = _build_model(config=config, project_root=project_root)
     backend = FilesystemBackend(root_dir=str(config.backend_root), virtual_mode=True)
     logger.info(
         "Creating deep agent: domain=%s, skills_root=%s, tool_count=%s",
@@ -58,7 +60,7 @@ def create_agent(
         config.skills_root,
         len(tools),
     )
-    return create_deep_agent(
+    agent = create_deep_agent(
         model=model,
         tools=tools,
         system_prompt=config.system_prompt,
@@ -66,3 +68,13 @@ def create_agent(
         backend=backend,
         checkpointer=checkpointer,
     )
+    setattr(
+        agent,
+        "_dsp_runtime_config",
+        {
+            "model": config.model,
+            "skills_root": config.skills_root,
+            "tool_count": len(tools),
+        },
+    )
+    return agent

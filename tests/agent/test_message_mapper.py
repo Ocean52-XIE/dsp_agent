@@ -132,15 +132,112 @@ def test_parse_agent_result_extracts_debug_metadata() -> None:
                 {"role": "assistant", "content": "final answer"},
             ]
         },
-        runtime_debug={"latency_ms": 55, "checkpointer_backend": "postgres"},
+        runtime_debug={"latency_ms": 55, "checkpointer_backend": "postgres", "llm_model": "gpt-4o-mini"},
     )
 
     assert parsed.intent == "knowledge_qa"
     assert parsed.analysis["module"] == "rerank-engine"
     assert parsed.analysis["retrieval_bias"] == "code_first"
     assert parsed.analysis["skills_used"] == ["intent-router", "knowledge-qa"]
+    assert parsed.analysis["citation_scope"] == "all_tool_calls_deduped"
+    assert parsed.analysis["llm_model"] == "gpt-4o-mini"
     assert parsed.debug["route"] == "knowledge_qa"
     assert parsed.debug["tools_used"] == ["domain_retrieve"]
     assert parsed.debug["tool_call_count"] == 1
     assert parsed.debug["checkpointer_backend"] == "postgres"
     assert parsed.debug["latency_ms"] == 55
+    assert parsed.debug["citation_scope"] == "all_tool_calls_deduped"
+    assert parsed.debug["llm_model"] == "gpt-4o-mini"
+    assert parsed.debug["last_tool_call_citation_count"] == 1
+    assert parsed.debug["message_trace"] == [
+        {
+            "index": 0,
+            "role": "tool",
+            "name": "domain_retrieve",
+            "tool_name": "domain_retrieve",
+            "citation_count": 1,
+            "retrieval_strategy": "code_first",
+            "wiki_hits": 1,
+            "code_hits": 5,
+            "latency_ms": 41,
+        },
+        {
+            "index": 1,
+            "role": "assistant",
+            "content_preview": "final answer",
+        },
+    ]
+
+
+def test_parse_agent_result_merges_citations_across_multiple_tool_calls() -> None:
+    first_payload = json.dumps(
+        {
+            "intent": "knowledge_qa",
+            "citations": [
+                {"source": "wiki", "path": f"wiki_{idx}.md", "section": "intro", "score": 0.9 - idx * 0.01}
+                for idx in range(4)
+            ],
+            "debug": {
+                "retrieval_strategy": "hybrid",
+                "requested_top_k": 6,
+                "returned_citation_count": 4,
+                "wiki_hits": 4,
+                "code_hits": 0,
+            },
+        }
+    )
+    second_payload = json.dumps(
+        {
+            "intent": "knowledge_qa",
+            "citations": [
+                {"source": "code", "path": f"code_{idx}.py", "section": "func", "score": 0.8 - idx * 0.01}
+                for idx in range(4)
+            ],
+            "debug": {
+                "retrieval_strategy": "code_first",
+                "requested_top_k": 6,
+                "returned_citation_count": 4,
+                "wiki_hits": 0,
+                "code_hits": 4,
+            },
+        }
+    )
+
+    parsed = parse_agent_result(
+        trace_id="trace-3",
+        result={
+            "messages": [
+                {"role": "tool", "name": "domain_retrieve", "content": first_payload},
+                {"role": "tool", "name": "domain_retrieve", "content": second_payload},
+                {"role": "assistant", "content": "final answer with merged citations"},
+            ]
+        },
+    )
+
+    assert len(parsed.citations) == 8
+    assert parsed.analysis["citation_scope"] == "all_tool_calls_deduped"
+    assert parsed.debug["tool_call_count"] == 2
+    assert parsed.debug["last_tool_call_requested_top_k"] == 6
+    assert parsed.debug["last_tool_call_citation_count"] == 4
+    assert parsed.debug["tool_calls"] == [
+        {
+            "name": "domain_retrieve",
+            "intent": "knowledge_qa",
+            "requested_top_k": 6,
+            "returned_citation_count": 4,
+            "citation_count": 4,
+            "retrieval_strategy": "hybrid",
+            "wiki_hits": 4,
+            "code_hits": 0,
+        },
+        {
+            "name": "domain_retrieve",
+            "intent": "knowledge_qa",
+            "requested_top_k": 6,
+            "returned_citation_count": 4,
+            "citation_count": 4,
+            "retrieval_strategy": "code_first",
+            "wiki_hits": 0,
+            "code_hits": 4,
+        },
+    ]

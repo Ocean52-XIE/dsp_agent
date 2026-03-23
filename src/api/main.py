@@ -52,13 +52,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 使用异步初始化（确保 MCP 等异步组件在正确的上下文中初始化）
     from init import initialize_async
+    from init import initialize_async
     await initialize_async(project_root=BASE_DIR, enable_mcp=True, enable_retrievers=True)
 
-    AGENT_SERVICE = DeepAgentService(project_root=BASE_DIR)
+    AGENT_SERVICE = await DeepAgentService.create_async(project_root=BASE_DIR)
 
     # 初始化存储
-    OBS_STORE = PostgresObservabilityStore.from_env()
-    SESSION_STORE = PostgresSessionStore.from_env()
+    OBS_STORE = await PostgresObservabilityStore.create_from_env()
+    SESSION_STORE = await PostgresSessionStore.create_from_env()
     APP_LOGGER.info(
         'api.service.initialized',
         checkpointer=AGENT_SERVICE.checkpointer_status(),
@@ -76,12 +77,29 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     APP_LOGGER.info('api.lifespan.shutdown.begin')
 
     # 关闭 DeepAgentService 资源
+    APP_LOGGER.info('api.lifespan.shutdown.begin')
     try:
-        AGENT_SERVICE.close()
+        await AGENT_SERVICE.aclose()
         APP_LOGGER.info('api.lifespan.shutdown.agent.closed')
     except Exception as exc:
         APP_LOGGER.warning(
             'api.lifespan.shutdown.agent.close_failed',
+            error_type=type(exc).__name__,
+        )
+    try:
+        await OBS_STORE.aclose()
+        APP_LOGGER.info('api.lifespan.shutdown.observability.closed')
+    except Exception as exc:
+        APP_LOGGER.warning(
+            'api.lifespan.shutdown.observability.close_failed',
+            error_type=type(exc).__name__,
+        )
+    try:
+        await SESSION_STORE.aclose()
+        APP_LOGGER.info('api.lifespan.shutdown.session_store.closed')
+    except Exception as exc:
+        APP_LOGGER.warning(
+            'api.lifespan.shutdown.session_store.close_failed',
             error_type=type(exc).__name__,
         )
 
@@ -129,7 +147,7 @@ def next_id(prefix: str) -> str:
     return f'{prefix}_{uuid4().hex}'
 
 
-def create_session_record(title: str | None = None) -> dict[str, Any]:
+async def create_session_record(title: str | None = None) -> dict[str, Any]:
     session_id = next_id('sess')
     created_at = now_iso()
     session = {
@@ -140,15 +158,15 @@ def create_session_record(title: str | None = None) -> dict[str, Any]:
         'status': 'idle',
         'messages': []
     }
-    persist_session_record(session)
+    await persist_session_record(session)
     APP_LOGGER.info('api.session.created', session_id=session_id, title=text_preview(session['title'], max_chars=80))
     return session
 
 
-def ensure_session(session_id: str) -> dict[str, Any]:
+async def ensure_session(session_id: str) -> dict[str, Any]:
     session: dict[str, Any] | None = None
     if SESSION_STORE.is_active:
-        session = SESSION_STORE.get_session(session_id)
+        session = await SESSION_STORE.get_session(session_id)
     else:
         session = SESSIONS.get(session_id)
     if session is None:
@@ -157,16 +175,16 @@ def ensure_session(session_id: str) -> dict[str, Any]:
     return session
 
 
-def list_session_records(limit: int = 20) -> list[dict[str, Any]]:
+async def list_session_records(limit: int = 20) -> list[dict[str, Any]]:
     safe_limit = max(1, min(int(limit), 200))
     if SESSION_STORE.is_active:
-        return SESSION_STORE.list_sessions(limit=safe_limit)
+        return await SESSION_STORE.list_sessions(limit=safe_limit)
     return list(SESSIONS.values())
 
 
-def persist_session_record(session: dict[str, Any]) -> None:
+async def persist_session_record(session: dict[str, Any]) -> None:
     if SESSION_STORE.is_active:
-        SESSION_STORE.save_session(session)
+        await SESSION_STORE.save_session(session)
         return
     SESSIONS[str(session['id'])] = session
 
@@ -222,7 +240,7 @@ def materialize_assistant_message(payload: dict[str, Any]) -> dict[str, Any]:
     return message
 
 
-def persist_observability_turn(
+async def persist_observability_turn(
     *,
     turn_type: str,
     session: dict[str, Any],
@@ -230,7 +248,7 @@ def persist_observability_turn(
     assistant_message: dict[str, Any]
 ) -> None:
     try:
-        OBS_STORE.record_turn(
+        await OBS_STORE.record_turn(
             turn_type=turn_type,
             session_id=session['id'],
             trace_id=str(assistant_message.get('trace_id', '') or ''),
@@ -249,9 +267,9 @@ def persist_observability_turn(
         return
 
 
-def find_message(message_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+async def find_message(message_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     if SESSION_STORE.is_active:
-        result = SESSION_STORE.find_message(message_id)
+        result = await SESSION_STORE.find_message(message_id)
         if result is not None:
             return result
     else:
@@ -282,10 +300,10 @@ def health() -> dict[str, Any]:
 
 
 @app.get('/api/sessions')
-def list_sessions(limit: int = 20) -> dict[str, list[dict[str, Any]]]:
+async def list_sessions(limit: int = 20) -> dict[str, list[dict[str, Any]]]:
     safe_limit = max(1, min(int(limit), 200))
     items = sorted(
-        (summarize_session(session) for session in list_session_records(limit=safe_limit)),
+        (summarize_session(session) for session in await list_session_records(limit=safe_limit)),
         key=lambda item: item['updated_at'],
         reverse=True
     )[:safe_limit]
@@ -294,21 +312,21 @@ def list_sessions(limit: int = 20) -> dict[str, list[dict[str, Any]]]:
 
 
 @app.post('/api/sessions')
-def create_session(request: SessionCreateRequest) -> dict[str, Any]:
+async def create_session(request: SessionCreateRequest) -> dict[str, Any]:
     APP_LOGGER.info('api.session.create.requested', title=text_preview(request.title or '', max_chars=80))
-    session = create_session_record(request.title)
+    session = await create_session_record(request.title)
     return {'session': serialize_session(session), 'summary': summarize_session(session)}
 
 
 @app.get('/api/sessions/{session_id}')
-def get_session(session_id: str) -> dict[str, Any]:
+async def get_session(session_id: str) -> dict[str, Any]:
     APP_LOGGER.debug('api.session.get', session_id=session_id)
-    session = ensure_session(session_id)
+    session = await ensure_session(session_id)
     return {'session': serialize_session(session)}
 
 
 @app.post('/api/messages')
-def create_message(request: MessageCreateRequest) -> dict[str, Any]:
+async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     """创建消息（同步版本）
 
     使用 DeepAgentService 处理用户消息。
@@ -319,7 +337,7 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
         content_preview=text_preview(request.content, max_chars=120),
     )
 
-    session = ensure_session(request.session_id)
+    session = await ensure_session(request.session_id)
 
     # 首条消息时，用内容设置会话标题
     if len([msg for msg in session['messages'] if msg['role'] == 'user']) == 0:
@@ -337,7 +355,7 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     )
 
     try:
-        turn_result = AGENT_SERVICE.run_user_message(
+        turn_result = await AGENT_SERVICE.run_user_message_async(
             session_id=session['id'],
             trace_id=trace_id,
             user_query=request.content,
@@ -357,8 +375,8 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     session['messages'].append(assistant_message)
     session['status'] = assistant_message['status']
     session['updated_at'] = now_iso()
-    persist_session_record(session)
-    persist_observability_turn(
+    await persist_session_record(session)
+    await persist_observability_turn(
         turn_type='message',
         session=session,
         user_query=request.content,
@@ -391,7 +409,7 @@ def get_references(trace_id: str) -> dict[str, Any]:
 
 
 @app.post('/api/messages/{message_id}/feedback')
-def create_message_feedback(message_id: str, request: MessageFeedbackRequest) -> dict[str, Any]:
+async def create_message_feedback(message_id: str, request: MessageFeedbackRequest) -> dict[str, Any]:
     APP_LOGGER.info(
         'api.feedback.requested',
         message_id=message_id,
@@ -399,12 +417,12 @@ def create_message_feedback(message_id: str, request: MessageFeedbackRequest) ->
         reason_tag=text_preview(request.reason_tag, max_chars=48),
         rating=request.rating
     )
-    session, message = find_message(message_id)
+    session, message = await find_message(message_id)
     if message.get('role') != 'assistant':
         APP_LOGGER.warning('api.feedback.invalid_role', message_id=message_id, role=message.get('role', ''))
         raise HTTPException(status_code=400, detail='Only assistant message can receive feedback')
     trace_id = str(message.get('trace_id', '') or '')
-    OBS_STORE.record_feedback(
+    await OBS_STORE.record_feedback(
         session_id=session['id'],
         trace_id=trace_id,
         message_id=message_id,
@@ -426,7 +444,7 @@ def create_message_feedback(message_id: str, request: MessageFeedbackRequest) ->
         'updated_at': now_iso()
     }
     session['updated_at'] = now_iso()
-    persist_session_record(session)
+    await persist_session_record(session)
     APP_LOGGER.info('api.feedback.completed', message_id=message_id, session_id=session.get('id', ''))
     return {'ok': True, 'message_id': message_id}
 
@@ -443,13 +461,16 @@ def get_api_config_info() -> dict[str, Any]:
 
 
 @app.get('/api/observability/summary')
-def get_observability_summary(window_minutes: int = 60) -> dict[str, Any]:
+async def get_observability_summary(window_minutes: int = 60) -> dict[str, Any]:
     APP_LOGGER.debug('api.observability.summary.requested', window_minutes=max(1, int(window_minutes)))
-    summary = OBS_STORE.get_summary(window_minutes=max(1, int(window_minutes)))
+    summary = await OBS_STORE.get_summary(window_minutes=max(1, int(window_minutes)))
     return {'observability': OBS_STORE.status(), 'summary': summary}
 
 
 @app.get('/api/observability/alerts')
-def get_observability_alerts(limit: int = 50) -> dict[str, Any]:
+async def get_observability_alerts(limit: int = 50) -> dict[str, Any]:
     APP_LOGGER.debug('api.observability.alerts.requested', limit=max(1, min(int(limit), 200)))
-    return {'observability': OBS_STORE.status(), 'items': OBS_STORE.list_alerts(limit=max(1, min(int(limit), 200)))}
+    return {
+        'observability': OBS_STORE.status(),
+        'items': await OBS_STORE.list_alerts(limit=max(1, min(int(limit), 200))),
+    }

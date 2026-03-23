@@ -14,9 +14,10 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
-from contextlib import ExitStack
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -176,7 +177,7 @@ def _ensure_connect_timeout_in_dsn(dsn: str, timeout_seconds: int) -> str:
 # 数据库初始化
 # ============================================================================
 
-def init_database() -> tuple[Any | None, Any | None]:
+async def init_database_async() -> tuple[Any | None, Any | None]:
     """初始化数据库连接
 
     根据配置初始化 PostgreSQL 或内存 Checkpointer。
@@ -202,7 +203,7 @@ def init_database() -> tuple[Any | None, Any | None]:
         return None, _create_memory_checkpointer("empty_dsn")
 
     # 尝试连接 PostgreSQL
-    return _init_postgres(config)
+    return await _init_postgres_async(config)
 
 
 def _create_memory_checkpointer(reason: str) -> Any:
@@ -213,7 +214,7 @@ def _create_memory_checkpointer(reason: str) -> Any:
     return MemorySaver()
 
 
-def _init_postgres(config: DatabaseConfig) -> tuple[Any | None, Any | None]:
+async def _init_postgres_async(config: DatabaseConfig) -> tuple[Any | None, Any | None]:
     """初始化 PostgreSQL 连接
 
     Args:
@@ -224,29 +225,32 @@ def _init_postgres(config: DatabaseConfig) -> tuple[Any | None, Any | None]:
     """
     try:
         import psycopg
-        from langgraph.checkpoint.postgres import PostgresSaver
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
     except ImportError as exc:
         logger.warning(
             f"[DBInit] PostgreSQL 依赖缺失，使用内存 Checkpointer: {exc}"
         )
         return None, _create_memory_checkpointer("import_dependency_failed")
 
-    stack: ExitStack | None = None
+    stack: AsyncExitStack | None = None
     try:
         # 确保数据库存在（使用本地函数）
-        _ensure_database_exists(
+        await asyncio.to_thread(
+            _ensure_database_exists,
             psycopg_module=psycopg,
             dsn=config.pg_dsn,
             connect_timeout_seconds=config.connect_timeout_seconds,
         )
 
         # 创建 Checkpointer
-        stack = ExitStack()
-        checkpointer = stack.enter_context(PostgresSaver.from_conn_string(config.pg_dsn))
+        stack = AsyncExitStack()
+        checkpointer = await stack.enter_async_context(
+            AsyncPostgresSaver.from_conn_string(config.pg_dsn)
+        )
 
         # 初始化表结构
         if config.pg_setup:
-            checkpointer.setup()
+            await checkpointer.setup()
 
         logger.info(
             f"[DBInit] PostgreSQL Checkpointer 初始化完成: "
@@ -258,7 +262,7 @@ def _init_postgres(config: DatabaseConfig) -> tuple[Any | None, Any | None]:
 
     except Exception as exc:
         if stack is not None:
-            stack.close()
+            await stack.aclose()
 
         logger.warning(
             f"[DBInit] PostgreSQL 初始化失败，使用内存 Checkpointer: "

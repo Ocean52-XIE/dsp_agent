@@ -2,6 +2,7 @@
 """Unified retrieval tool exposed to the Deep Agent."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Any, Literal
@@ -210,6 +211,8 @@ def _run_domain_retrieve_from_payload(payload: DomainRetrieveInput) -> dict[str,
             "intent": payload.intent,
             "module_name": str(state["module_name"]),
             "retrieval_strategy": str(state["retrieval_plan"]["strategy"]),
+            "requested_top_k": int(payload.top_k),
+            "returned_citation_count": len(citations),
             "query_count": len(state["retrieval_queries"]),
             "wiki_hits": len(state.get("wiki_hits", [])),
             "code_hits": len(state.get("code_hits", [])),
@@ -222,7 +225,7 @@ def _run_domain_retrieve_from_payload(payload: DomainRetrieveInput) -> dict[str,
     return response.model_dump()
 
 
-def _run_domain_retrieve(
+async def _run_domain_retrieve_async(
     query: str,
     intent: str = "knowledge_qa",
     retrieval_bias: str = "hybrid",
@@ -238,13 +241,13 @@ def _run_domain_retrieve(
         related_modules=related_modules,
         top_k=top_k,
     )
-    return _run_domain_retrieve_from_payload(payload)
+    return await asyncio.to_thread(_run_domain_retrieve_from_payload, payload)
 
 
 def create_domain_retrieve_tool() -> StructuredTool:
     """Create the unified retrieval tool used by the Deep Agent."""
     return StructuredTool.from_function(
-        func=_run_domain_retrieve,
+        coroutine=_run_domain_retrieve_async,
         name="domain_retrieve",
         description=(
             "Unified retrieval tool for the current domain. "

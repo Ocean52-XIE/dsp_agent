@@ -5,13 +5,13 @@ from __future__ import annotations
 from init.database_initializer import (
     ensure_database_exists,
     get_database_status,
-    init_database,
+    init_database_async,
 )
 from init.initializer import initialize_async
 
 __all__ = [
     "initialize_async",
     "ensure_database_exists",
-    "init_database",
+    "init_database_async",
     "get_database_status",
 ]

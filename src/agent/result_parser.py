@@ -60,6 +60,13 @@ def _extract_message_name(message: Any) -> str:
     return str(getattr(message, "name", "") or "").strip()
 
 
+def _preview_text(value: Any, *, max_chars: int = 160) -> str:
+    text = _extract_text(value)
+    if len(text) <= max_chars:
+        return text
+    return f"{text[:max_chars]}..."
+
+
 def _parse_tool_payload(text: str) -> dict[str, Any] | None:
     normalized = str(text or "").strip()
     if not normalized:
@@ -145,6 +152,13 @@ def _normalize_citation_item(item: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _count_payload_items(payload: dict[str, Any], field_name: str) -> int:
+    value = payload.get(field_name)
+    if not isinstance(value, list):
+        return 0
+    return sum(1 for item in value if isinstance(item, dict))
+
+
 def _merge_citation_payloads(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     citations_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
     for payload in payloads:
@@ -224,18 +238,69 @@ def _build_tool_calls(payloads: list[dict[str, Any]]) -> tuple[list[str], list[d
             "code_grade",
             "query_count",
             "domain_id",
+            "requested_top_k",
+            "returned_citation_count",
         ):
             value = payload.get(field_name)
             if value in (None, "") and field_name in debug:
                 value = debug.get(field_name)
             if value not in (None, "", []):
                 call[field_name] = value
+        citation_count = _count_payload_items(payload, "citations")
+        evidence_count = _count_payload_items(payload, "evidence")
+        if citation_count > 0:
+            call["citation_count"] = citation_count
+        if evidence_count > 0:
+            call["evidence_count"] = evidence_count
         if "retrieval_strategy" not in call:
             strategy = debug.get("retrieval_strategy")
             if strategy not in (None, ""):
                 call["retrieval_strategy"] = strategy
         tool_calls.append(call)
     return tools_used, tool_calls
+
+
+def _build_message_trace(result: Any) -> list[dict[str, Any]]:
+    if not isinstance(result, dict):
+        return []
+    messages = list(result.get("messages", []) or [])
+    trace: list[dict[str, Any]] = []
+    for index, message in enumerate(messages):
+        role = _message_role(message) or "unknown"
+        item: dict[str, Any] = {"index": index, "role": role}
+        name = _extract_message_name(message)
+        if name:
+            item["name"] = name
+        content = _extract_message_content(message)
+        if role == "tool":
+            payload = _parse_tool_payload(content)
+            if payload:
+                item["tool_name"] = str(payload.get("_tool_name", "") or name or "tool")
+                citation_count = _count_payload_items(payload, "citations")
+                evidence_count = _count_payload_items(payload, "evidence")
+                if citation_count > 0:
+                    item["citation_count"] = citation_count
+                if evidence_count > 0:
+                    item["evidence_count"] = evidence_count
+                debug = payload.get("debug")
+                if isinstance(debug, dict):
+                    for field_name in (
+                        "retrieval_strategy",
+                        "requested_top_k",
+                        "returned_citation_count",
+                        "wiki_hits",
+                        "code_hits",
+                        "latency_ms",
+                    ):
+                        value = debug.get(field_name)
+                        if value not in (None, "", []):
+                            item[field_name] = value
+            elif content:
+                item["content_preview"] = _preview_text(content)
+        elif content:
+            item["content_preview"] = _preview_text(content)
+        trace.append(item)
+    return trace
 
 
 def _extract_turn_metadata(
@@ -250,6 +315,7 @@ def _extract_turn_metadata(
     payloads = _extract_tool_payloads(result)
     primary_payload = payloads[-1] if payloads else {}
     tool_debug = dict(primary_payload.get("debug") or {}) if isinstance(primary_payload, dict) else {}
+    message_trace = _build_message_trace(result)
 
     intent = str(primary_payload.get("intent", "") or tool_debug.get("intent", "") or "").strip() or None
     module_name = str(primary_payload.get("module_name", "") or tool_debug.get("module_name", "") or "").strip()
@@ -269,6 +335,7 @@ def _extract_turn_metadata(
         "tool_call_count": len(tool_calls),
         "tools_used": tools_used,
         "skills_used": skills_used,
+        "citation_scope": "all_tool_calls_deduped",
     }
     if module_name:
         analysis["module"] = module_name
@@ -276,6 +343,9 @@ def _extract_turn_metadata(
         analysis["retrieval_bias"] = retrieval_bias
     if domain_id:
         analysis["domain_id"] = domain_id
+    llm_model = str((runtime_debug or {}).get("llm_model", "") or "").strip()
+    if llm_model:
+        analysis["llm_model"] = llm_model
 
     debug: dict[str, Any] = {
         "route": intent or "",
@@ -284,6 +354,8 @@ def _extract_turn_metadata(
         "tool_calls": tool_calls,
         "tool_call_count": len(tool_calls),
         "backend": driver,
+        "citation_scope": "all_tool_calls_deduped",
+        "message_trace": message_trace,
     }
     if module_name:
         debug["module_name"] = module_name
@@ -302,6 +374,12 @@ def _extract_turn_metadata(
             debug[field_name] = tool_debug[field_name]
     if runtime_debug:
         debug.update({key: value for key, value in runtime_debug.items() if value is not None})
+    if tool_calls:
+        last_tool_call = tool_calls[-1]
+        if "citation_count" in last_tool_call:
+            debug["last_tool_call_citation_count"] = last_tool_call["citation_count"]
+        if "requested_top_k" in last_tool_call:
+            debug["last_tool_call_requested_top_k"] = last_tool_call["requested_top_k"]
     return intent, analysis, debug
 
 
