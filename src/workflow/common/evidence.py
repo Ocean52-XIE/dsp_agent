@@ -19,7 +19,7 @@ def collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
         return rows
 
     fallback_hits: list[dict[str, Any]] = []
-    for key, default_type in (("wiki_hits", "wiki"), ("code_hits", "code"), ("case_hits", "case")):
+    for key, default_type in (("wiki_hits", "wiki"), ("code_hits", "code")):
         for item in list(state.get(key, []) or []):
             row = dict(item)
             row["source_type"] = normalize_source_type(row.get("source_type", default_type))

@@ -810,6 +810,7 @@ class LocalCodeRetriever:
                 candidates=rerank_candidates,
                 top_k=top_k or self.runtime_config.default_top_k,
                 content_key="content",
+                source="code",
             )
             # 用重排结果替换原来的 hits，更新分数和排名
             reranked_results: list[dict[str, Any]] = []

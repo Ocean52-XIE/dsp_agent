@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableLambda
 
@@ -256,9 +256,7 @@ class EmbeddingRetriever:
                 persist_directory=persist_dir,
             )
 
-        # 持久化
-        if persist_dir:
-            self._vectorstore.persist()
+        # Chroma 0.4.x 自动持久化，无需手动调用 persist()
 
         self._initialized = True
         self._index_stats = {

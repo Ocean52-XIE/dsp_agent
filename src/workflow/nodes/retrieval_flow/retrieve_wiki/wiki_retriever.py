@@ -696,6 +696,7 @@ class MarkdownWikiRetriever:
                 candidates=rerank_candidates,
                 top_k=rerank_output_k,
                 content_key="content",
+                source="wiki",
             )
 
             # 将重排结果转换回带 chunk 引用的格式，用于多样性选择

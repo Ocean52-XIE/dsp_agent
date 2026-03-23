@@ -239,19 +239,34 @@ class KnowledgeQASubgraph(BaseSubgraph):
         自动关联模式下，LangGraph 会自动合并同名字段。
         此方法仅在 debug 模式下添加 debug_info。
 
+        重要：由于主图和子图都使用 merge_lists reducer，子图返回的 node_trace
+        需要过滤掉主图已有的条目，只返回子图新增的部分，避免重复合并。
+
         Args:
             result: 子图执行结果
 
         Returns:
             主图状态增量
         """
+        output = dict(result)
+
+        # 只返回子图新增的 node_trace 条目（避免与主图 merge_lists 重复）
+        if "node_trace" in output:
+            # 子图内部的节点名
+            subgraph_nodes = {
+                "query_rewriter", "retrieve_wiki", "retrieve_code",
+                "merge_evidence", "knowledge_answer"
+            }
+            # 过滤只保留子图节点的 trace
+            output["node_trace"] = [
+                item for item in output["node_trace"]
+                if item.get("node") in subgraph_nodes
+            ]
+
         if self.debug_enabled:
-            # 复制结果并添加 debug_info
-            output = dict(result)
             output["debug_info"] = build_debug_info(result)
-            return output
-        # 非调试模式，直接返回结果（LangGraph 自动合并同名字段）
-        return result
+
+        return output
 
     def build_graph(self) -> Any:
         """构建知识问答子图
@@ -348,13 +363,11 @@ class KnowledgeQASubgraph(BaseSubgraph):
         # 默认值
         wiki_top_k = 5
         code_top_k = 5
-        case_top_k = 2
         final_top_k = 6
         enable_wiki = True
         enable_code = True
-        enable_cases = True
-        source_weights = {"wiki": 1.0, "code": 1.0, "case": 0.6}
-        max_per_source = {"wiki": 4, "code": 4, "case": 1}
+        source_weights = {"wiki": 1.0, "code": 1.0}
+        max_per_source = {"wiki": 4, "code": 4}
 
         # 从 domain_profile 获取配置（如果存在）
         if retrieval_profile:
@@ -363,7 +376,6 @@ class KnowledgeQASubgraph(BaseSubgraph):
                 preset = retrieval_profile.preset("hybrid")
                 wiki_top_k = int(preset.get("wiki_top_k", wiki_top_k))
                 code_top_k = int(preset.get("code_top_k", code_top_k))
-                case_top_k = int(preset.get("case_top_k", case_top_k))
                 final_top_k = int(preset.get("final_top_k", final_top_k))
             except Exception:
                 pass
@@ -371,7 +383,6 @@ class KnowledgeQASubgraph(BaseSubgraph):
             # 获取启用开关
             enable_wiki = bool(getattr(retrieval_profile, "enable_wiki", enable_wiki))
             enable_code = bool(getattr(retrieval_profile, "enable_code", enable_code))
-            enable_cases = bool(getattr(retrieval_profile, "enable_cases", enable_cases))
 
             # 获取权重配置
             if hasattr(retrieval_profile, "source_weights") and retrieval_profile.source_weights:
@@ -384,10 +395,8 @@ class KnowledgeQASubgraph(BaseSubgraph):
             "strategy": "hybrid",
             "enable_wiki": enable_wiki,
             "enable_code": enable_code,
-            "enable_cases": enable_cases,
             "wiki_top_k": wiki_top_k,
             "code_top_k": code_top_k,
-            "case_top_k": case_top_k,
             "final_top_k": final_top_k,
             "source_weights": source_weights,
             "max_per_source": max_per_source,
@@ -527,12 +536,10 @@ class _ServiceProxy:
 
         from workflow.nodes.retrieval_flow.retrieve_wiki.wiki_retriever import get_wiki_retriever
         from workflow.nodes.retrieval_flow.retrieve_code.code_retriever import get_code_retriever
-        from workflow.nodes.retrieval_flow.retrieve_cases import get_case_retriever
         from domain_profile import get_domain_profile
 
         self._wiki_retriever = get_wiki_retriever()
         self._code_retriever = get_code_retriever()
-        self._case_retriever = get_case_retriever()
         self._domain_profile = get_domain_profile()
 
     def _trace(

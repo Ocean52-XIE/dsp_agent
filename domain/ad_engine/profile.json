@@ -33,9 +33,6 @@
         "build",
         "target"
       ]
-    },
-    "cases": {
-      "path": "eval/datasets/ad_engine_answer_eval_hybrid.jsonl"
     }
   },
   "domain_gate": {
@@ -135,7 +132,13 @@
   "routing": {
     "default_module": "ad-serving-orchestrator",
     "module_infer_strategy": "keyword_then_symbol",
-    "prefer_symbol_match": true
+    "prefer_symbol_match": true,
+    "llm_fallback_enabled": true,
+    "llm_fallback_confidence_threshold": 0.65,
+    "llm_fallback_relevance_range": [0.5, 0.75],
+    "llm_routing_timeout_seconds": 5,
+    "llm_routing_max_retries": 1,
+    "high_confidence_threshold": 0.85
   },
   "modules": [
     {
@@ -566,35 +569,29 @@
       "hybrid": {
         "wiki_top_k": 4,
         "code_top_k": 4,
-        "case_top_k": 2,
         "final_top_k": 6
       },
       "wiki_first": {
         "wiki_top_k": 6,
         "code_top_k": 2,
-        "case_top_k": 1,
         "final_top_k": 6
       },
       "code_first": {
         "wiki_top_k": 2,
         "code_top_k": 7,
-        "case_top_k": 1,
         "final_top_k": 6
       }
     },
     "source_weights": {
       "wiki": 1.0,
-      "code": 1.0,
-      "case": 0.6
+      "code": 1.0
     },
     "max_per_source": {
       "wiki": 4,
-      "code": 4,
-      "case": 1
+      "code": 4
     },
     "enable_wiki": true,
     "enable_code": true,
-    "enable_cases": false,
     "embedding": {
       "enabled": true,
       "model": "BAAI/bge-base-zh-v1.5",
@@ -622,13 +619,11 @@
     "intent_source_bias": {
       "code_location": {
         "code": 0.25,
-        "wiki": -0.1,
-        "case": 0.0
+        "wiki": -0.1
       },
       "wiki_first": {
         "wiki": 0.15,
-        "code": -0.05,
-        "case": 0.0
+        "code": -0.05
       }
     }
   },

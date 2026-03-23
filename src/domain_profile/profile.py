@@ -221,7 +221,6 @@ class RetrievalProfile:
         max_per_source: 各数据源最大返回数
         enable_wiki: 是否启用 wiki 检索
         enable_code: 是否启用代码检索
-        enable_cases: 是否启用案例检索
         embedding: 向量检索配置
         reranker: Cross-Encoder 重排器配置
         hybrid_weights: 混合检索权重（bm25/embedding/lexical）
@@ -232,7 +231,6 @@ class RetrievalProfile:
     max_per_source: dict[str, int] = field(default_factory=dict)
     enable_wiki: bool = True
     enable_code: bool = True
-    enable_cases: bool = False
     embedding: EmbeddingProfile = field(default_factory=EmbeddingProfile)
     reranker: RerankerProfile = field(default_factory=RerankerProfile)
     hybrid_weights: dict[str, float] = field(default_factory=lambda: {"bm25": 0.30, "embedding": 0.50, "lexical": 0.20})
@@ -255,7 +253,6 @@ class RetrievalProfile:
             presets[_as_str(key)] = {
                 "wiki_top_k": _as_int(row.get("wiki_top_k"), 4),
                 "code_top_k": _as_int(row.get("code_top_k"), 4),
-                "case_top_k": _as_int(row.get("case_top_k"), 2),
                 "final_top_k": _as_int(row.get("final_top_k"), 6),
             }
         weights_raw = _as_dict(payload.get("source_weights"))
@@ -269,16 +266,13 @@ class RetrievalProfile:
             source_weights={
                 "wiki": _as_float(weights_raw.get("wiki"), 1.0),
                 "code": _as_float(weights_raw.get("code"), 1.0),
-                "case": _as_float(weights_raw.get("case"), 0.6),
             },
             max_per_source={
                 "wiki": _as_int(max_raw.get("wiki"), 4),
                 "code": _as_int(max_raw.get("code"), 4),
-                "case": _as_int(max_raw.get("case"), 1),
             },
             enable_wiki=bool(payload.get("enable_wiki", True)),
             enable_code=bool(payload.get("enable_code", True)),
-            enable_cases=bool(payload.get("enable_cases", False)),
             embedding=EmbeddingProfile.from_dict(embedding_raw),
             reranker=RerankerProfile.from_dict(reranker_raw),
             hybrid_weights={
@@ -292,7 +286,7 @@ class RetrievalProfile:
     def preset(self, strategy: str) -> dict[str, int]:
         if strategy in self.presets:
             return dict(self.presets[strategy])
-        return dict(self.presets.get("hybrid", {"wiki_top_k": 4, "code_top_k": 4, "case_top_k": 2, "final_top_k": 6}))
+        return dict(self.presets.get("hybrid", {"wiki_top_k": 4, "code_top_k": 4, "final_top_k": 6}))
 
 
 @dataclass(frozen=True)
@@ -336,6 +330,60 @@ class AnsweringProfile:
 
 
 @dataclass(frozen=True)
+class RoutingProfile:
+    """路由配置，包含模块推断和 LLM 兜底策略。
+
+    属性:
+        default_module: 默认模块名
+        module_infer_strategy: 模块推断策略
+        prefer_symbol_match: 是否优先符号匹配
+        llm_fallback_enabled: 是否启用 LLM 兜底路由
+        llm_fallback_confidence_threshold: 触发 LLM 兜底的置信度阈值
+        llm_fallback_relevance_range: 触发 LLM 兜底的相关性范围
+        llm_routing_timeout_seconds: LLM 路由超时时间
+        llm_routing_max_retries: LLM 路由最大重试次数
+        high_confidence_threshold: 高置信度阈值（高于此值直接走规则路由）
+    """
+    default_module: str = ""
+    module_infer_strategy: str = "keyword_then_symbol"
+    prefer_symbol_match: bool = True
+    llm_fallback_enabled: bool = True
+    llm_fallback_confidence_threshold: float = 0.65
+    llm_fallback_relevance_range: tuple[float, float] = (0.5, 0.75)
+    llm_routing_timeout_seconds: int = 5
+    llm_routing_max_retries: int = 1
+    high_confidence_threshold: float = 0.85
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> "RoutingProfile":
+        """从字典解析路由配置。
+
+        参数:
+            payload: 配置字典，通常来自 profile.json 的 routing 节
+
+        返回:
+            RoutingProfile 实例
+        """
+        range_raw = payload.get("llm_fallback_relevance_range", [0.5, 0.75])
+        if isinstance(range_raw, (list, tuple)) and len(range_raw) >= 2:
+            relevance_range = (float(range_raw[0]), float(range_raw[1]))
+        else:
+            relevance_range = (0.5, 0.75)
+
+        return cls(
+            default_module=_as_str(payload.get("default_module")),
+            module_infer_strategy=_as_str(payload.get("module_infer_strategy"), "keyword_then_symbol"),
+            prefer_symbol_match=bool(payload.get("prefer_symbol_match", True)),
+            llm_fallback_enabled=bool(payload.get("llm_fallback_enabled", True)),
+            llm_fallback_confidence_threshold=_as_float(payload.get("llm_fallback_confidence_threshold"), 0.65),
+            llm_fallback_relevance_range=relevance_range,
+            llm_routing_timeout_seconds=_as_int(payload.get("llm_routing_timeout_seconds"), 5),
+            llm_routing_max_retries=_as_int(payload.get("llm_routing_max_retries"), 1),
+            high_confidence_threshold=_as_float(payload.get("high_confidence_threshold"), 0.85),
+        )
+
+
+@dataclass(frozen=True)
 class DomainProfile:
     profile_id: str
     display_name: str
@@ -343,6 +391,7 @@ class DomainProfile:
     schema_version: int
     sources: dict[str, Any]
     routing: dict[str, Any]
+    routing_profile: RoutingProfile
     modules: tuple[ModuleProfile, ...]
     domain_gate: DomainGateProfile
     query_rewrite: QueryRewriteProfile
@@ -370,6 +419,7 @@ class DomainProfile:
             schema_version=_as_int(payload.get("schema_version"), 1),
             sources=_as_dict(payload.get("sources")),
             routing=_as_dict(payload.get("routing")),
+            routing_profile=RoutingProfile.from_dict(_as_dict(payload.get("routing"))),
             modules=modules,
             domain_gate=DomainGateProfile.from_dict(_as_dict(payload.get("domain_gate"))),
             query_rewrite=QueryRewriteProfile.from_dict(_as_dict(payload.get("query_rewrite"))),

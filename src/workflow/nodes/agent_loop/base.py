@@ -366,21 +366,23 @@ class BaseAgentLoopNode(ABC):
     def _build_node_trace(self, service: Any, state: dict[str, Any], detail: str) -> list[dict[str, str]]:
         """构建节点追踪
 
+        由于 node_trace 字段使用了 merge_lists reducer，节点只需返回新增的条目，
+        LangGraph 会自动合并。
+
         Args:
             service: WorkflowService 实例
             state: 工作流状态
             detail: 追踪详情
 
         Returns:
-            节点追踪列表，格式为 [{"node": "xxx", "summary": "yyy"}, ...]
+            只包含新增条目的列表
         """
         trace_method = getattr(service, "_trace", None)
         if trace_method:
             return trace_method(state, self.config.node_name, detail)
 
-        # 降级：手动构建（保持字典格式）
-        existing_trace = list(state.get("node_trace", []) or [])
-        return existing_trace + [{"node": self.config.node_name, "summary": detail}]
+        # 降级：只返回新增条目（由 merge_lists reducer 合并）
+        return [{"node": self.config.node_name, "summary": detail}]
 
     # ========== 子类必须实现的抽象方法 ==========
 

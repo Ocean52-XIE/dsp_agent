@@ -249,6 +249,7 @@ class CrossEncoderReranker:
         candidates: list[dict[str, Any]],
         top_k: int | None = None,
         content_key: str = "content",
+        source: str = "",
     ) -> list[dict[str, Any]]:
         """对候选集进行重排。
 
@@ -264,6 +265,7 @@ class CrossEncoderReranker:
             candidates: 候选结果列表，每个元素需包含 content_key 指定的字段
             top_k: 返回结果数量，默认使用配置值
             content_key: 候选结果中内容的字段名，默认为 "content"
+            source: 来源标识（如 "wiki"、"code"），用于日志输出
 
         返回:
             重排后的候选列表，每个元素新增以下字段：
@@ -318,14 +320,12 @@ class CrossEncoderReranker:
 
             self._logger.info(
                 "workflow.cross_encoder_reranker.rerank_complete",
+                source=source,
                 query_preview=query[:50],
                 candidate_count=len(working_candidates),
                 top_k=k,
                 latency_ms=latency_ms,
             )
-
-            # 控制台输出，方便验证重排执行
-            print(f"[Reranker] 重排完成: {len(working_candidates)} -> {k} 条, 耗时 {latency_ms}ms")
 
             return reranked[:k]
 

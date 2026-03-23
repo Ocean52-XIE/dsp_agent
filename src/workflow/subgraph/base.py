@@ -200,16 +200,18 @@ class BaseSubgraph(ABC):
     ) -> list[dict[str, str]]:
         """构建节点追踪
 
+        由于 node_trace 字段使用了 merge_lists reducer，节点只需返回新增的条目，
+        LangGraph 会自动合并。
+
         Args:
-            state: 工作流状态
+            state: 工作流状态（用于兼容旧接口，实际不再使用）
             node_name: 节点名称
             summary: 节点摘要
 
         Returns:
-            节点追踪列表，格式为 [{"node": "xxx", "summary": "yyy"}, ...]
+            只包含新增条目的列表
         """
-        existing_trace = list(state.get("node_trace", []) or [])
-        return existing_trace + [{"node": node_name, "summary": summary}]
+        return [{"node": node_name, "summary": summary}]
 
 
 # ============================================================================

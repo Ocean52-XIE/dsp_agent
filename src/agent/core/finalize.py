@@ -297,7 +297,6 @@ class AgentFinalize:
         for key, default_source in (
             ("wiki_hits", "wiki"),
             ("code_hits", "code"),
-            ("case_hits", "case"),
         ):
             hits = list(state.get(key, []) or [])
             for item in hits:

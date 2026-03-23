@@ -104,10 +104,14 @@ class WorkflowState(TypedDict, total=False):
     history: Annotated[list[dict[str, Any]], merge_lists]
 
     # === 路由结果 ===
-    route: str                              # 路由目标: knowledge_qa | issue_analysis | code_generation | out_of_scope
+    route: str                              # 路由目标: knowledge_qa | issue_analysis | code_generation | out_of_scope | default_query
     status: str                             # 执行状态
     response_kind: str                      # 响应类型
     domain_relevance: float                 # 领域相关性分数
+    routing_confidence: float               # 规则路由置信度 (0.0 ~ 1.0)
+    routing_method: str                     # 路由方式: "rule" | "llm"
+    llm_routing_result: dict[str, Any] | None  # LLM 路由原始结果（调试用）
+    routing_intent_reason: str              # 路由判断理由
 
     # === 路由上下文（传递给子图） ===
     module_name: str                        # 当前主模块名

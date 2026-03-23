@@ -48,7 +48,6 @@ def _init_retrievers(domain_profile: Any, project_root: Path) -> None:
         from init.retriever_initializer import (
             init_wiki_retriever,
             init_code_retriever,
-            init_case_retriever,
         )
 
         # 1. Wiki 检索器
@@ -56,9 +55,6 @@ def _init_retrievers(domain_profile: Any, project_root: Path) -> None:
 
         # 2. Code 检索器
         init_code_retriever(domain_profile, project_root)
-
-        # 3. Case 检索器（可选）
-        init_case_retriever(domain_profile, project_root)
 
     except Exception as e:
         logger.warning(f"  └─ 检索器初始化失败: {e}")

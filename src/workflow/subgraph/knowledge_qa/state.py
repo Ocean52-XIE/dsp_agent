@@ -88,10 +88,6 @@ class KnowledgeQAState(TypedDict, total=False):
     code_retrieval_grade: str
     code_retrieval_profile: dict[str, Any]
 
-    case_hits: Annotated[list[dict[str, Any]], merge_lists]
-    case_retrieval_grade: str
-    case_retrieval_profile: dict[str, Any]
-
     evidence_fusion_profile: dict[str, Any]
 
     # === 输出字段（自动合并回主图） ===
@@ -130,12 +126,9 @@ def build_debug_info(state: dict[str, Any]) -> dict[str, Any]:
         "query_rewrite_mode": str(state.get("query_rewrite_mode", "") or ""),
         "wiki_retrieval_grade": str(state.get("wiki_retrieval_grade", "unknown") or "unknown"),
         "code_retrieval_grade": str(state.get("code_retrieval_grade", "unknown") or "unknown"),
-        "case_retrieval_grade": str(state.get("case_retrieval_grade", "unknown") or "unknown"),
         "wiki_retrieval_profile": dict(state.get("wiki_retrieval_profile", {}) or {}),
         "code_retrieval_profile": dict(state.get("code_retrieval_profile", {}) or {}),
-        "case_retrieval_profile": dict(state.get("case_retrieval_profile", {}) or {}),
         "evidence_fusion_profile": dict(state.get("evidence_fusion_profile", {}) or {}),
         "wiki_hit_count": len(state.get("wiki_hits", []) or []),
         "code_hit_count": len(state.get("code_hits", []) or []),
-        "case_hit_count": len(state.get("case_hits", []) or []),
     }

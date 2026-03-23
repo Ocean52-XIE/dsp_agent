@@ -126,12 +126,11 @@ def run_with_retriever(
     trace_id = state.get("trace_id", "")
     retrieval_plan = state.get("retrieval_plan", {})
 
-    # 构建 node_trace 的辅助函数
+    # 构建 node_trace 的辅助函数（只返回新增条目，由 merge_lists reducer 合并）
     def build_trace(summary: str) -> list[dict[str, str]]:
         if trace_fn:
             return trace_fn(state, "retrieve_wiki", summary)
-        existing_trace = list(state.get("node_trace", []) or [])
-        return existing_trace + [{"node": "retrieve_wiki", "summary": summary}]
+        return [{"node": "retrieve_wiki", "summary": summary}]
 
     if not retrieval_plan.get("enable_wiki", True):
         logger.info(f"[retrieve_wiki] DISABLED | trace_id={trace_id} | reason=disabled_by_plan")

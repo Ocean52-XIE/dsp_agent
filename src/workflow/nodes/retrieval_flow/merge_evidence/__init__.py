@@ -3,7 +3,7 @@
 该模块实现工作流节点 `merge_evidence` 的处理逻辑，负责读取状态并输出增量结果。
 
 核心功能：
-1. 多源证据融合：将 wiki、code、case 三种来源的检索结果合并
+1. 多源证据融合：将 wiki、code 两种来源的检索结果合并
 2. 分数归一化：对每个来源的原始分数进行 min-max 归一化，确保跨来源可比性
 3. 配额选择：按 source 配额和融合分数选出最终证据
 
@@ -36,8 +36,8 @@ GRADE_BIAS = {
 # - wiki_first：业务说明类问题，适度提升 wiki；
 # - 默认不加偏置。
 INTENT_SOURCE_BIAS = {
-    "code_location": {"code": 0.25, "wiki": -0.1, "case": 0.0},
-    "wiki_first": {"wiki": 0.15, "code": -0.05, "case": 0.0},
+    "code_location": {"code": 0.25, "wiki": -0.1},
+    "wiki_first": {"wiki": 0.15, "code": -0.05},
 }
 
 
@@ -144,14 +144,12 @@ def _normalize_retrieval_plan(state: dict[str, Any]) -> dict[str, Any]:
     source_weights = {
         "wiki": max(float(raw_weights.get("wiki", 1.0)), 0.0),
         "code": max(float(raw_weights.get("code", 1.0)), 0.0),
-        "case": max(float(raw_weights.get("case", 0.6)), 0.0),
     }
 
     raw_max_per_source = raw_plan.get("max_per_source", {})
     max_per_source = {
         "wiki": max(int(raw_max_per_source.get("wiki", final_top_k)), 0),
         "code": max(int(raw_max_per_source.get("code", final_top_k)), 0),
-        "case": max(int(raw_max_per_source.get("case", 1)), 0),
     }
 
     normalized_plan = {
@@ -200,7 +198,7 @@ def _get_retrieval_grade(state: dict[str, Any], source: str) -> str:
 
     参数:
         state: 工作流状态字典
-        source: 来源标识（wiki/code/case）
+        source: 来源标识（wiki/code）
 
     返回:
         检索质量等级（high/medium/low/insufficient/disabled/unknown）
@@ -209,8 +207,6 @@ def _get_retrieval_grade(state: dict[str, Any], source: str) -> str:
         return str(state.get("wiki_retrieval_grade", "unknown"))
     if source == "code":
         return str(state.get("code_retrieval_grade", "unknown"))
-    if source == "case":
-        return str(state.get("case_retrieval_grade", "unknown"))
     return "unknown"
 
 
@@ -219,7 +215,7 @@ def _build_candidate_items(state: dict[str, Any], plan: dict[str, Any]) -> list[
     构建候选证据列表，并进行分数归一化和融合打分。
 
     核心逻辑：
-    1. 从 state 中提取各来源的命中结果（wiki_hits, code_hits, case_hits）
+    1. 从 state 中提取各来源的命中结果（wiki_hits, code_hits）
     2. 对每个来源的原始分数进行 min-max 归一化（解决分数量级差异问题）
     3. 计算融合分数：fused_score = normalized_score * source_weight + rank_bonus + grade_bias + intent_bias
     4. 按融合分数降序排列
@@ -233,7 +229,6 @@ def _build_candidate_items(state: dict[str, Any], plan: dict[str, Any]) -> list[
     """
     source_to_hits: dict[str, list[dict[str, Any]]] = {
         "wiki": list(state.get("wiki_hits", [])),
-        "case": list(state.get("case_hits", [])),
         "code": list(state.get("code_hits", [])),
     }
 
@@ -386,7 +381,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
 
     参数:
         service: 工作流服务对象，提供 _trace 方法用于节点追踪。
-        state: 工作流状态字典，包含 wiki_hits、code_hits、case_hits 等。
+        state: 工作流状态字典，包含 wiki_hits、code_hits 等。
 
     返回:
         状态增量字典，包含：
@@ -413,7 +408,6 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         "max_per_source": plan["max_per_source"],
         "input_counts": {
             "wiki": len(state.get("wiki_hits", [])),
-            "case": len(state.get("case_hits", [])),
             "code": len(state.get("code_hits", [])),
         },
         "candidate_count": len(candidates),
@@ -424,7 +418,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
     summary = (
         f"strategy={plan['strategy']},candidates={len(candidates)},"
         f"selected={len(citations)},wiki={selected_counts.get('wiki', 0)},"
-        f"code={selected_counts.get('code', 0)},case={selected_counts.get('case', 0)}"
+        f"code={selected_counts.get('code', 0)}"
     )
     return {
         "citations": citations,

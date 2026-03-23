@@ -36,6 +36,7 @@ from workflow.nodes.control_response.finalize_response import run as finalize_re
 from workflow.nodes.control_response.out_of_scope_response import run as out_of_scope_response_node
 from workflow.nodes.routing_context.intent_routing import run as intent_routing_node
 from workflow.nodes.routing_context.load_context import run as load_context_node
+from workflow.nodes.agent_loop.default_query_node import DefaultQueryNode
 from log.runtime_logging import get_file_logger
 from workflow.state import WorkflowState, create_initial_state
 
@@ -214,6 +215,9 @@ class WorkflowService:
         self._knowledge_qa_subgraph = None
         self._issue_analysis_subgraph = None
         self._init_subgraphs()
+
+        # 初始化 default_query 节点
+        self._default_query_node = DefaultQueryNode()
 
         # 构建图（传入已初始化的 checkpointer）
         self._graph = None
@@ -504,8 +508,13 @@ class WorkflowService:
         return assistant_message
 
     def _invoke_config(self, state: WorkflowState) -> dict[str, Any]:
-        session_id = str(state.get("session_id", "") or "").strip() or "default_session"
-        return {"configurable": {"thread_id": session_id}}
+        """构建 invoke 配置
+
+        使用 trace_id 作为 thread_id，确保每个请求有独立的检查点，
+        避免 node_trace 在同一 session 的多次请求间累积。
+        """
+        trace_id = str(state.get("trace_id", "") or "").strip() or "default_trace"
+        return {"configurable": {"thread_id": trace_id}}
 
     def _build_graph(self, checkpointer: Any = None) -> Any:
         """构建主工作流图
@@ -515,6 +524,7 @@ class WorkflowService:
           - knowledge_qa: 调用 knowledge_qa 子图（内部包含检索和生成）
           - issue_analysis: 调用 issue_analysis 子图（内部包含检索和生成）
           - code_generation: load_code_context -> retrieve_code_context -> code_generation
+          - default_query: 调用 default_query 节点（AgentLoop 处理通用查询）
           - out_of_scope: out_of_scope_response
         [所有分支] -> finalize_response -> END
 
@@ -538,6 +548,9 @@ class WorkflowService:
         graph.add_node("retrieve_code_context", self._retrieve_code_context)
         graph.add_node("code_generation", self._code_generation)
 
+        # 默认查询节点（AgentLoop 处理通用查询）
+        graph.add_node("default_query", self._default_query)
+
         # 响应节点
         graph.add_node("out_of_scope_response", self._out_of_scope_response)
         graph.add_node("finalize_response", self._finalize_response)
@@ -554,6 +567,7 @@ class WorkflowService:
                 "knowledge_qa": "knowledge_answer",
                 "issue_analysis": "issue_analysis",
                 "code_generation": "load_code_context",
+                "default_query": "default_query",
                 "out_of_scope": "out_of_scope_response",
             },
         )
@@ -566,6 +580,9 @@ class WorkflowService:
         graph.add_edge("load_code_context", "retrieve_code_context")
         graph.add_edge("retrieve_code_context", "code_generation")
         graph.add_edge("code_generation", "finalize_response")
+
+        # 默认查询节点
+        graph.add_edge("default_query", "finalize_response")
 
         # 超出范围响应
         graph.add_edge("out_of_scope_response", "finalize_response")
@@ -597,6 +614,10 @@ class WorkflowService:
 
     def _code_generation(self, state: WorkflowState) -> dict[str, Any]:
         return self._run_node("code_generation", code_generation_node, state)
+
+    def _default_query(self, state: WorkflowState) -> dict[str, Any]:
+        """默认查询节点：处理领域相关但无法明确分类的查询"""
+        return self._default_query_node.run(self, state)
 
     def _finalize_response(self, state: WorkflowState) -> dict[str, Any]:
         return self._run_node("finalize_response", finalize_response_node, state)
@@ -630,7 +651,6 @@ class WorkflowService:
             "active_topic_source",
             "domain_relevance",
             "wiki_retrieval_grade",
-            "case_retrieval_grade",
             "code_retrieval_grade",
         )
         for key in scalar_keys:
@@ -649,8 +669,6 @@ class WorkflowService:
             summary["related_module_count"] = len(updates.get("related_modules", []) or [])
         if "wiki_hits" in updates:
             summary["wiki_hit_count"] = len(updates.get("wiki_hits", []) or [])
-        if "case_hits" in updates:
-            summary["case_hit_count"] = len(updates.get("case_hits", []) or [])
         if "code_hits" in updates:
             summary["code_hit_count"] = len(updates.get("code_hits", []) or [])
         if "citations" in updates:

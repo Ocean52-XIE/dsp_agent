@@ -226,20 +226,16 @@ def _build_retrieval_plan(
         "strategy": strategy,
         "enable_wiki": bool(retrieval_profile.enable_wiki),
         "enable_code": bool(retrieval_profile.enable_code),
-        "enable_cases": bool(retrieval_profile.enable_cases),
         "wiki_top_k": int(preset.get("wiki_top_k", 4)),
         "code_top_k": int(preset.get("code_top_k", 4)),
-        "case_top_k": int(preset.get("case_top_k", 2)),
         "final_top_k": int(preset.get("final_top_k", 6)),
         "max_per_source": {
             "wiki": max(int(max_per_source.get("wiki", 4)), 0),
             "code": max(int(max_per_source.get("code", 4)), 0),
-            "case": max(int(max_per_source.get("case", 1)), 0),
         },
         "source_weights": {
             "wiki": max(float(source_weights.get("wiki", 1.0)), 0.0),
             "code": max(float(source_weights.get("code", 1.0)), 0.0),
-            "case": max(float(source_weights.get("case", 0.6)), 0.0),
         },
         "intent_profile": {
             "is_code_intent": is_code_intent,

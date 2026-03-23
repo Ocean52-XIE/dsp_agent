@@ -4,7 +4,6 @@
 负责初始化检索系统：
 - Wiki 检索器：Markdown 文档检索
 - Code 检索器：代码检索
-- Case 检索器：案例检索（可选）
 
 设计原则：
 1. 在程序启动时完成索引加载/构建
@@ -129,57 +128,3 @@ def init_code_retriever(
         return None
 
 
-# ============================================================================
-# Case 检索器初始化（可选）
-# ============================================================================
-
-def init_case_retriever(
-    domain_profile: Any,
-    project_root: Path,
-) -> Any | None:
-    """初始化案例检索器（可选）
-
-    加载案例数据并构建索引，并设置全局单例。
-
-    Args:
-        domain_profile: 私域配置
-        project_root: 项目根目录
-
-    Returns:
-        案例检索器实例（如果有）
-    """
-    # 检查是否启用案例检索
-    if not domain_profile.retrieval.enable_cases:
-        logger.info("[RetrieverInit] 案例检索未启用")
-        return None
-
-    try:
-        # 尝试导入案例检索器
-        from workflow.nodes.retrieval_flow.retrieve_cases import (
-            CaseRetriever,
-            set_case_retriever,
-        )
-
-        case_dir = domain_profile.resolve_eval_path("cases_dir", project_root)
-        if not case_dir or not case_dir.exists():
-            logger.info("[RetrieverInit] 案例目录不存在，跳过案例检索器初始化")
-            return None
-
-        retriever = CaseRetriever(
-            case_dir=case_dir,
-            project_root=project_root,
-            default_top_k=2,
-        )
-
-        # 设置全局单例
-        set_case_retriever(retriever)
-
-        logger.info(f"[RetrieverInit] Case 检索器初始化完成: case_dir={case_dir}")
-        return retriever
-
-    except ImportError:
-        logger.info("[RetrieverInit] Case 检索器模块不存在，跳过")
-        return None
-    except Exception as e:
-        logger.warning(f"[RetrieverInit] Case 检索器初始化失败: {e}")
-        return None

@@ -62,13 +62,14 @@ class AgentLoopNodeConfig:
     """
 
     # ========== 提示词配置 ==========
-    system_prompt_template: str
+    system_prompt_template: str = ""
     """系统提示词模板
 
     可以包含占位符，在运行时通过 format() 替换。
+    如果为空，子类应通过 _get_system_prompt() 方法动态生成。
     """
 
-    user_prompt_template: str
+    user_prompt_template: str = ""
     """用户提示词模板
 
     可以包含以下占位符：
@@ -77,6 +78,8 @@ class AgentLoopNodeConfig:
     - {module_hint}: 模块提示
     - {related_modules_block}: 相关模块块
     - {evidence_block}: 证据块
+
+    如果为空，子类应通过 _get_user_prompt() 方法动态生成。
     """
 
     system_prompt_env_key: str | None = None

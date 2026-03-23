@@ -27,7 +27,7 @@ def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
         return normalized_rows
 
     hits: list[dict[str, Any]] = []
-    for key, source_type in (("wiki_hits", "wiki"), ("code_hits", "code"), ("case_hits", "case")):
+    for key, source_type in (("wiki_hits", "wiki"), ("code_hits", "code")):
         for item in list(state.get(key, []) or []):
             row = dict(item)
             row["source_type"] = normalize_source_type(row.get("source_type", source_type))
@@ -35,7 +35,7 @@ def _collect_evidence_hits(state: dict[str, Any]) -> list[dict[str, Any]]:
     return hits
 
 
-def _select_output_evidence_hits(all_hits: list[dict[str, Any]], *, max_items: int = 4) -> list[dict[str, Any]]:
+def _select_output_evidence_hits(all_hits: list[dict[str, Any]], *, max_items: int = 6) -> list[dict[str, Any]]:
     selected: list[dict[str, Any]] = []
     seen: set[tuple[str, str, str]] = set()
     for item in all_hits:
@@ -62,12 +62,10 @@ def _build_verbose_debug(state: dict[str, Any], graph_path: list[str], evidence_
         "retrieval_grades": {
             "wiki": str(state.get("wiki_retrieval_grade", "unknown") or "unknown"),
             "code": str(state.get("code_retrieval_grade", "unknown") or "unknown"),
-            "case": str(state.get("case_retrieval_grade", "unknown") or "unknown"),
         },
         "retrieval_profiles": {
             "wiki": dict(state.get("wiki_retrieval_profile", {}) or {}),
             "code": dict(state.get("code_retrieval_profile", {}) or {}),
-            "case": dict(state.get("case_retrieval_profile", {}) or {}),
             "fusion": dict(state.get("evidence_fusion_profile", {}) or {}),
         },
         "evidence_count": len(evidence_hits),
@@ -120,7 +118,7 @@ def run(service: Any, state: dict[str, Any]) -> dict[str, Any]:
         or state.get("status") == "out_of_scope"
     )
     all_evidence_hits = [] if is_out_of_scope else _collect_evidence_hits(state)
-    evidence_hits = _select_output_evidence_hits(all_evidence_hits, max_items=4)
+    evidence_hits = _select_output_evidence_hits(all_evidence_hits, max_items=6)
 
     assistant_message: dict[str, Any] = {
         "role": "assistant",
