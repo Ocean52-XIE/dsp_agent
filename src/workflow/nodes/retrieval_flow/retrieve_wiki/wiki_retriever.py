@@ -230,6 +230,7 @@ class WikiRetrieverRuntimeConfig:
     embedding_top_k: int = 4
     embedding_device: str = "cpu"
     embedding_persist_root: str = ".vectorstore"
+    embedding_cache_dir: str | None = None  # 模型缓存目录，用于离线加载
     # 语义分块配置（新增）
     enable_semantic_chunking: bool = False
     semantic_min_chunk_chars: int = 200
@@ -273,12 +274,14 @@ class WikiRetrieverRuntimeConfig:
             embedding_top_k = env_int("WORKFLOW_WIKI_EMBEDDING_TOP_K", embedding_profile.top_k, minimum=1)
             embedding_device = os.getenv("WORKFLOW_EMBEDDING_DEVICE", embedding_profile.device)
             embedding_persist_root = os.getenv("WORKFLOW_EMBEDDING_PERSIST_ROOT", embedding_profile.persist_root)
+            embedding_cache_dir = os.getenv("WORKFLOW_EMBEDDING_CACHE_DIR", embedding_profile.cache_dir or "")
         else:
             enable_embedding = env_bool("WORKFLOW_WIKI_EMBEDDING_ENABLED", True)
             embedding_model = os.getenv("WORKFLOW_EMBEDDING_MODEL", "BAAI/bge-base-zh-v1.5")
             embedding_top_k = env_int("WORKFLOW_WIKI_EMBEDDING_TOP_K", 4, minimum=1)
             embedding_device = os.getenv("WORKFLOW_EMBEDDING_DEVICE", "cpu")
             embedding_persist_root = os.getenv("WORKFLOW_EMBEDDING_PERSIST_ROOT", ".vectorstore")
+            embedding_cache_dir = os.getenv("WORKFLOW_EMBEDDING_CACHE_DIR", "")
 
         return cls(
             default_top_k=env_int("WORKFLOW_WIKI_TOP_K", default_top_k, minimum=1),
@@ -298,6 +301,7 @@ class WikiRetrieverRuntimeConfig:
             embedding_top_k=embedding_top_k,
             embedding_device=embedding_device,
             embedding_persist_root=embedding_persist_root,
+            embedding_cache_dir=embedding_cache_dir or None,
             # 语义分块配置
             enable_semantic_chunking=env_bool("WORKFLOW_WIKI_SEMANTIC_CHUNKING_ENABLED", False),
             semantic_min_chunk_chars=env_int("WORKFLOW_WIKI_SEMANTIC_MIN_CHARS", 200, minimum=50),
@@ -1052,6 +1056,7 @@ class MarkdownWikiRetriever:
                 device=self.runtime_config.embedding_device,
                 top_k=self.runtime_config.embedding_top_k,
                 persist_root=self.runtime_config.embedding_persist_root,
+                cache_dir=self.runtime_config.embedding_cache_dir,
             )
             embedding_config = EmbeddingRetrieverConfig.from_profile(
                 profile=profile,

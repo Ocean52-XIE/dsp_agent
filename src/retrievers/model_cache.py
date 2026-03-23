@@ -160,17 +160,20 @@ def get_embedding_model(
         # 构建模型参数
         model_kwargs: dict[str, Any] = {"device": device}
 
-        # 如果指定了 cache_dir 且模型需要从 Hub 下载，设置缓存目录
-        if cache_dir and resolved_model_path == model_name:
+        # 准备 HuggingFaceEmbeddings 的 cache_folder 参数
+        # 注意：cache_folder 必须作为顶层参数传递，不能放在 model_kwargs 中
+        hf_cache_folder: str | None = None
+        if cache_dir:
             cache_path = Path(cache_dir)
             if not cache_path.is_absolute():
                 cache_path = Path.cwd() / cache_path
-            model_kwargs["cache_folder"] = str(cache_path)
+            hf_cache_folder = str(cache_path)
 
         model = HuggingFaceEmbeddings(
             model_name=resolved_model_path,
             model_kwargs=model_kwargs,
             encode_kwargs=encode_kwargs or {"normalize_embeddings": True},
+            cache_folder=hf_cache_folder,
         )
 
         _embedding_cache[cache_key] = model

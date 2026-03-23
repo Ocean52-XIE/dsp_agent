@@ -597,7 +597,8 @@
       "model": "BAAI/bge-base-zh-v1.5",
       "device": "cpu",
       "top_k": 4,
-      "persist_root": ".vectorstore"
+      "persist_root": ".vectorstore",
+      "cache_dir": "C:\\Users\\46685\\.cache\\huggingface\\hub"
     },
     "reranker": {
       "enabled": true,
@@ -606,7 +607,8 @@
       "top_k": 4,
       "candidate_top_k": 20,
       "batch_size": 8,
-      "max_length": 512
+      "max_length": 512,
+      "cache_dir": "C:\\Users\\46685\\.cache\\huggingface\\hub"
     },
     "hybrid_weights": {
       "bm25": 0.30,
