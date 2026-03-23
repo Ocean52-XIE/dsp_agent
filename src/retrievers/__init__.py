@@ -10,9 +10,7 @@
 """
 from __future__ import annotations
 
-# 使用延迟导入避免循环依赖
-# 当 retrievers 模块被 workflow 导入时，
-# embedding_retriever 又导入了 workflow.common，导致循环
+# 使用延迟导入避免循环依赖。
 
 __all__ = [
     "EmbeddingRetriever",
@@ -31,31 +29,31 @@ __all__ = [
 def __getattr__(name: str):
     """延迟导入，避免循环依赖"""
     if name == "EmbeddingRetriever":
-        from retrievers.embedding_retriever import EmbeddingRetriever
+        from retrievers.core.embedding_retriever import EmbeddingRetriever
         return EmbeddingRetriever
     elif name == "EmbeddingRetrieverConfig":
-        from retrievers.embedding_retriever import EmbeddingRetrieverConfig
+        from retrievers.core.embedding_retriever import EmbeddingRetrieverConfig
         return EmbeddingRetrieverConfig
     elif name == "WeightedFusionRetriever":
-        from retrievers.weighted_fusion import WeightedFusionRetriever
+        from retrievers.core.weighted_fusion import WeightedFusionRetriever
         return WeightedFusionRetriever
     elif name == "CrossEncoderReranker":
-        from retrievers.cross_encoder_reranker import CrossEncoderReranker
+        from retrievers.core.cross_encoder_reranker import CrossEncoderReranker
         return CrossEncoderReranker
     elif name == "CrossEncoderRerankerConfig":
-        from retrievers.cross_encoder_reranker import CrossEncoderRerankerConfig
+        from retrievers.core.cross_encoder_reranker import CrossEncoderRerankerConfig
         return CrossEncoderRerankerConfig
     # 模型缓存
     elif name == "get_embedding_model":
-        from retrievers.model_cache import get_embedding_model
+        from retrievers.core.model_cache import get_embedding_model
         return get_embedding_model
     elif name == "get_reranker_model":
-        from retrievers.model_cache import get_reranker_model
+        from retrievers.core.model_cache import get_reranker_model
         return get_reranker_model
     elif name == "get_cache_stats":
-        from retrievers.model_cache import get_cache_stats
+        from retrievers.core.model_cache import get_cache_stats
         return get_cache_stats
     elif name == "clear_cache":
-        from retrievers.model_cache import clear_cache
+        from retrievers.core.model_cache import clear_cache
         return clear_cache
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

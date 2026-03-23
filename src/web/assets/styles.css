@@ -1192,8 +1192,9 @@ h3 {
 
 .message-inline-debug-grid {
   display: grid;
-  gap: 0.65rem;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: stretch;
 }
 
 .message-inline-empty {
@@ -1344,10 +1345,41 @@ h3 {
   font-weight: 700;
 }
 
+.debug-card {
+  min-height: 6.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
 .debug-value-ellipsis {
+  position: relative;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: help;
+}
+
+.debug-value-ellipsis:hover::after,
+.debug-value-ellipsis:focus-visible::after {
+  content: attr(data-full-value);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 20;
+  min-width: max-content;
+  max-width: min(28rem, 70vw);
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(19, 32, 42, 0.96);
+  color: #f8fafc;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+  pointer-events: none;
 }
 
 .analysis-list,

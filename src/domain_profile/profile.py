@@ -55,6 +55,7 @@ def _build_prompts(payload: dict[str, Any], *, domain_dir: Path) -> dict[str, st
     """
     prompts = {_as_str(k): _as_str(v) for k, v in _as_dict(payload).items()}
     prompt_path_pairs = (
+        ("deep_agent_system", "deep_agent_system_path"),
         ("qa_system", "qa_system_path"),
         ("issue_system", "issue_system_path"),
     )
@@ -829,4 +830,3 @@ def reset_domain_profile_singleton() -> None:
     with _PROFILE_SINGLETON_LOCK:
         _PROFILE_SINGLETON = None
         _PROFILE_SINGLETON_ROOT = None
-

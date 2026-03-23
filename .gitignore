@@ -4,6 +4,7 @@
 .vectorstore
 .claude
 .pytest_cache
+.tmp
 temp
 logs
 wiki_wiki

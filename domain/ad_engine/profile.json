@@ -658,8 +658,25 @@
     ]
   },
   "prompts": {
+    "deep_agent_system_path": "prompts/deep_agent_system.md",
     "qa_system_path": "prompts/qa_system.md",
     "issue_system_path": "prompts/issue_system.md"
+  },
+  "deep_agents": {
+    "enabled": true,
+    "skills_root": "domain/ad_engine/skills",
+    "primary_skills": [
+      "intent-router",
+      "knowledge-qa",
+      "issue-analysis"
+    ],
+    "tools": {
+      "domain_retrieve": {
+        "default_top_k": 6,
+        "max_top_k": 10,
+        "default_bias": "hybrid"
+      }
+    }
   },
   "eval": {
     "retrieval_dataset": "eval/datasets/ad_engine_retrieval_eval.jsonl",

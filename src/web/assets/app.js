@@ -938,15 +938,19 @@ function buildInlineDebugPanel(message) {
   const collapsedClass = expanded ? "" : " is-collapsed";
   const latencyValue = formatLatencyMs(debug.latency_ms);
   const llmCallStatus = resolveLLMCallStatus(message, debug);
+  const skillsUsed = Array.isArray(debug.skills_used) ? debug.skills_used : [];
+  const toolsUsed = Array.isArray(debug.tools_used) ? debug.tools_used : [];
+  const toolCalls = Array.isArray(debug.tool_calls) ? debug.tool_calls : [];
   const gridItems = [
     renderDebugCard("message_id", message.id || "--"),
     renderDebugCard("trace_id", message.trace_id || "--"),
     renderDebugCard("route", debug.route || message.intent || "--"),
     renderDebugCard("status", message.status || "--"),
-    renderDebugCard("domain", stringifyMetric(debug.domain_relevance)),
+    renderDebugCard("skills_used", formatDebugList(skillsUsed)),
+    renderDebugCard("tools_used", formatDebugList(toolsUsed)),
+    renderDebugCard("module", debug.module_name || message.analysis?.module || "--"),
     renderDebugCard("latency", latencyValue),
-    renderDebugCard("backend", debug.graph_backend || "--"),
-    renderDebugCard("next_action", debug.next_action || "--"),
+    renderDebugCard("checkpointer", debug.checkpointer_backend || "--"),
   ];
   if (llmCallStatus) {
     gridItems.push(renderDebugCard("llm_status", llmCallStatus.status || "--"));
@@ -965,10 +969,13 @@ function buildInlineDebugPanel(message) {
     Boolean(message.intent) ||
     Boolean(message.status) ||
     Boolean(debug.route) ||
-    Boolean(debug.graph_backend) ||
-    Boolean(debug.next_action) ||
+    skillsUsed.length > 0 ||
+    toolsUsed.length > 0 ||
+    toolCalls.length > 0 ||
+    Boolean(debug.module_name) ||
+    Boolean(message.analysis?.module) ||
+    Boolean(debug.checkpointer_backend) ||
     typeof debug.latency_ms === "number" ||
-    typeof debug.domain_relevance === "number" ||
     Boolean(llmCallStatus);
 
   const content = hasAnyDebug
@@ -976,7 +983,7 @@ function buildInlineDebugPanel(message) {
       <div class="message-inline-debug-grid">
         ${gridItems.join("")}
       </div>
-      ${renderPathCard(debug.graph_path)}
+      ${renderToolCallsCard(toolCalls)}
     `
     : `<div class="message-inline-empty">当前消息没有调试信息。</div>`;
 
@@ -1245,7 +1252,7 @@ function renderCitationCard(citation) {
   if (!citation) {
     return "";
   }
-  const sourceType = String(citation.source_type || "source");
+  const sourceType = String(citation.source_type || citation.source || "source");
   const symbolName = String(citation.symbol_name || "").trim();
   const startLine = Number.isInteger(citation.start_line) ? citation.start_line : null;
   const endLine = Number.isInteger(citation.end_line) ? citation.end_line : null;
@@ -1528,7 +1535,8 @@ function renderDebugCard(label, value) {
   const displayValue = isTooLong
     ? `${normalizedValue.slice(0, INLINE_DEBUG_VALUE_MAX_CHARS)}...`
     : normalizedValue;
-  const titleAttr = isTooLong ? ` title="${escapeHtml(normalizedValue)}"` : "";
+  const escapedFullValue = escapeHtml(normalizedValue);
+  const titleAttr = ` title="${escapedFullValue}" data-full-value="${escapedFullValue}" tabindex="0"`;
   return `
     <div class="debug-card">
       <div class="debug-label">${escapeHtml(label)}</div>
@@ -1547,6 +1555,50 @@ function renderPathCard(graphPath) {
       <ul>
         ${graphPath.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
       </ul>
+    </div>
+  `;
+}
+
+function formatDebugList(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "--";
+  }
+  return items.map((item) => String(item || "").trim()).filter(Boolean).join(", ") || "--";
+}
+
+function renderToolCallsCard(toolCalls) {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+    return "";
+  }
+  const items = toolCalls
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return "";
+      }
+      const parts = [String(item.name || "tool")];
+      if (item.retrieval_strategy) {
+        parts.push(`strategy=${item.retrieval_strategy}`);
+      }
+      if (item.module_name) {
+        parts.push(`module=${item.module_name}`);
+      }
+      if (typeof item.wiki_hits === "number" || typeof item.code_hits === "number") {
+        parts.push(`hits=w${item.wiki_hits ?? 0}/c${item.code_hits ?? 0}`);
+      }
+      if (typeof item.latency_ms === "number") {
+        parts.push(`latency=${item.latency_ms}ms`);
+      }
+      return `<li>${escapeHtml(parts.join(" | "))}</li>`;
+    })
+    .filter(Boolean)
+    .join("");
+  if (!items) {
+    return "";
+  }
+  return `
+    <div class="list-card">
+      <div class="citation-title">tool_calls</div>
+      <ul>${items}</ul>
     </div>
   `;
 }

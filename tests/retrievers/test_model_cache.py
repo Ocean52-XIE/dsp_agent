@@ -11,12 +11,25 @@
 from __future__ import annotations
 
 import os
+import shutil
 import tempfile
 import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+
+
+_TEST_TMP_ROOT = Path.cwd() / ".tmp" / "model_cache_tests"
+_TEST_TMP_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def _new_test_dir() -> Path:
+    """Create a writable temp directory inside the repo."""
+    path = _TEST_TMP_ROOT / uuid4().hex
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 class TestModelCache:
@@ -24,7 +37,7 @@ class TestModelCache:
 
     def test_get_cache_stats_initial(self):
         """测试初始缓存统计为空"""
-        from retrievers.model_cache import get_cache_stats, clear_cache
+        from retrievers.core.model_cache import get_cache_stats, clear_cache
 
         # 清空缓存确保初始状态
         clear_cache()
@@ -39,7 +52,7 @@ class TestModelCache:
 
     def test_clear_cache(self):
         """测试清空缓存功能"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _embedding_cache,
             _reranker_cache,
             clear_cache,
@@ -60,7 +73,7 @@ class TestResolveModelPath:
 
     def test_resolve_model_path_huggingface_id(self):
         """测试解析 HuggingFace Hub ID"""
-        from retrievers.model_cache import _resolve_model_path
+        from retrievers.core.model_cache import _resolve_model_path
 
         # Hub ID 应该直接返回
         result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=None)
@@ -68,47 +81,56 @@ class TestResolveModelPath:
 
     def test_resolve_model_path_absolute_path(self):
         """测试解析绝对路径"""
-        from retrievers.model_cache import _resolve_model_path
+        from retrievers.core.model_cache import _resolve_model_path
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            model_path = Path(tmpdir) / "test-model"
-            model_path.mkdir()
+        tmpdir = _new_test_dir()
+        try:
+            model_path = tmpdir / "test-model"
+            model_path.mkdir(parents=True, exist_ok=True)
 
             result = _resolve_model_path(str(model_path), cache_dir=None)
             assert result == str(model_path)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_resolve_model_path_cache_dir_direct(self):
         """测试从 cache_dir 直接加载模型"""
-        from retrievers.model_cache import _resolve_model_path
+        from retrievers.core.model_cache import _resolve_model_path
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # 创建模型目录
-            model_path = Path(tmpdir) / "BAAI" / "bge-base-zh-v1.5"
-            model_path.mkdir(parents=True)
+        tmpdir = _new_test_dir()
+        try:
+            model_path = tmpdir / "BAAI" / "bge-base-zh-v1.5"
+            model_path.mkdir(parents=True, exist_ok=True)
 
-            result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=tmpdir)
+            result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=str(tmpdir))
             assert result == str(model_path)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_resolve_model_path_cache_dir_basename(self):
         """测试从 cache_dir 使用 basename 加载模型"""
-        from retrievers.model_cache import _resolve_model_path
+        from retrievers.core.model_cache import _resolve_model_path
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # 只使用模型名的最后一部分
-            model_path = Path(tmpdir) / "bge-base-zh-v1.5"
-            model_path.mkdir()
+        tmpdir = _new_test_dir()
+        try:
+            model_path = tmpdir / "bge-base-zh-v1.5"
+            model_path.mkdir(parents=True, exist_ok=True)
 
-            result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=tmpdir)
+            result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=str(tmpdir))
             assert result == str(model_path)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_resolve_model_path_not_found_returns_original(self):
         """测试本地模型未找到时返回原始名称"""
-        from retrievers.model_cache import _resolve_model_path
+        from retrievers.core.model_cache import _resolve_model_path
 
-        # cache_dir 为空目录时，应该返回原始 Hub ID
-        with tempfile.TemporaryDirectory() as tmpdir:
-            result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=tmpdir)
+        tmpdir = _new_test_dir()
+        try:
+            result = _resolve_model_path("BAAI/bge-base-zh-v1.5", cache_dir=str(tmpdir))
             assert result == "BAAI/bge-base-zh-v1.5"
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 class TestEmbeddingModelCache:
@@ -116,7 +138,7 @@ class TestEmbeddingModelCache:
 
     def test_get_embedding_model_singleton(self):
         """测试 Embedding 模型单例缓存"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _embedding_cache,
             clear_cache,
             get_embedding_model,
@@ -146,7 +168,7 @@ class TestEmbeddingModelCache:
 
     def test_get_embedding_model_different_configs(self):
         """测试不同配置的 Embedding 模型各自缓存"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _embedding_cache,
             clear_cache,
             get_embedding_model,
@@ -173,7 +195,7 @@ class TestEmbeddingModelCache:
 
     def test_get_embedding_model_cache_stats(self):
         """测试 Embedding 模型缓存统计"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             get_embedding_model,
@@ -200,7 +222,7 @@ class TestEmbeddingModelCache:
 
     def test_get_embedding_model_custom_encode_kwargs(self):
         """测试自定义 encode_kwargs 参数"""
-        from retrievers.model_cache import clear_cache, get_embedding_model
+        from retrievers.core.model_cache import clear_cache, get_embedding_model
 
         clear_cache()
 
@@ -220,7 +242,7 @@ class TestEmbeddingModelCache:
 
     def test_get_embedding_model_with_cache_dir(self):
         """测试使用 cache_dir 加载模型"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _embedding_cache,
             clear_cache,
             get_embedding_model,
@@ -243,7 +265,7 @@ class TestEmbeddingModelCache:
 
     def test_get_embedding_model_different_cache_dirs(self):
         """测试不同 cache_dir 的模型各自缓存"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _embedding_cache,
             clear_cache,
             get_embedding_model,
@@ -272,7 +294,7 @@ class TestRerankerModelCache:
 
     def test_get_reranker_model_singleton(self):
         """测试 Reranker 模型单例缓存"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _reranker_cache,
             clear_cache,
             get_reranker_model,
@@ -299,7 +321,7 @@ class TestRerankerModelCache:
 
     def test_get_reranker_model_different_configs(self):
         """测试不同配置的 Reranker 模型各自缓存"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _reranker_cache,
             clear_cache,
             get_reranker_model,
@@ -324,7 +346,7 @@ class TestRerankerModelCache:
 
     def test_get_reranker_model_cache_stats(self):
         """测试 Reranker 模型缓存统计"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             get_reranker_model,
@@ -351,7 +373,7 @@ class TestRerankerModelCache:
 
     def test_get_reranker_model_with_cache_dir(self):
         """测试使用 cache_dir 加载 Reranker 模型"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             _reranker_cache,
             clear_cache,
             get_reranker_model,
@@ -380,7 +402,7 @@ class TestThreadSafety:
 
     def test_concurrent_embedding_access(self):
         """测试并发访问 Embedding 缓存的线程安全性"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             get_embedding_model,
@@ -436,7 +458,7 @@ class TestWarmupFunctions:
 
     def test_warmup_embedding_model(self):
         """测试 Embedding 模型预热"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             warmup_embedding_model,
@@ -461,7 +483,7 @@ class TestWarmupFunctions:
 
     def test_warmup_embedding_model_with_cache_dir(self):
         """测试带 cache_dir 的 Embedding 模型预热"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             warmup_embedding_model,
@@ -486,7 +508,7 @@ class TestWarmupFunctions:
 
     def test_warmup_reranker_model(self):
         """测试 Reranker 模型预热"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             warmup_reranker_model,
@@ -511,7 +533,7 @@ class TestWarmupFunctions:
 
     def test_warmup_reranker_model_with_cache_dir(self):
         """测试带 cache_dir 的 Reranker 模型预热"""
-        from retrievers.model_cache import (
+        from retrievers.core.model_cache import (
             clear_cache,
             get_cache_stats,
             warmup_reranker_model,
@@ -564,7 +586,7 @@ class TestConfigWithCacheDir:
 
     def test_embedding_retriever_config_cache_dir_from_profile(self):
         """测试 EmbeddingRetrieverConfig 从 profile 读取 cache_dir"""
-        from retrievers.embedding_retriever import EmbeddingRetrieverConfig
+        from retrievers.core.embedding_retriever import EmbeddingRetrieverConfig
         from domain_profile import EmbeddingProfile
 
         profile = EmbeddingProfile(
@@ -579,7 +601,7 @@ class TestConfigWithCacheDir:
 
     def test_embedding_retriever_config_cache_dir_from_env(self):
         """测试 EmbeddingRetrieverConfig 从环境变量读取 cache_dir"""
-        from retrievers.embedding_retriever import EmbeddingRetrieverConfig
+        from retrievers.core.embedding_retriever import EmbeddingRetrieverConfig
 
         # 设置环境变量
         os.environ["WORKFLOW_EMBEDDING_CACHE_DIR"] = "/env/cache"
@@ -592,7 +614,7 @@ class TestConfigWithCacheDir:
 
     def test_reranker_config_cache_dir_from_profile(self):
         """测试 CrossEncoderRerankerConfig 从 profile 读取 cache_dir"""
-        from retrievers.cross_encoder_reranker import CrossEncoderRerankerConfig
+        from retrievers.core.cross_encoder_reranker import CrossEncoderRerankerConfig
         from domain_profile import RerankerProfile
 
         profile = RerankerProfile(
@@ -607,7 +629,7 @@ class TestConfigWithCacheDir:
 
     def test_reranker_config_cache_dir_from_env(self):
         """测试 CrossEncoderRerankerConfig 从环境变量读取 cache_dir"""
-        from retrievers.cross_encoder_reranker import CrossEncoderRerankerConfig
+        from retrievers.core.cross_encoder_reranker import CrossEncoderRerankerConfig
 
         # 设置环境变量
         os.environ["WORKFLOW_RERANKER_CACHE_DIR"] = "/env/cache"

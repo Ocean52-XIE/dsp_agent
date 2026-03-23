@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
-"""FastAPI API entrypoint for the DSP agent.
-
-统一使用 workflow/engine.py 作为入口点，
-在服务启动时通过 src/init 模块完成初始化。
-
-同步模式：
-- 使用 FastAPI 的 lifespan 管理生命周期
-- WorkflowService 内部管理 checkpointer
-- 所有端点使用同步调用
-"""
+"""FastAPI entrypoint for the new deep-agent stack."""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -22,7 +13,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from workflow.engine import WorkflowService
+from agent import DeepAgentService
+from api.message_mapper import to_assistant_message
 from observability import PostgresObservabilityStore
 from log import get_file_logger, setup_global_logging
 from session import PostgresSessionStore
@@ -38,7 +30,7 @@ ASSETS_DIR = WEB_DIR / 'assets'
 setup_global_logging(BASE_DIR)
 APP_LOGGER = get_file_logger(project_root=BASE_DIR)
 
-WORKFLOW : WorkflowService
+AGENT_SERVICE: DeepAgentService
 OBS_STORE: PostgresObservabilityStore
 SESSION_STORE: PostgresSessionStore
 SESSIONS: dict[str, dict[str, Any]] = {}
@@ -49,29 +41,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """FastAPI 生命周期管理器
 
     使用 async context manager 管理应用生命周期：
-    1. 启动时：初始化所有组件（单例在子初始化器中设置）
-    2. 创建 WorkflowService（内部自动初始化 checkpointer）
+    1. 启动时：初始化检索器、MCP、领域配置
+    2. 创建 DeepAgentService
     3. 关闭时：清理资源
     """
-    # 声明全局变量，确保函数内赋值修改的是模块级变量
-    global WORKFLOW, OBS_STORE, SESSION_STORE
+    global AGENT_SERVICE, OBS_STORE, SESSION_STORE
 
     # 启动时初始化
     APP_LOGGER.info('api.lifespan.startup.begin')
 
     # 使用异步初始化（确保 MCP 等异步组件在正确的上下文中初始化）
     from init import initialize_async
-    await initialize_async(project_root=BASE_DIR, enable_mcp=True, enable_skills=True, enable_retrievers=True)
+    await initialize_async(project_root=BASE_DIR, enable_mcp=True, enable_retrievers=True)
 
-    # 初始化 WorkflowService
-    WORKFLOW = WorkflowService()
+    AGENT_SERVICE = DeepAgentService(project_root=BASE_DIR)
 
     # 初始化存储
     OBS_STORE = PostgresObservabilityStore.from_env()
     SESSION_STORE = PostgresSessionStore.from_env()
     APP_LOGGER.info(
         'api.service.initialized',
-        checkpointer=WORKFLOW.checkpointer_status(),
+        checkpointer=AGENT_SERVICE.checkpointer_status(),
         session_store=SESSION_STORE.status(),
         observability=OBS_STORE.status(),
         runtime_logging=APP_LOGGER.status(),
@@ -85,13 +75,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 关闭时清理资源
     APP_LOGGER.info('api.lifespan.shutdown.begin')
 
-    # 关闭 WorkflowService 资源
+    # 关闭 DeepAgentService 资源
     try:
-        WORKFLOW.close()
-        APP_LOGGER.info('api.lifespan.shutdown.workflow.closed')
+        AGENT_SERVICE.close()
+        APP_LOGGER.info('api.lifespan.shutdown.agent.closed')
     except Exception as exc:
         APP_LOGGER.warning(
-            'api.lifespan.shutdown.workflow.close_failed',
+            'api.lifespan.shutdown.agent.close_failed',
             error_type=type(exc).__name__,
         )
 
@@ -102,7 +92,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title='Engine Smart Agent Workflow API',
     version='0.2.0',
-    description='LangGraph-driven orchestration and routing demo (sync mode).',
+    description='Deep Agents-driven orchestration demo.',
     lifespan=lifespan,
 )
 app.mount('/assets', StaticFiles(directory=ASSETS_DIR), name='assets')
@@ -283,9 +273,9 @@ def health() -> dict[str, Any]:
     APP_LOGGER.debug('api.health.checked')
     return {
         'status': 'ok',
-        'checkpointer': WORKFLOW.checkpointer_status(),
-        'debug_verbose_enabled': bool(getattr(WORKFLOW, 'debug_verbose_enabled', False)),
-        'runtime_logging': WORKFLOW.runtime_log_status(),
+        'checkpointer': AGENT_SERVICE.checkpointer_status(),
+        'debug_verbose_enabled': False,
+        'runtime_logging': AGENT_SERVICE.runtime_log_status(),
         'observability': OBS_STORE.status(),
         'session_store': SESSION_STORE.status(),
     }
@@ -321,7 +311,7 @@ def get_session(session_id: str) -> dict[str, Any]:
 def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     """创建消息（同步版本）
 
-    统一使用 WorkflowService 处理用户消息。
+    使用 DeepAgentService 处理用户消息。
     """
     APP_LOGGER.info(
         'api.message.create.requested',
@@ -339,7 +329,7 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     session['messages'].append(user_message)
     trace_id = next_id('trace')
 
-    # 使用 Workflow 后端处理消息（同步调用）
+    # 使用 Deep Agent 后端处理消息（同步调用）
     APP_LOGGER.info(
         'api.message.processing',
         session_id=session['id'],
@@ -347,8 +337,7 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     )
 
     try:
-        # 同步调用 Workflow
-        workflow_payload = WORKFLOW.run_user_message(
+        turn_result = AGENT_SERVICE.run_user_message(
             session_id=session['id'],
             trace_id=trace_id,
             user_query=request.content,
@@ -363,7 +352,7 @@ def create_message(request: MessageCreateRequest) -> dict[str, Any]:
         )
         raise
 
-    assistant_message = materialize_assistant_message(workflow_payload)
+    assistant_message = materialize_assistant_message(to_assistant_message(turn_result))
     TRACE_REFERENCES[trace_id] = assistant_message['citations']
     session['messages'].append(assistant_message)
     session['status'] = assistant_message['status']
@@ -446,8 +435,8 @@ def create_message_feedback(message_id: str, request: MessageFeedbackRequest) ->
 def get_api_config_info() -> dict[str, Any]:
     """获取 API 配置信息"""
     return {
-        'backend': 'workflow',
-        'checkpointer': WORKFLOW.checkpointer_status(),
+        'backend': 'deepagents',
+        'checkpointer': AGENT_SERVICE.checkpointer_status(),
         'session_store': SESSION_STORE.status(),
         'observability': OBS_STORE.status(),
     }

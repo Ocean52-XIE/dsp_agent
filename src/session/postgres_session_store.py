@@ -28,7 +28,7 @@ from typing import Any
 
 from init.database_initializer import ensure_database_exists
 from log import get_file_logger
-from workflow.common.func_utils import to_bool, to_int
+from common.func_utils import to_bool, to_int
 
 
 def _sanitize_identifier(value: str, default: str) -> str:

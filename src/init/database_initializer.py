@@ -122,7 +122,7 @@ class DatabaseConfig:
 
 def _parse_database_config() -> DatabaseConfig:
     """从环境变量解析数据库配置"""
-    from workflow.common.func_utils import to_bool, to_int
+    from common.func_utils import to_bool, to_int
 
     explicit_backend = str(os.getenv("WORKFLOW_CHECKPOINTER_BACKEND", "") or "").strip().lower()
     explicit_dsn = str(os.getenv("WORKFLOW_CHECKPOINTER_PG_DSN", "") or "").strip()
@@ -254,7 +254,7 @@ def _init_postgres(config: DatabaseConfig) -> tuple[Any | None, Any | None]:
             f"setup={config.pg_setup}"
         )
 
-        return None, checkpointer  # connection 由 PostgresSaver 内部管理
+        return stack, checkpointer
 
     except Exception as exc:
         if stack is not None:

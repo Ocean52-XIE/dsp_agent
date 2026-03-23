@@ -40,7 +40,7 @@ def init_wiki_retriever(
         MarkdownWikiRetriever 实例
     """
     try:
-        from workflow.nodes.retrieval_flow.retrieve_wiki.wiki_retriever import (
+        from retrievers.wiki.retriever import (
             MarkdownWikiRetriever,
             set_wiki_retriever,
         )
@@ -93,7 +93,7 @@ def init_code_retriever(
     import os
 
     try:
-        from workflow.nodes.retrieval_flow.retrieve_code.code_retriever import (
+        from retrievers.code.retriever import (
             LocalCodeRetriever,
             parse_code_dirs_from_env,
             set_code_retriever,
@@ -126,5 +126,3 @@ def init_code_retriever(
     except Exception as e:
         logger.warning(f"[RetrieverInit] Code 检索器初始化失败: {e}")
         return None
-
-
