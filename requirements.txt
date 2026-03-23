@@ -1,26 +1,28 @@
+# API 与 Agent 运行时
 fastapi==0.135.1
 uvicorn==0.41.0
 deepagents
 langgraph
-langchain
+langgraph-checkpoint-postgres
+
+# LangChain 组件
 langchain-openai
 langchain-community
 langchain-huggingface
 langchain-text-splitters
-langgraph-checkpoint-postgres
+langchain-chroma
+
+# 检索与向量能力
 rank_bm25
-scikit-learn
-psycopg[binary,pool]==3.2.12
-# 向量检索依赖
 sentence-transformers>=2.2.0
 chromadb>=0.4.0
-# 技能加载器依赖
+
+# 配置与持久化
+psycopg[binary,pool]==3.2.12
 pyyaml>=6.0
-# 序列化依赖（langchain/chromadb 等需要）
 protobuf>=4.25.0
-# MCP (Model Context Protocol) SDK
+
+# MCP 生态
 mcp>=1.0.0
 fastmcp>=3.1.0
 langchain-mcp-adapters>=0.2.0
-# 异步嵌套支持（用于同步包装异步 MCP 操作）
-nest_asyncio>=1.5.0

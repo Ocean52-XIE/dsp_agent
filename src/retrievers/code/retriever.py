@@ -10,7 +10,6 @@
 已移除的冗余路径：
     - TFIDF：与 BM25 功能重复
     - Ensemble：BM25+TFIDF 的融合，已移除
-    - RG (ripgrep)：外部依赖，已移除
 """
 from __future__ import annotations
 
@@ -123,7 +122,7 @@ class CodeRetrieverRuntimeConfig:
     Code 检索器运行时配置（简化版）
 
     简化后的检索策略：BM25 + Embedding + Pattern
-    移除了 TFIDF、Ensemble、RG 等冗余路径
+    移除了 TFIDF、Ensemble 等冗余路径
 
     分数归一化：
         所有检索路径统一使用 RRF(k=60) 归一化，确保分数在 [0, 1] 范围内。
@@ -257,7 +256,7 @@ class LocalCodeRetriever:
         self._index_read_error_count = 0
 
         self._bm25: BM25Retriever | None = None
-        # 移除 TFIDF、Ensemble（与 BM25 功能重复）和 RG（外部依赖）
+        # 移除 TFIDF、Ensemble 等冗余路径
 
         # Embedding 向量检索器（可选）
         self._embedding_retriever: Any = None
@@ -581,7 +580,7 @@ class LocalCodeRetriever:
         started = perf_counter()
         query = user_query.strip()
 
-        # 简化后只使用 BM25 + Embedding（移除 TFIDF/Ensemble/RG）
+        # 简化后只使用 BM25 + Embedding
         if not query or not self._child_chunks or self._bm25 is None:
             self.last_search_profile = {"latency_ms": round((perf_counter() - started) * 1000, 3)}
             return []

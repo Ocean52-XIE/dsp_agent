@@ -25,8 +25,6 @@ import json
 import logging
 import os
 import re
-import shutil
-import subprocess
 from typing import Any
 
 from langchain_community.retrievers import BM25Retriever
@@ -40,27 +38,6 @@ from domain_profile import EmbeddingProfile, RerankerProfile
 
 # 模块级日志器
 logger = logging.getLogger(__name__)
-
-
-RG_STRATEGIES = {"rg_first", "rg_only", "no_rg"}
-
-
-def _resolve_rg_strategy(raw_value: str | None, *, default: str) -> str:
-    """
-    内部辅助函数，负责`resolve rg strategy` 相关处理。
-    
-    参数:
-        raw_value: 输入参数，用于控制当前处理逻辑。
-    
-    返回:
-        返回类型为 `str` 的处理结果。
-    """
-    normalized = str(raw_value or "").strip().lower()
-    if normalized in RG_STRATEGIES:
-        return normalized
-    if default in RG_STRATEGIES:
-        return default
-    return "rg_first"
 
 
 @dataclass
@@ -195,11 +172,6 @@ class WikiRetrieverRuntimeConfig:
         excerpt_max_chars: 摘要最大字符数
         candidate_multiplier: 候选集倍数
         min_candidates: 最小候选数
-        rg_strategy: RG 检索策略
-        rg_max_terms: RG 最大检索词数
-        rg_timeout_ms: RG 超时时间
-        rg_path_boost: RG 路径加成
-        rg_max_matches_per_term: 每词最大匹配数
         enable_embedding: 是否启用向量检索
         embedding_model: 向量模型名称
         embedding_top_k: 向量检索返回数量
@@ -219,11 +191,6 @@ class WikiRetrieverRuntimeConfig:
     excerpt_max_chars: int = 220
     candidate_multiplier: int = 6
     min_candidates: int = 12
-    rg_strategy: str = "no_rg"
-    rg_max_terms: int = 8
-    rg_timeout_ms: int = 1200
-    rg_path_boost: float = 0.12  # RG 路径加成（RRF 范围 [0,1] 下合理值）
-    rg_max_matches_per_term: int = 80
     # 向量检索配置
     enable_embedding: bool = True
     embedding_model: str = "BAAI/bge-base-zh-v1.5"
@@ -257,16 +224,6 @@ class WikiRetrieverRuntimeConfig:
         返回:
             返回类型为 `'WikiRetrieverRuntimeConfig'` 的处理结果。
         """
-        legacy_flag = os.getenv("WORKFLOW_WIKI_RG_FIRST_ENABLED")
-        if legacy_flag is None:
-            default_strategy = "no_rg"
-        else:
-            default_strategy = "rg_first" if env_bool("WORKFLOW_WIKI_RG_FIRST_ENABLED", True) else "no_rg"
-        strategy = _resolve_rg_strategy(
-            os.getenv("WORKFLOW_WIKI_RG_STRATEGY"),
-            default=default_strategy,
-        )
-
         # 向量检索配置：环境变量优先级高于 profile 配置
         if embedding_profile:
             enable_embedding = env_bool("WORKFLOW_WIKI_EMBEDDING_ENABLED", embedding_profile.enabled)
@@ -291,11 +248,6 @@ class WikiRetrieverRuntimeConfig:
             excerpt_max_chars=env_int("WORKFLOW_WIKI_EXCERPT_MAX_CHARS", 220, minimum=60),
             candidate_multiplier=env_int("WORKFLOW_WIKI_STAGE2_MULTIPLIER", 6, minimum=1),
             min_candidates=env_int("WORKFLOW_WIKI_STAGE2_MIN_CANDIDATES", 12, minimum=1),
-            rg_strategy=strategy,
-            rg_max_terms=env_int("WORKFLOW_WIKI_RG_MAX_TERMS", 8, minimum=1),
-            rg_timeout_ms=env_int("WORKFLOW_WIKI_RG_TIMEOUT_MS", 1200, minimum=100),
-            rg_path_boost=env_float("WORKFLOW_WIKI_RG_PATH_BOOST", 0.55, minimum=0.0),
-            rg_max_matches_per_term=env_int("WORKFLOW_WIKI_RG_MAX_MATCHES_PER_TERM", 80, minimum=1),
             enable_embedding=enable_embedding,
             embedding_model=embedding_model,
             embedding_top_k=embedding_top_k,
@@ -386,8 +338,6 @@ class MarkdownWikiRetriever:
         self._chunk_by_id: dict[int, WikiChunk] = {}
         self._chunk_ids_by_path: defaultdict[str, list[int]] = defaultdict(list)
         self.last_search_profile: dict[str, Any] = {}
-        self._rg_executable = shutil.which("rg") if self.runtime_config.rg_strategy != "no_rg" else None
-        self._rg_unavailable_warned = False
 
         self._bm25: BM25Retriever | None = None
         # 精简：移除 TFIDF 和 Ensemble，只保留 BM25 + Embedding
@@ -428,15 +378,6 @@ class MarkdownWikiRetriever:
             embedding_model=self.runtime_config.embedding_model if self.runtime_config.enable_embedding else None,
             latency_ms=int((perf_counter() - started) * 1000),
         )
-        self._logger.info(
-            "workflow.wiki_rg.status",
-            strategy=self.runtime_config.rg_strategy,
-            enabled=self.runtime_config.rg_strategy != "no_rg",
-            available=bool(self._rg_executable),
-            executable=self._rg_executable or "",
-        )
-        if self.runtime_config.rg_strategy in {"rg_first", "rg_only"} and self._rg_executable is None:
-            self._warn_rg_unavailable("rg is unavailable; retrieve_wiki falls back to BM25/TFIDF only.")
 
         # 记录重排器状态
         self._logger.info(
@@ -503,13 +444,10 @@ class MarkdownWikiRetriever:
         返回:
             返回类型为 `list[dict[str, Any]]` 的处理结果。
         """
-        rg_strategy = self.runtime_config.rg_strategy
-        use_rg = rg_strategy in {"rg_first", "rg_only"}
-        use_semantic = rg_strategy in {"rg_first", "no_rg"}
         if (
             not user_query.strip()
             or not self._documents
-            or (use_semantic and self._bm25 is None)
+            or self._bm25 is None
         ):
             self.last_search_profile = {"latency_ms": 0.0, "hits": 0}
             return []
@@ -532,10 +470,9 @@ class MarkdownWikiRetriever:
         bm25_docs: list[Document] = []
         embedding_docs: list[Document] = []
 
-        if use_semantic:
-            assert self._bm25 is not None
-            self._bm25.k = candidate_k
-            bm25_docs = self._bm25.invoke(merged_query)
+        assert self._bm25 is not None
+        self._bm25.k = candidate_k
+        bm25_docs = self._bm25.invoke(merged_query)
 
         # 向量检索（与 BM25 串行执行）
         if self._embedding_retriever and self._embedding_retriever.is_initialized:
@@ -552,34 +489,14 @@ class MarkdownWikiRetriever:
         embedding_ranks = self._rank_map(embedding_docs)
 
         query_terms = self._extract_terms(expanded_queries)
-        rg_terms = self._build_rg_terms(query_terms=query_terms, module_name=module_name or "") if use_rg else []
-        rg_path_hits, rg_profile = self._run_rg_path_hits(terms=rg_terms)
-        rg_boost_by_chunk: dict[int, float] = {}
-        rg_candidate_ids: list[int] = []
-        for path, match_count in rg_path_hits.items():
-            chunk_ids = self._chunk_ids_by_path.get(path, [])
-            if not chunk_ids:
-                continue
-            # RG 加成计算：基础值 + 多匹配加成，限制最大值
-            # 在 RRF 范围 [0,1] 下，最大值限制为 0.3 以避免过度影响排序
-            path_boost = min(
-                self.runtime_config.rg_path_boost * (1.0 + 0.25 * max(match_count - 1, 0)),
-                0.3,  # 绝对上限
-            )
-            for chunk_id in chunk_ids:
-                rg_candidate_ids.append(chunk_id)
-                rg_boost_by_chunk[chunk_id] = max(rg_boost_by_chunk.get(chunk_id, 0.0), path_boost)
 
         candidate_ids: list[int] = []
-        if rg_strategy in {"rg_first", "rg_only"}:
-            candidate_ids.extend(rg_candidate_ids)
-        if use_semantic:
-            for docs in (bm25_docs, embedding_docs):
-                for doc in docs:
-                    chunk_id = int(doc.metadata.get("chunk_id", -1))
-                    if chunk_id <= 0:
-                        continue
-                    candidate_ids.append(chunk_id)
+        for docs in (bm25_docs, embedding_docs):
+            for doc in docs:
+                chunk_id = int(doc.metadata.get("chunk_id", -1))
+                if chunk_id <= 0:
+                    continue
+                candidate_ids.append(chunk_id)
 
         dedup_candidate_ids = list(dict.fromkeys(candidate_ids))[:candidate_k]
         scored: list[dict[str, Any]] = []
@@ -595,8 +512,6 @@ class MarkdownWikiRetriever:
             embedding_score = self._rank_score(embedding_rank)
             lexical_score = self._lexical_match_score(chunk.normalized_text, query_terms)
             module_boost = self._module_prior_boost(chunk=chunk, module_name=module_name or "")
-            rg_boost = rg_boost_by_chunk.get(chunk_id, 0.0)
-            path_key = self._to_relative_path(chunk.source_path)
 
             # 计算通用文档惩罚：当查询匹配到具体模块时，对总体架构等通用文档降低分数
             general_doc_penalty = self._general_doc_penalty(
@@ -607,20 +522,13 @@ class MarkdownWikiRetriever:
 
             # 三级召回评分公式（RRF 归一化，范围 [0, 1]）
             # final_score = bm25*0.30 + embedding*0.50 + lexical*0.20 + module_boost - penalty
-            score = 0.0
-            if use_semantic:
-                score = (
-                    bm25_score * self.hybrid_weights.bm25
-                    + embedding_score * self.hybrid_weights.embedding
-                    + lexical_score * self.hybrid_weights.lexical
-                    + module_boost
-                    - general_doc_penalty
-                )
-            if rg_strategy == "rg_first":
-                score += rg_boost
-            elif rg_strategy == "rg_only":
-                # rg_only 模式：主要依赖 RG 路径匹配，lexical 和 module 作为补充
-                score = rg_boost + lexical_score * 0.3 + module_boost
+            score = (
+                bm25_score * self.hybrid_weights.bm25
+                + embedding_score * self.hybrid_weights.embedding
+                + lexical_score * self.hybrid_weights.lexical
+                + module_boost
+                - general_doc_penalty
+            )
             scored.append(
                 {
                     "chunk": chunk,
@@ -630,9 +538,6 @@ class MarkdownWikiRetriever:
                     "lexical_score": lexical_score,
                     "module_boost": module_boost,
                     "general_doc_penalty": general_doc_penalty,
-                    "rg_boost": rg_boost,
-                    "rg_path_hits": int(rg_path_hits.get(path_key, 0)),
-                    "rg_strategy": rg_strategy,
                 }
             )
 
@@ -678,9 +583,6 @@ class MarkdownWikiRetriever:
                         "lexical": round(float(item["lexical_score"]), 4),
                         "module_boost": round(float(item["module_boost"]), 4),
                         "general_doc_penalty": round(float(item.get("general_doc_penalty", 0.0)), 4),
-                        "rg_boost": round(float(item["rg_boost"]), 4),
-                        "rg_path_hits": int(item["rg_path_hits"]),
-                        "rg_strategy": str(item["rg_strategy"]),
                         "weights": {
                             "bm25": round(self.hybrid_weights.bm25, 4),
                             "embedding": round(self.hybrid_weights.embedding, 4),
@@ -718,9 +620,6 @@ class MarkdownWikiRetriever:
                     "lexical_score": hit.get("retrieval_debug", {}).get("lexical", 0.0),
                     "module_boost": hit.get("retrieval_debug", {}).get("module_boost", 0.0),
                     "general_doc_penalty": hit.get("retrieval_debug", {}).get("general_doc_penalty", 0.0),
-                    "rg_boost": hit.get("retrieval_debug", {}).get("rg_boost", 0.0),
-                    "rg_path_hits": hit.get("retrieval_debug", {}).get("rg_path_hits", 0),
-                    "rg_strategy": hit.get("retrieval_debug", {}).get("rg_strategy", ""),
                     # 重排特有字段
                     "rerank_score": rerank_score,
                     "original_rank": hit.get("original_rank", rank),
@@ -763,9 +662,6 @@ class MarkdownWikiRetriever:
                     "lexical": round(float(item["lexical_score"]), 4),
                     "module_boost": round(float(item["module_boost"]), 4),
                     "general_doc_penalty": round(float(item.get("general_doc_penalty", 0.0)), 4),
-                    "rg_boost": round(float(item["rg_boost"]), 4),
-                    "rg_path_hits": int(item["rg_path_hits"]),
-                    "rg_strategy": str(item["rg_strategy"]),
                     "weights": {
                         "bm25": round(self.hybrid_weights.bm25, 4),
                         "embedding": round(self.hybrid_weights.embedding, 4),
@@ -786,11 +682,9 @@ class MarkdownWikiRetriever:
             "candidate_k": candidate_k,
             "expanded_query_count": len(expanded_queries),
             "hits": len(hits),
-            "rg_strategy": rg_strategy,
-            "rg": {
-                **rg_profile,
-                "matched_paths": len(rg_path_hits),
-                "matched_chunks": len(rg_boost_by_chunk),
+            "embedding": {
+                "enabled": bool(self._embedding_retriever and self._embedding_retriever.is_initialized),
+                "hits": len(embedding_docs),
             },
             "rerank": rerank_profile if rerank_enabled else {"enabled": False},
         }
@@ -1180,130 +1074,6 @@ class MarkdownWikiRetriever:
         terms.extend([token for token in re.findall(r"[\u4e00-\u9fff]{2,10}", merged) if token not in self.STOP_WORDS])
         return list(dict.fromkeys(terms))[:48]
 
-    def _build_rg_terms(self, *, query_terms: list[str], module_name: str) -> list[str]:
-        """
-        构建当前步骤所需的数据结构或文本内容。
-        
-        参数:
-            self: 当前对象实例。
-        
-        返回:
-            返回类型为 `list[str]` 的处理结果。
-        """
-        terms: list[str] = []
-        terms.extend(query_terms)
-        terms.extend([token for token in re.findall(r"[a-z0-9_+-]{2,}", module_name.lower()) if token])
-        deduped = list(dict.fromkeys([term.strip() for term in terms if len(term.strip()) >= 2]))
-        return deduped[: self.runtime_config.rg_max_terms]
-
-    def _run_rg_path_hits(self, *, terms: list[str]) -> tuple[Counter[str], dict[str, Any]]:
-        """
-        内部辅助函数，负责`run rg path hits` 相关处理。
-        
-        参数:
-            self: 当前对象实例。
-        
-        返回:
-            返回类型为 `tuple[Counter[str], dict[str, Any]]` 的处理结果。
-        """
-        rg_enabled = self.runtime_config.rg_strategy in {"rg_first", "rg_only"}
-        profile: dict[str, Any] = {
-            "strategy": self.runtime_config.rg_strategy,
-            "enabled": bool(rg_enabled),
-            "available": bool(self._rg_executable),
-            "term_count": len(terms),
-            "timeout_ms": int(self.runtime_config.rg_timeout_ms),
-        }
-        if not rg_enabled:
-            return Counter(), profile
-        if self._rg_executable is None:
-            warning = "rg is unavailable; retrieve_wiki falls back to BM25/TFIDF only."
-            if self.runtime_config.rg_strategy == "rg_only":
-                warning = "rg is unavailable; retrieve_wiki rg_only strategy cannot run."
-            self._warn_rg_unavailable(warning)
-            profile["warning"] = warning
-            return Counter(), profile
-        if not terms or not self.wiki_dir.exists():
-            return Counter(), profile
-
-        command: list[str] = [
-            self._rg_executable,
-            "--json",
-            "--line-number",
-            "--no-heading",
-            "--smart-case",
-            "--fixed-strings",
-            "--max-count",
-            str(self.runtime_config.rg_max_matches_per_term),
-        ]
-        for term in terms:
-            command.extend(["-e", term])
-        command.extend(["--glob", "*.md", str(self.wiki_dir)])
-
-        started = perf_counter()
-        try:
-            result = subprocess.run(
-                command,
-                cwd=self.project_root,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="ignore",
-                timeout=float(self.runtime_config.rg_timeout_ms) / 1000.0,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            warning = "rg timed out during wiki retrieval; fallback to BM25/TFIDF only."
-            if self.runtime_config.rg_strategy == "rg_only":
-                warning = "rg timed out during wiki retrieval; rg_only strategy cannot return results."
-            self._logger.warning(
-                "workflow.wiki_rg.timeout",
-                timeout_ms=int(self.runtime_config.rg_timeout_ms),
-                term_count=len(terms),
-            )
-            profile["warning"] = warning
-            profile["timed_out"] = True
-            return Counter(), profile
-        except Exception as exc:
-            warning = "rg failed during wiki retrieval; fallback to BM25/TFIDF only."
-            if self.runtime_config.rg_strategy == "rg_only":
-                warning = "rg failed during wiki retrieval; rg_only strategy cannot return results."
-            self._logger.warning(
-                "workflow.wiki_rg.error",
-                reason=str(exc),
-                term_count=len(terms),
-            )
-            profile["warning"] = warning
-            return Counter(), profile
-
-        path_hits: Counter[str] = Counter()
-        for line in result.stdout.splitlines():
-            try:
-                payload = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if str(payload.get("type", "")) != "match":
-                continue
-            path_raw = str(payload.get("data", {}).get("path", {}).get("text", "")).strip()
-            if not path_raw:
-                continue
-            normalized_path = self._normalize_rg_path(path_raw)
-            if not normalized_path:
-                continue
-            path_hits[normalized_path] += 1
-
-        if result.returncode not in (0, 1):
-            stderr = result.stderr.strip().splitlines()
-            self._logger.warning(
-                "workflow.wiki_rg.nonzero_exit",
-                returncode=int(result.returncode),
-                stderr=(stderr[0] if stderr else ""),
-            )
-            profile["warning"] = "rg exited with non-zero status during wiki retrieval; fallback results may degrade."
-        profile["latency_ms"] = round((perf_counter() - started) * 1000, 3)
-        profile["raw_match_count"] = sum(path_hits.values())
-        return path_hits, profile
-
     def _lexical_match_score(self, text: str, terms: list[str]) -> float:
         """
         计算词法覆盖率分数。
@@ -1544,41 +1314,6 @@ class MarkdownWikiRetriever:
             return path.relative_to(self.project_root).as_posix()
         except ValueError:
             return path.as_posix()
-
-    def _normalize_rg_path(self, raw_path: str) -> str:
-        """
-        内部辅助函数，负责`normalize rg path` 相关处理。
-        
-        参数:
-            self: 当前对象实例。
-            raw_path: 路径参数，用于定位文件或目录。
-        
-        返回:
-            返回类型为 `str` 的处理结果。
-        """
-        try:
-            candidate = Path(raw_path)
-            if not candidate.is_absolute():
-                candidate = (self.project_root / candidate).resolve()
-            return self._to_relative_path(candidate)
-        except Exception:
-            return ""
-
-    def _warn_rg_unavailable(self, warning: str) -> None:
-        """
-        内部辅助函数，负责`warn rg unavailable` 相关处理。
-        
-        参数:
-            self: 当前对象实例。
-            warning: 输入参数，用于控制当前处理逻辑。
-        
-        返回:
-            无返回值。
-        """
-        if self._rg_unavailable_warned:
-            return
-        self._rg_unavailable_warned = True
-        self._logger.warning("workflow.wiki_rg.unavailable", warning=warning)
 
     def _normalize(self, text: str) -> str:
         """

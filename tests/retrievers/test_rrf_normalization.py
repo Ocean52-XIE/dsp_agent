@@ -317,7 +317,7 @@ class TestNormalizationConfig:
         assert 0.0 <= weights.embedding <= 1.0
         assert 0.0 <= weights.lexical <= 1.0
 
-        # Code 权重值应该合理（简化后移除了 RG）
+        # Code 权重值应该合理（简化后仅保留核心检索路径）
         code_config = CodeRetrieverRuntimeConfig()
         assert CodeRetrieverRuntimeConfig.RRF_K == 60
         assert 0.0 <= code_config.bm25_weight <= 1.0

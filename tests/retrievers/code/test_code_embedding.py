@@ -328,11 +328,6 @@ class TestRetrievalProfile:
             "child_candidates": 20,
             "parent_candidates": 10,
             "selected_count": 4,
-            "rg_strategy": "no_rg",
-            "rg": {
-                "matched_paths": 0,
-                "matched_children": 0,
-            },
             "embedding": {
                 "enabled": True,
                 "hits": 8,
