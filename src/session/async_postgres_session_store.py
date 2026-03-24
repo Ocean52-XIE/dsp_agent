@@ -93,6 +93,7 @@ class PostgresSessionStore:
         self.config = config
         self._pool = pool
         self._init_error = init_error
+        self._reason: str | None = None
         self._logger = get_file_logger(project_root=Path(__file__).resolve().parents[3])
 
     @classmethod
@@ -103,6 +104,7 @@ class PostgresSessionStore:
     async def create(cls, config: PostgresSessionConfig) -> "PostgresSessionStore":
         store = cls(config)
         if not config.enabled:
+            store._reason = "config_disabled"
             store._logger.info("session.store.disabled", reason="config_disabled")
             return store
 
@@ -111,6 +113,7 @@ class PostgresSessionStore:
         except Exception as exc:  # pragma: no cover
             config.enabled = False
             store._init_error = f"import_psycopg_failed:{exc}"
+            store._reason = "import_psycopg_failed"
             store._logger.warning(
                 "session.store.init_failed",
                 reason="import_psycopg_failed",
@@ -139,6 +142,7 @@ class PostgresSessionStore:
             await pool.wait()
             store._pool = pool
             await store.ensure_schema()
+            store._reason = "ready"
             store._logger.info(
                 "session.store.ready",
                 schema=config.schema,
@@ -150,6 +154,7 @@ class PostgresSessionStore:
         except Exception as exc:  # pragma: no cover
             config.enabled = False
             store._init_error = f"bootstrap_or_schema_failed:{exc}"
+            store._reason = "bootstrap_or_schema_failed"
             store._logger.warning(
                 "session.store.init_failed",
                 reason="bootstrap_or_schema_failed",
@@ -171,6 +176,7 @@ class PostgresSessionStore:
             "schema": self.config.schema,
             "dsn_configured": bool(self.config.dsn),
             "init_error": self._init_error,
+            "reason": self._reason,
         }
 
     async def aclose(self) -> None:

@@ -252,6 +252,7 @@ class LocalCodeRetriever:
         self._children_by_path: defaultdict[str, list[CodeChildChunk]] = defaultdict(list)
         self._symbol_index: dict[str, set[str]] = defaultdict(set)
         self._path_token_index: dict[str, set[str]] = defaultdict(set)
+        self._index_stats: dict[str, int] = {}
         self.last_search_profile: dict[str, Any] = {}
         self._index_read_error_count = 0
 
@@ -268,8 +269,9 @@ class LocalCodeRetriever:
 
         started_at = perf_counter()
         index_stats = self._build_index()
+        self._index_stats = dict(index_stats)
         self._logger.info(
-            "workflow.code_index.built",
+            "retriever.code.index.built",
             code_dirs=[str(path) for path in self.code_dirs],
             scanned_file_count=index_stats.get("scanned_file_count", 0),
             indexed_file_count=index_stats.get("indexed_file_count", 0),
@@ -283,23 +285,9 @@ class LocalCodeRetriever:
         if self._reranker_profile and self._reranker_profile.enabled and not self._reranker:
             self._init_reranker()
 
-        # 记录重排器状态
-        self._logger.info(
-            "workflow.code_reranker.status",
-            enabled=self._reranker is not None,
-            model=self._reranker_profile.model if self._reranker_profile else None,
-        )
-
         # 初始化 Embedding 向量检索器（可选）
         if self._embedding_profile and self._embedding_profile.enabled and not self._embedding_retriever:
             self._init_embedding_retriever()
-
-        # 记录 Embedding 检索器状态
-        self._logger.info(
-            "workflow.code_embedding.status",
-            enabled=self._embedding_retriever is not None,
-            model=self._embedding_profile.model if self._embedding_profile else None,
-        )
 
     def _init_reranker(self) -> None:
         """初始化 Cross-Encoder 重排器。
@@ -323,21 +311,21 @@ class LocalCodeRetriever:
             )
             self._reranker.initialize()
             self._logger.info(
-                "workflow.code_reranker.initialized",
+                "retriever.code.reranker.initialized",
                 model=self._reranker_profile.model,
                 top_k=self._reranker_profile.top_k,
                 candidate_top_k=self._reranker_profile.candidate_top_k,
             )
         except ImportError as e:
             self._logger.warning(
-                "workflow.code_reranker.import_error",
+                "retriever.code.reranker.import_error",
                 error=str(e),
                 message="CrossEncoderReranker 未安装，跳过重排器初始化",
             )
             self._reranker = None
         except Exception as e:
             self._logger.error(
-                "workflow.code_reranker.init_error",
+                "retriever.code.reranker.init_error",
                 error=str(e),
             )
             self._reranker = None
@@ -353,7 +341,7 @@ class LocalCodeRetriever:
 
         if not self._child_chunks:
             self._logger.warning(
-                "workflow.code_embedding.no_chunks",
+                "retriever.code.embedding.no_chunks",
                 message="没有代码块，跳过 Embedding 检索器初始化",
             )
             return
@@ -383,7 +371,7 @@ class LocalCodeRetriever:
 
             if not self._semantic_docs:
                 self._logger.warning(
-                    "workflow.code_embedding.no_semantic_docs",
+                    "retriever.code.embedding.no_semantic_docs",
                     message="没有生成语义化文档，跳过 Embedding 检索器初始化",
                 )
                 return
@@ -403,25 +391,22 @@ class LocalCodeRetriever:
             index_stats = self._embedding_retriever.initialize(self._semantic_docs)
 
             self._logger.info(
-                "workflow.code_embedding.initialized",
+                "retriever.code.embedding.initialized",
                 model=self._embedding_profile.model,
                 doc_count=index_stats.get("doc_count", 0),
                 persist_dir=index_stats.get("persist_dir", "memory"),
             )
 
-            # 控制台输出，方便验证
-            print(f"[CodeEmbedding] 向量检索器初始化完成: {len(self._semantic_docs)} 个代码块")
-
         except ImportError as e:
             self._logger.warning(
-                "workflow.code_embedding.import_error",
+                "retriever.code.embedding.import_error",
                 error=str(e),
                 message="EmbeddingRetriever 未安装，跳过向量检索器初始化",
             )
             self._embedding_retriever = None
         except Exception as e:
             self._logger.error(
-                "workflow.code_embedding.init_error",
+                "retriever.code.embedding.init_error",
                 error=str(e),
             )
             self._embedding_retriever = None
@@ -611,14 +596,14 @@ class LocalCodeRetriever:
                     if child_id:
                         embedding_docs.append(doc)
                 self._logger.debug(
-                    "workflow.code_embedding.search",
+                    "retriever.code.embedding.search",
                     query_preview=merged_query[:50],
                     hits=len(embedding_docs),
                     latency_ms=round((perf_counter() - embedding_start) * 1000, 2),
                 )
             except Exception as e:
                 self._logger.warning(
-                    "workflow.code_embedding.search_error",
+                    "retriever.code.embedding.search_error",
                     error=str(e),
                     query_preview=merged_query[:50],
                 )
@@ -1453,7 +1438,7 @@ def set_code_retriever(retriever: LocalCodeRetriever | None) -> None:
     """
     global _code_retriever_instance
     _code_retriever_instance = retriever
-    if retriever:
-        logger.info("[CodeRetriever] 全局单例已设置")
-    else:
-        logger.info("[CodeRetriever] 全局单例已清除")
+    logger.debug(
+        "code.retriever.singleton.updated active=%s",
+        retriever is not None,
+    )

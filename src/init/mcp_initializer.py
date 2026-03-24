@@ -1,21 +1,57 @@
 # -*- coding: utf-8 -*-
-"""MCP 系统初始化器。"""
+"""MCP system initializer."""
 from __future__ import annotations
 
-import logging
+import os
+from pathlib import Path
+from time import perf_counter
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from log import get_file_logger
 
 
-async def init_mcp_client_async(domain_profile: Any) -> None:
-    """异步初始化 MCP 客户端并设置全局单例。"""
-    import os
+def _project_root_from_domain(domain_profile: Any) -> Path:
+    domain_dir = getattr(domain_profile, "domain_dir", None)
+    if isinstance(domain_dir, Path):
+        return domain_dir.parent.parent.resolve()
+    return Path(__file__).resolve().parents[2]
 
+
+def _build_mcp_summary(
+    *,
+    enabled: bool,
+    servers: list[str],
+    tools: list[str],
+    server_tool_map: dict[str, list[str]],
+    latency_ms: int = 0,
+    reason: str = "",
+    error_type: str = "",
+) -> dict[str, Any]:
+    return {
+        "enabled": enabled,
+        "servers": servers,
+        "tools": tools,
+        "server_tool_map": server_tool_map,
+        "server_count": len(servers),
+        "tool_count": len(tools),
+        "latency_ms": latency_ms,
+        "reason": reason or None,
+        "error_type": error_type or None,
+    }
+
+
+async def init_mcp_client_async(domain_profile: Any) -> dict[str, Any]:
+    """Initialize the MCP client and return a startup summary."""
+    runtime_logger = get_file_logger(project_root=_project_root_from_domain(domain_profile))
     mcp_enabled = os.getenv("AGENT_MCP_ENABLED", "false").lower().strip()
     if mcp_enabled not in {"true", "1", "yes"}:
-        logger.info("[MCPInit] MCP disabled by AGENT_MCP_ENABLED")
-        return
+        return _build_mcp_summary(
+            enabled=False,
+            servers=[],
+            tools=[],
+            server_tool_map={},
+            reason="config_disabled",
+        )
 
     try:
         from agent.mcp import MCPClient, set_mcp_client
@@ -23,32 +59,63 @@ async def init_mcp_client_async(domain_profile: Any) -> None:
 
         loader = MCPServerConfigLoader()
         configs = loader.load_from_domain(domain_profile.domain_dir)
-        if not configs:
-            logger.info("[MCPInit] no MCP server configs found")
-            return
-
+        servers = sorted(configs.keys())
         enabled_configs = {name: config for name, config in configs.items() if config.enabled}
+        enabled_servers = sorted(enabled_configs.keys())
+        runtime_logger.info(
+            "init.mcp.config.loaded",
+            domain=domain_profile.profile_id,
+            servers=servers,
+            enabled_servers=enabled_servers,
+        )
+        if not configs:
+            return _build_mcp_summary(
+                enabled=False,
+                servers=[],
+                tools=[],
+                server_tool_map={},
+                reason="no_server_configs",
+            )
         if not enabled_configs:
-            logger.info("[MCPInit] no enabled MCP servers found")
-            return
+            return _build_mcp_summary(
+                enabled=False,
+                servers=[],
+                tools=[],
+                server_tool_map={},
+                reason="no_enabled_servers",
+            )
 
         client = MCPClient(enabled_configs)
         await client.initialize()
         set_mcp_client(client)
-
-        logger.info(
-            "[MCPInit] MCP client initialized: servers=%s, tools=%s",
-            client.server_count,
-            client.tool_count,
+        return _build_mcp_summary(
+            enabled=True,
+            servers=client.get_server_names(),
+            tools=client.get_tool_names(),
+            server_tool_map=client.get_server_tool_map(),
         )
     except ImportError as exc:
-        logger.warning("[MCPInit] dependency missing: %s", exc)
+        return _build_mcp_summary(
+            enabled=False,
+            servers=[],
+            tools=[],
+            server_tool_map={},
+            reason="import_dependency_failed",
+            error_type=type(exc).__name__,
+        )
     except Exception as exc:
-        logger.warning("[MCPInit] client initialization failed: %s", exc)
+        return _build_mcp_summary(
+            enabled=False,
+            servers=[],
+            tools=[],
+            server_tool_map={},
+            reason="client_initialization_failed",
+            error_type=type(exc).__name__,
+        )
 
 
 def load_mcp_tools() -> list[Any]:
-    """从已初始化的 MCP 客户端加载工具列表。"""
+    """Return initialized MCP tools for agent assembly."""
     from agent.mcp import get_mcp_client
 
     mcp_client = get_mcp_client()
@@ -57,35 +124,20 @@ def load_mcp_tools() -> list[Any]:
 
     try:
         if hasattr(mcp_client, "get_tool_adapters"):
-            tools = list(mcp_client.get_tool_adapters())
-            logger.info("[MCPInit] loaded MCP tools: count=%s", len(tools))
-            return tools
+            return list(mcp_client.get_tool_adapters())
         if hasattr(mcp_client, "tools"):
-            tools = list(mcp_client.tools)
-            logger.info("[MCPInit] loaded MCP tools: count=%s", len(tools))
-            return tools
-        logger.info("[MCPInit] MCP client has no tool adapters")
+            return list(mcp_client.tools)
+    except Exception:
         return []
-    except Exception as exc:
-        logger.warning("[MCPInit] failed to load MCP tools: %s", exc)
-        return []
+    return []
 
 
-async def initialize_mcp_system_async(domain_profile: Any) -> None:
-    """异步批量初始化 MCP 系统。"""
-    logger.info("[MCPInit] initializing MCP system asynchronously: domain=%s", domain_profile.profile_id)
-
-    await init_mcp_client_async(domain_profile)
-
-    from agent.mcp import get_mcp_client
-
-    client = get_mcp_client()
-    if client is None:
-        logger.info("[MCPInit] MCP system initialization completed without active client")
-        return
-
-    logger.info(
-        "[MCPInit] MCP system initialized: servers=%s, tools=%s",
-        client.server_count,
-        client.tool_count,
-    )
+async def initialize_mcp_system_async(domain_profile: Any) -> dict[str, Any]:
+    """Initialize the MCP subsystem and return a structured summary."""
+    runtime_logger = get_file_logger(project_root=_project_root_from_domain(domain_profile))
+    runtime_logger.info("init.mcp.begin", domain=domain_profile.profile_id)
+    started_at = perf_counter()
+    summary = await init_mcp_client_async(domain_profile)
+    summary["latency_ms"] = int((perf_counter() - started_at) * 1000)
+    runtime_logger.info("init.mcp.completed", domain=domain_profile.profile_id, **summary)
+    return summary

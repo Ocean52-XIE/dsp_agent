@@ -54,3 +54,10 @@ def test_create_agent_assembles_deep_agent(monkeypatch) -> None:
     assert created["skills"] == ["/domain/ad_engine/skills"]
     assert created["backend"].virtual_mode is True
     assert created["checkpointer"] == "checkpoint"
+    assert agent._dsp_runtime_config == {
+        "model": "factory-model",
+        "skills_root": "/domain/ad_engine/skills",
+        "tool_count": 2,
+        "skills": [],
+        "tools": ["retrieve-tool", "mcp-tool"],
+    }

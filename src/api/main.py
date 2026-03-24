@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any, AsyncGenerator
 from uuid import uuid4
 
@@ -55,29 +56,97 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global AGENT_SERVICE, OBS_STORE, SESSION_STORE, SESSION_SUMMARIZER
 
     # 启动时初始化
-    APP_LOGGER.info('api.lifespan.startup.begin')
+    startup_started_at = perf_counter()
+    runtime_log_status = APP_LOGGER.status()
+    APP_LOGGER.info(
+        'init.startup.begin',
+        project_root=str(BASE_DIR),
+        log_path=runtime_log_status.get('path'),
+        log_level=runtime_log_status.get('level'),
+    )
 
     # 使用异步初始化（确保 MCP 等异步组件在正确的上下文中初始化）
     from init import initialize_async
-    from init import initialize_async
-    await initialize_async(project_root=BASE_DIR, enable_mcp=True, enable_retrievers=True)
+    init_summary = await initialize_async(
+        project_root=BASE_DIR,
+        enable_mcp=True,
+        enable_retrievers=True,
+    )
 
     AGENT_SERVICE = await DeepAgentService.create_async(project_root=BASE_DIR)
+    agent_summary = AGENT_SERVICE.startup_summary()
     SESSION_SUMMARIZER = ConversationSummarizer.create(project_root=BASE_DIR)
 
     # 初始化存储
+    APP_LOGGER.info('init.observability.begin')
+    observability_started_at = perf_counter()
     OBS_STORE = await PostgresObservabilityStore.create_from_env()
-    SESSION_STORE = await PostgresSessionStore.create_from_env()
+    observability_status = OBS_STORE.status()
     APP_LOGGER.info(
-        'api.service.initialized',
-        checkpointer=AGENT_SERVICE.checkpointer_status(),
-        session_store=SESSION_STORE.status(),
-        conversation_summary=SESSION_SUMMARIZER.status(),
-        observability=OBS_STORE.status(),
-        runtime_logging=APP_LOGGER.status(),
+        'init.observability.completed',
+        active=observability_status.get('active', False),
+        schema=observability_status.get('schema'),
+        dsn_configured=observability_status.get('dsn_configured', False),
+        reason=observability_status.get('reason'),
+        init_error=observability_status.get('init_error'),
+        latency_ms=int((perf_counter() - observability_started_at) * 1000),
     )
-
-    APP_LOGGER.info('api.lifespan.startup.complete')
+    APP_LOGGER.info('init.session_store.begin')
+    session_store_started_at = perf_counter()
+    SESSION_STORE = await PostgresSessionStore.create_from_env()
+    session_store_status = SESSION_STORE.status()
+    APP_LOGGER.info(
+        'init.session_store.completed',
+        active=session_store_status.get('active', False),
+        schema=session_store_status.get('schema'),
+        dsn_configured=session_store_status.get('dsn_configured', False),
+        reason=session_store_status.get('reason'),
+        init_error=session_store_status.get('init_error'),
+        latency_ms=int((perf_counter() - session_store_started_at) * 1000),
+    )
+    domain_summary = dict(init_summary.get('domain', {}) or {})
+    mcp_summary = dict(init_summary.get('mcp', {}) or {})
+    retriever_summary = dict(init_summary.get('retrievers', {}) or {})
+    wiki_summary = dict(retriever_summary.get('wiki', {}) or {})
+    code_summary = dict(retriever_summary.get('code', {}) or {})
+    APP_LOGGER.info(
+        'init.startup.completed',
+        domain=domain_summary.get('domain', ''),
+        profile_id=domain_summary.get('profile_id', ''),
+        display_name=domain_summary.get('display_name', ''),
+        profile_path=domain_summary.get('profile_path', ''),
+        skills=agent_summary.get('skills', []) or domain_summary.get('skills', []),
+        mcp_servers=mcp_summary.get('servers', []),
+        mcp_tools=mcp_summary.get('tools', []),
+        wiki_dir=wiki_summary.get('wiki_dir', ''),
+        wiki_file_count=wiki_summary.get('file_count', 0),
+        wiki_chunk_count=wiki_summary.get('chunk_count', 0),
+        wiki_embedding_model=wiki_summary.get('embedding_model'),
+        wiki_reranker_model=wiki_summary.get('reranker_model'),
+        code_dirs=code_summary.get('code_dirs', []),
+        code_indexed_file_count=code_summary.get('indexed_file_count', 0),
+        code_parent_chunk_count=code_summary.get('parent_chunk_count', 0),
+        code_child_chunk_count=code_summary.get('child_chunk_count', 0),
+        code_embedding_model=code_summary.get('embedding_model'),
+        code_reranker_model=code_summary.get('reranker_model'),
+        llm_model=agent_summary.get('llm_model', ''),
+        agent_tools=agent_summary.get('agent_tools', []),
+        checkpointer_backend=agent_summary.get('checkpointer_backend', ''),
+        checkpointer_status=agent_summary.get('checkpointer_status', ''),
+        checkpointer_reason=agent_summary.get('checkpointer_reason'),
+        checkpointer_fallback=agent_summary.get('checkpointer_fallback', False),
+        checkpointer_fallback_from=agent_summary.get('checkpointer_fallback_from'),
+        checkpointer_fallback_to=agent_summary.get('checkpointer_fallback_to'),
+        session_store_active=session_store_status.get('active', False),
+        session_store_schema=session_store_status.get('schema'),
+        session_store_reason=session_store_status.get('reason'),
+        observability_active=observability_status.get('active', False),
+        observability_schema=observability_status.get('schema'),
+        observability_reason=observability_status.get('reason'),
+        log_path=runtime_log_status.get('path'),
+        log_level=runtime_log_status.get('level'),
+        startup_total_ms=int((perf_counter() - startup_started_at) * 1000),
+    )
 
     # Yield 控制权给应用
     yield
@@ -86,7 +155,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     APP_LOGGER.info('api.lifespan.shutdown.begin')
 
     # 关闭 DeepAgentService 资源
-    APP_LOGGER.info('api.lifespan.shutdown.begin')
     try:
         await AGENT_SERVICE.aclose()
         APP_LOGGER.info('api.lifespan.shutdown.agent.closed')

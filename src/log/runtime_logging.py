@@ -4,7 +4,7 @@
 该模块实现统一的全局日志配置：
 1. 所有模块共享同一个日志 handler
 2. 日志统一输出到 agent.log
-3. 支持 workflow 和 agent 模块的统一日志管理
+3. 支持 agent、init、retrievers 等模块的统一日志管理
 """
 from __future__ import annotations
 
@@ -43,6 +43,34 @@ def _env_int(key: str, default: int = 0) -> int:
 _GLOBAL_HANDLER: RotatingFileHandler | None = None
 _GLOBAL_LOG_PATH: Path | None = None
 _GLOBAL_LOG_CONFIGURED = False
+_RUNTIME_LOGGER_NAME = "agent.runtime"
+_THIRD_PARTY_INFO_LOGGERS = (
+    "sentence_transformers",
+    "transformers",
+    "transformers.utils.loading_report",
+    "langchain",
+    "langchain_core",
+    "langchain_community",
+    "chromadb",
+    "httpx",
+    "urllib3",
+    "openai",
+    "psycopg",
+    "psycopg_pool",
+)
+
+
+def _configure_library_logging() -> None:
+    """Suppress noisy third-party INFO logs while keeping project INFO logs."""
+    for logger_name in _THIRD_PARTY_INFO_LOGGERS:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+    logging.getLogger("transformers.utils.loading_report").setLevel(logging.ERROR)
+    try:
+        from transformers.utils import logging as transformers_logging
+
+        transformers_logging.set_verbosity_error()
+    except Exception:
+        pass
 
 
 def _configure_global_logging(project_root: Path) -> RotatingFileHandler | None:
@@ -94,9 +122,10 @@ def _configure_global_logging(project_root: Path) -> RotatingFileHandler | None:
         root_logger = logging.getLogger()
         root_logger.addHandler(_GLOBAL_HANDLER)
         root_logger.setLevel(getattr(logging, level_name, logging.INFO))
+        _configure_library_logging()
 
-        # 为 workflow 和 agent 模块配置日志级别
-        for module_prefix in ["workflow", "agent"]:
+        # 为项目内主要命名空间统一配置日志级别
+        for module_prefix in ["agent", "api", "init", "retrievers", "session", "observability", "domain_profile", "log"]:
             module_logger = logging.getLogger(module_prefix)
             module_logger.setLevel(getattr(logging, level_name, logging.INFO))
             # 确保传播到根 logger
@@ -105,10 +134,17 @@ def _configure_global_logging(project_root: Path) -> RotatingFileHandler | None:
         _GLOBAL_LOG_CONFIGURED = True
 
         # 记录初始化日志
-        init_logger = logging.getLogger("workflow.runtime")
+        init_logger = logging.getLogger(_RUNTIME_LOGGER_NAME)
         init_logger.info(
-            "runtime_logging.initialized | "
-            f"log_path={_GLOBAL_LOG_PATH}, level={level_name}"
+            "init.logging.ready | "
+            + json.dumps(
+                {
+                    "log_path": str(_GLOBAL_LOG_PATH) if _GLOBAL_LOG_PATH else None,
+                    "level": level_name,
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
         )
 
         return _GLOBAL_HANDLER
@@ -141,7 +177,7 @@ def get_global_log_status() -> dict[str, Any]:
     }
 
 
-class WorkflowFileLogger:
+class AgentFileLogger:
     """工作流文件日志器
 
     封装日志操作，提供统一的日志接口。
@@ -164,7 +200,7 @@ class WorkflowFileLogger:
         self.file_name = "agent.log"
         self.log_path = self.log_dir / self.file_name
         self.init_error = ""
-        self._logger = logging.getLogger("workflow.runtime")
+        self._logger = logging.getLogger(_RUNTIME_LOGGER_NAME)
         self._configured = False
         self._configure()
 
@@ -242,21 +278,21 @@ class WorkflowFileLogger:
 
 
 # 全局单例
-_LOGGER_SINGLETON: WorkflowFileLogger | None = None
+_LOGGER_SINGLETON: AgentFileLogger | None = None
 
 
-def get_file_logger(*, project_root: Path) -> WorkflowFileLogger:
+def get_file_logger(*, project_root: Path) -> AgentFileLogger:
     """获取文件日志器单例
 
     Args:
         project_root: 项目根目录
 
     Returns:
-        WorkflowFileLogger 实例
+        AgentFileLogger 实例
     """
     global _LOGGER_SINGLETON
     if _LOGGER_SINGLETON is None:
-        _LOGGER_SINGLETON = WorkflowFileLogger(project_root=project_root)
+        _LOGGER_SINGLETON = AgentFileLogger(project_root=project_root)
     return _LOGGER_SINGLETON
 
 

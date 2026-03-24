@@ -38,16 +38,57 @@ class DeepAgentService:
             project_root=self.project_root,
             checkpointer=self._checkpointer,
         )
+        runtime_config = getattr(self._agent, "_dsp_runtime_config", None)
+        runtime_config = runtime_config if isinstance(runtime_config, dict) else {}
+        self._startup_summary = {
+            "llm_model": str(runtime_config.get("model", "") or ""),
+            "skills": list(runtime_config.get("skills", []) or []),
+            "agent_tools": list(runtime_config.get("tools", []) or []),
+            "checkpointer_backend": self._checkpointer_status.get("backend", ""),
+            "checkpointer_status": self._checkpointer_status.get("status", ""),
+            "checkpointer_reason": self._checkpointer_status.get("reason"),
+            "checkpointer_fallback": self._checkpointer_status.get("fallback", False),
+            "checkpointer_fallback_from": self._checkpointer_status.get("fallback_from"),
+            "checkpointer_fallback_to": self._checkpointer_status.get("fallback_to"),
+        }
 
     @classmethod
     async def create_async(cls, *, project_root: Path) -> "DeepAgentService":
         """Create the deep-agent service with async database resources."""
+        resolved_root = project_root.resolve()
+        runtime_logger = get_file_logger(project_root=resolved_root)
+        runtime_logger.info("init.checkpointer.begin")
+        checkpointer_started_at = perf_counter()
         database_resource, checkpointer = await init_database_async()
-        return cls(
-            project_root=project_root,
+        checkpointer_status = get_database_status(checkpointer)
+        runtime_logger.info(
+            "init.checkpointer.completed",
+            backend=checkpointer_status.get("backend", ""),
+            status=checkpointer_status.get("status", ""),
+            checkpointer_type=checkpointer_status.get("type"),
+            reason=checkpointer_status.get("reason"),
+            fallback=checkpointer_status.get("fallback", False),
+            fallback_from=checkpointer_status.get("fallback_from"),
+            fallback_to=checkpointer_status.get("fallback_to"),
+            latency_ms=int((perf_counter() - checkpointer_started_at) * 1000),
+        )
+
+        runtime_logger.info(
+            "init.agent.begin",
+            checkpointer_backend=checkpointer_status.get("backend", ""),
+        )
+        agent_started_at = perf_counter()
+        service = cls(
+            project_root=resolved_root,
             database_resource=database_resource,
             checkpointer=checkpointer,
         )
+        runtime_logger.info(
+            "init.agent.completed",
+            latency_ms=int((perf_counter() - agent_started_at) * 1000),
+            **service.startup_summary(),
+        )
+        return service
 
     async def run_user_message_async(
         self,
@@ -177,6 +218,9 @@ class DeepAgentService:
 
     def checkpointer_status(self) -> dict[str, Any]:
         return dict(self._checkpointer_status)
+
+    def startup_summary(self) -> dict[str, Any]:
+        return dict(self._startup_summary)
 
     def _agent_model_name(self) -> str:
         runtime_config = getattr(self._agent, "_dsp_runtime_config", None)

@@ -12,7 +12,11 @@ from agent.service import DeepAgentService
 class _StubAgent:
     def __init__(self) -> None:
         self.calls: list[tuple[dict, dict]] = []
-        self._dsp_runtime_config = {"model": "gpt-test"}
+        self._dsp_runtime_config = {
+            "model": "gpt-test",
+            "skills": ["intent-router"],
+            "tools": ["domain_retrieve", "query_metric"],
+        }
 
     async def ainvoke(self, payload: dict, config: dict) -> dict:
         self.calls.append((payload, config))
@@ -23,6 +27,7 @@ class _FailingAgent:
     def __init__(self, exc: Exception) -> None:
         self.calls: list[tuple[dict, dict]] = []
         self._exc = exc
+        self._dsp_runtime_config = {"model": ""}
 
     async def ainvoke(self, payload: dict, config: dict) -> dict:
         self.calls.append((payload, config))
@@ -96,6 +101,17 @@ async def test_run_user_message_uses_session_thread_and_recent_history(monkeypat
     assert result.debug["llm_model"] == "gpt-test"
     assert service.checkpointer_status() == {"backend": "memory", "status": "active"}
     assert service.runtime_log_status() == {"backend": "deepagents", "llm_model": "gpt-test"}
+    assert service.startup_summary() == {
+        "llm_model": "gpt-test",
+        "skills": ["intent-router"],
+        "agent_tools": ["domain_retrieve", "query_metric"],
+        "checkpointer_backend": "memory",
+        "checkpointer_status": "active",
+        "checkpointer_reason": None,
+        "checkpointer_fallback": False,
+        "checkpointer_fallback_from": None,
+        "checkpointer_fallback_to": None,
+    }
 
 
 @pytest.mark.asyncio

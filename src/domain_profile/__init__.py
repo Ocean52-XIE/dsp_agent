@@ -13,6 +13,7 @@ from domain_profile.profile import (
     get_domain_profile,
     load_domain_profile,
     reset_domain_profile_singleton,
+    resolve_domain_profile_path,
     set_domain_profile,
 )
 
@@ -26,5 +27,6 @@ __all__ = [
     "get_domain_profile",
     "set_domain_profile",
     "load_domain_profile",
+    "resolve_domain_profile_path",
     "reset_domain_profile_singleton",
 ]

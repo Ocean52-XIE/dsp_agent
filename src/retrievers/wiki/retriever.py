@@ -362,8 +362,8 @@ class MarkdownWikiRetriever:
             self._init_reranker()
 
         self._logger.info(
-            "workflow.wiki_index.built",
-            wiki_dir=self._to_relative_path(self.wiki_dir),
+            "retriever.wiki.index.built",
+            wiki_dir=str(self.wiki_dir),
             file_count=stats.get("file_count", 0),
             chunk_count=stats.get("chunk_count", 0),
             default_top_k=self.runtime_config.default_top_k,
@@ -377,13 +377,6 @@ class MarkdownWikiRetriever:
             embedding_enabled=self.runtime_config.enable_embedding,
             embedding_model=self.runtime_config.embedding_model if self.runtime_config.enable_embedding else None,
             latency_ms=int((perf_counter() - started) * 1000),
-        )
-
-        # 记录重排器状态
-        self._logger.info(
-            "workflow.wiki_reranker.status",
-            enabled=self._reranker is not None,
-            model=self._reranker_profile.model if self._reranker_profile else None,
         )
 
     def _init_reranker(self) -> None:
@@ -408,21 +401,21 @@ class MarkdownWikiRetriever:
             )
             self._reranker.initialize()
             self._logger.info(
-                "workflow.wiki_reranker.initialized",
+                "retriever.wiki.reranker.initialized",
                 model=self._reranker_profile.model,
                 top_k=self._reranker_profile.top_k,
                 candidate_top_k=self._reranker_profile.candidate_top_k,
             )
         except ImportError as e:
             self._logger.warning(
-                "workflow.wiki_reranker.import_error",
+                "retriever.wiki.reranker.import_error",
                 error=str(e),
                 message="CrossEncoderReranker 未安装，跳过重排器初始化",
             )
             self._reranker = None
         except Exception as e:
             self._logger.error(
-                "workflow.wiki_reranker.init_error",
+                "retriever.wiki.reranker.init_error",
                 error=str(e),
             )
             self._reranker = None
@@ -772,7 +765,7 @@ class MarkdownWikiRetriever:
 
         # 记录分块策略
         self._logger.info(
-            "workflow.wiki_index.built",
+            "retriever.wiki.chunks.built",
             strategy="semantic" if self.runtime_config.enable_semantic_chunking else "fixed",
             file_count=stats["file_count"],
             chunk_count=stats["chunk_count"],
@@ -966,14 +959,14 @@ class MarkdownWikiRetriever:
             # 初始化向量索引
             self._embedding_stats = self._embedding_retriever.initialize(self._documents)
             self._logger.info(
-                "workflow.wiki_embedding_index.built",
+                "retriever.wiki.embedding_index.built",
                 model=embedding_config.model_name,
                 doc_count=self._embedding_stats.get("doc_count", 0),
                 persist_dir=embedding_config.persist_directory,
             )
         except Exception as e:
             self._logger.warning(
-                "workflow.wiki_embedding_index.failed",
+                "retriever.wiki.embedding_index.failed",
                 error=str(e),
                 message="Falling back to BM25/TFIDF only",
             )
@@ -1354,7 +1347,7 @@ def set_wiki_retriever(retriever: MarkdownWikiRetriever | None) -> None:
     """
     global _wiki_retriever_instance
     _wiki_retriever_instance = retriever
-    if retriever:
-        logger.info("[WikiRetriever] 全局单例已设置")
-    else:
-        logger.info("[WikiRetriever] 全局单例已清除")
+    logger.debug(
+        "wiki.retriever.singleton.updated active=%s",
+        retriever is not None,
+    )

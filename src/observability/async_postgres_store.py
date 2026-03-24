@@ -97,6 +97,7 @@ class PostgresObservabilityStore:
         self.config = config
         self._pool = pool
         self._init_error = init_error
+        self._reason: str | None = None
         self._logger = get_file_logger(project_root=Path(__file__).resolve().parents[3])
 
     @classmethod
@@ -107,6 +108,7 @@ class PostgresObservabilityStore:
     async def create(cls, config: PostgresObservabilityConfig) -> "PostgresObservabilityStore":
         store = cls(config)
         if not config.enabled:
+            store._reason = "config_disabled"
             store._logger.info("observability.store.disabled", reason="config_disabled")
             return store
 
@@ -115,6 +117,7 @@ class PostgresObservabilityStore:
         except Exception as exc:  # pragma: no cover
             config.enabled = False
             store._init_error = f"import_psycopg_failed:{exc}"
+            store._reason = "import_psycopg_failed"
             store._logger.warning(
                 "observability.store.init_failed",
                 reason="import_psycopg_failed",
@@ -143,6 +146,7 @@ class PostgresObservabilityStore:
             await pool.wait()
             store._pool = pool
             await store.ensure_schema()
+            store._reason = "ready"
             store._logger.info(
                 "observability.store.ready",
                 schema=config.schema,
@@ -154,6 +158,7 @@ class PostgresObservabilityStore:
         except Exception as exc:  # pragma: no cover
             config.enabled = False
             store._init_error = f"bootstrap_or_schema_failed:{exc}"
+            store._reason = "bootstrap_or_schema_failed"
             store._logger.warning(
                 "observability.store.init_failed",
                 reason="bootstrap_or_schema_failed",
@@ -175,6 +180,7 @@ class PostgresObservabilityStore:
             "schema": self.config.schema,
             "dsn_configured": bool(self.config.dsn),
             "init_error": self._init_error,
+            "reason": self._reason,
         }
 
     async def aclose(self) -> None:

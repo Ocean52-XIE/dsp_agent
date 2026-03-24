@@ -207,7 +207,7 @@ class EmbeddingRetriever:
             索引构建统计信息
         """
         if not documents:
-            self._logger.warning("workflow.embedding_retriever.empty_docs", message="No documents to index")
+            self._logger.warning("retriever.embedding.empty_docs", message="No documents to index")
             return {"doc_count": 0, "status": "skipped"}
 
         start_time = os.times().elapsed if hasattr(os.times(), 'elapsed') else 0
@@ -229,7 +229,7 @@ class EmbeddingRetriever:
         if persist_dir and Path(persist_dir).exists():
             # 加载已有向量存储并增量添加
             self._logger.info(
-                "workflow.embedding_retriever.loading_existing",
+                "retriever.embedding.loading_existing",
                 persist_dir=persist_dir,
                 collection=collection_name,
             )
@@ -244,7 +244,7 @@ class EmbeddingRetriever:
         else:
             # 创建新的向量存储
             self._logger.info(
-                "workflow.embedding_retriever.creating_new",
+                "retriever.embedding.creating_new",
                 model=self.config.model_name,
                 doc_count=len(documents),
                 persist_dir=persist_dir or "memory",
@@ -268,7 +268,7 @@ class EmbeddingRetriever:
         }
 
         self._logger.info(
-            "workflow.embedding_retriever.initialized",
+            "retriever.embedding.initialized",
             **self._index_stats,
         )
 
@@ -309,7 +309,7 @@ class EmbeddingRetriever:
         """
         if not self._initialized:
             self._logger.warning(
-                "workflow.embedding_retriever.not_initialized",
+                "retriever.embedding.not_initialized",
                 message="Retriever not initialized, returning empty results"
             )
             return []
@@ -338,7 +338,7 @@ class EmbeddingRetriever:
             return results
         except Exception as e:
             self._logger.error(
-                "workflow.embedding_retriever.search_error",
+                "retriever.embedding.search_error",
                 error=str(e),
                 query=query[:100],
             )
@@ -368,7 +368,7 @@ class EmbeddingRetriever:
             return results
         except Exception as e:
             self._logger.error(
-                "workflow.embedding_retriever.search_with_scores_error",
+                "retriever.embedding.search_with_scores_error",
                 error=str(e),
             )
             return []
@@ -402,7 +402,7 @@ class EmbeddingRetriever:
         self._embeddings = None
         self._initialized = False
         self._index_stats = {}
-        self._logger.info("workflow.embedding_retriever.reset")
+        self._logger.info("retriever.embedding.reset")
 
     def delete_collection(self) -> bool:
         """删除持久化的向量存储
@@ -420,14 +420,14 @@ class EmbeddingRetriever:
             try:
                 shutil.rmtree(persist_path)
                 self._logger.info(
-                    "workflow.embedding_retriever.collection_deleted",
+                    "retriever.embedding.collection_deleted",
                     path=str(persist_path),
                 )
                 self.reset()
                 return True
             except Exception as e:
                 self._logger.error(
-                    "workflow.embedding_retriever.delete_error",
+                    "retriever.embedding.delete_error",
                     error=str(e),
                 )
                 return False

@@ -46,8 +46,10 @@ from typing import Any
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from agent.mcp.config_loader import MCPServerConfig, MCPServerConfigLoader
+from log import get_file_logger
 
 logger = logging.getLogger(__name__)
+RUNTIME_LOGGER = get_file_logger(project_root=Path(__file__).resolve().parents[3])
 
 
 @dataclass
@@ -134,7 +136,7 @@ class MCPClient:
         self._tool_to_server: dict[str, str] = {}  # tool_name -> server_name
         self._initialized = False
 
-        logger.info(
+        logger.debug(
             f"[MCPClient] Creating instance, "
             f"servers={len(self._server_configs)}"
         )
@@ -177,7 +179,7 @@ class MCPClient:
             logger.warning("[MCPClient] Already initialized, skipping")
             return
 
-        logger.info("[MCPClient] Starting initialization...")
+        logger.debug("[MCPClient] Starting initialization...")
 
         # 构建 connections 字典
         connections = {}
@@ -239,9 +241,11 @@ class MCPClient:
                         self._tools[tool.name] = tool_info
                         self._tool_to_server[tool.name] = server_name
 
-                    logger.info(
-                        f"[MCPClient] Server '{server_name}' connected, "
-                        f"tools={len(tools)}"
+                    RUNTIME_LOGGER.info(
+                        "init.mcp.server.connected",
+                        server_name=server_name,
+                        tool_count=len(tools),
+                        tools=sorted(tool.name for tool in tools),
                     )
                 except Exception as e:
                     import traceback
@@ -254,7 +258,7 @@ class MCPClient:
                     )
 
             self._initialized = True
-            logger.info(
+            logger.debug(
                 f"[MCPClient] Initialization complete, "
                 f"servers={len(connections)}, tools={len(self._tools)}"
             )
@@ -406,7 +410,28 @@ class MCPClient:
         Returns:
             工具名称列表
         """
-        return list(self._tools.keys())
+        return sorted(self._tools.keys())
+
+    def get_server_names(self) -> list[str]:
+        """Return enabled server names."""
+        return sorted(
+            name
+            for name, config in self._server_configs.items()
+            if config.enabled
+        )
+
+    def get_server_tool_map(self) -> dict[str, list[str]]:
+        """Return a server to tool names mapping."""
+        mapping: dict[str, list[str]] = {
+            server_name: []
+            for server_name in self.get_server_names()
+        }
+        for tool_info in self._tools.values():
+            mapping.setdefault(tool_info.server_name, []).append(tool_info.name)
+        return {
+            server_name: sorted(tool_names)
+            for server_name, tool_names in sorted(mapping.items())
+        }
 
     def get_tool_adapters(self) -> list["MCPToolAdapter"]:
         """获取所有工具的适配器
@@ -444,10 +469,10 @@ class MCPClient:
         """
         return {
             "initialized": self._initialized,
-            "server_count": len([c for c in self._server_configs.values() if c.enabled]),
+            "server_count": len(self.get_server_names()),
             "tool_count": len(self._tools),
-            "servers": list(self._server_configs.keys()),
-            "tools": list(self._tools.keys()),
+            "servers": self.get_server_names(),
+            "tools": self.get_tool_names(),
         }
 
 
@@ -476,7 +501,7 @@ def set_mcp_client(client: MCPClient | None) -> None:
     """
     global _mcp_client_instance
     _mcp_client_instance = client
-    if client:
-        logger.info("[MCPClient] 全局单例已设置")
-    else:
-        logger.info("[MCPClient] 全局单例已清除")
+    logger.debug(
+        "agent.mcp.singleton.updated active=%s",
+        client is not None,
+    )

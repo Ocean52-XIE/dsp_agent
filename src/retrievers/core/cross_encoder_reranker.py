@@ -218,26 +218,22 @@ class CrossEncoderReranker:
             }
 
             self._logger.info(
-                "workflow.cross_encoder_reranker.initialized",
+                "retriever.reranker.initialized",
                 **self._rerank_stats,
             )
-
-            # 控制台输出，方便验证模型加载状态
-            print(f"[Reranker] 模型加载完成: {self.config.model_name}")
-            print(f"[Reranker] 设备: {self.config.device}, 延迟: {self._rerank_stats['init_latency_ms']}ms")
 
             return self._rerank_stats
 
         except ImportError as e:
             self._logger.error(
-                "workflow.cross_encoder_reranker.import_error",
+                "retriever.reranker.import_error",
                 error=str(e),
                 message="请安装 sentence-transformers: pip install sentence-transformers",
             )
             raise
         except Exception as e:
             self._logger.error(
-                "workflow.cross_encoder_reranker.init_error",
+                "retriever.reranker.init_error",
                 error=str(e),
                 model=self.config.model_name,
             )
@@ -274,7 +270,7 @@ class CrossEncoderReranker:
         """
         if not self._initialized or not self._model:
             self._logger.warning(
-                "workflow.cross_encoder_reranker.not_initialized",
+                "retriever.reranker.not_initialized",
                 message="Reranker not initialized, returning original candidates",
             )
             return candidates[: top_k or self.config.top_k]
@@ -319,7 +315,7 @@ class CrossEncoderReranker:
             latency_ms = round((perf_counter() - start_time) * 1000, 2)
 
             self._logger.info(
-                "workflow.cross_encoder_reranker.rerank_complete",
+                "retriever.reranker.rerank_completed",
                 source=source,
                 query_preview=query[:50],
                 candidate_count=len(working_candidates),
@@ -331,7 +327,7 @@ class CrossEncoderReranker:
 
         except Exception as e:
             self._logger.error(
-                "workflow.cross_encoder_reranker.rerank_error",
+                "retriever.reranker.rerank_error",
                 error=str(e),
                 query=query[:100],
             )
@@ -387,7 +383,7 @@ class CrossEncoderReranker:
 
         except Exception as e:
             self._logger.error(
-                "workflow.cross_encoder_reranker.rerank_documents_error",
+                "retriever.reranker.rerank_documents_error",
                 error=str(e),
             )
             return [(doc, 0.0) for doc in working_docs[:k]]
@@ -400,4 +396,4 @@ class CrossEncoderReranker:
         self._model = None
         self._initialized = False
         self._rerank_stats = {}
-        self._logger.info("workflow.cross_encoder_reranker.reset")
+        self._logger.info("retriever.reranker.reset")

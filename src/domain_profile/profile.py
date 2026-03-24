@@ -421,8 +421,13 @@ def _resolve_profile_path(project_root: Path) -> Path:
     return base_dir / profile_id / "profile.json"
 
 
+def resolve_domain_profile_path(*, project_root: Path) -> Path:
+    """Resolve the active domain profile path for the current runtime."""
+    return _resolve_profile_path(project_root.resolve())
+
+
 def load_domain_profile(*, project_root: Path) -> DomainProfile:
-    profile_path = _resolve_profile_path(project_root)
+    profile_path = resolve_domain_profile_path(project_root=project_root)
     payload = _load_json_file(profile_path)
     return DomainProfile.from_dict(payload, domain_dir=profile_path.parent.resolve())
 

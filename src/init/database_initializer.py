@@ -104,7 +104,7 @@ def _ensure_database_exists(
             cur.execute(
                 sql_builder.SQL("CREATE DATABASE {}").format(sql_builder.Identifier(target_db)),
             )
-            logger.info(f"[DBInit] 数据库已创建: {target_db}")
+            logger.debug(f"[DBInit] 数据库已创建: {target_db}")
 
 
 # ============================================================================
@@ -189,12 +189,12 @@ async def init_database_async() -> tuple[Any | None, Any | None]:
 
     # 内存模式
     if config.backend == "memory":
-        logger.info("[DBInit] 使用内存 Checkpointer")
+        logger.debug("[DBInit] 使用内存 Checkpointer")
         return None, _create_memory_checkpointer("backend_memory")
 
     # PostgreSQL 禁用
     if not config.pg_enabled:
-        logger.info("[DBInit] PostgreSQL 未启用，使用内存 Checkpointer")
+        logger.debug("[DBInit] PostgreSQL 未启用，使用内存 Checkpointer")
         return None, _create_memory_checkpointer("pg_disabled")
 
     # 无 DSN
@@ -210,8 +210,17 @@ def _create_memory_checkpointer(reason: str) -> Any:
     """创建内存 Checkpointer"""
     from langgraph.checkpoint.memory import MemorySaver
 
-    logger.info(f"[DBInit] 创建内存 Checkpointer: reason={reason}")
-    return MemorySaver()
+    logger.debug(f"[DBInit] 创建内存 Checkpointer: reason={reason}")
+    checkpointer = MemorySaver()
+    setattr(checkpointer, "_dsp_reason", reason)
+    if reason == "backend_memory":
+        setattr(checkpointer, "_dsp_fallback", False)
+        setattr(checkpointer, "_dsp_selected_backend", "memory")
+    else:
+        setattr(checkpointer, "_dsp_fallback", True)
+        setattr(checkpointer, "_dsp_fallback_from", "postgres")
+        setattr(checkpointer, "_dsp_fallback_to", "memory")
+    return checkpointer
 
 
 async def _init_postgres_async(config: DatabaseConfig) -> tuple[Any | None, Any | None]:
@@ -252,7 +261,7 @@ async def _init_postgres_async(config: DatabaseConfig) -> tuple[Any | None, Any 
         if config.pg_setup:
             await checkpointer.setup()
 
-        logger.info(
+        logger.debug(
             f"[DBInit] PostgreSQL Checkpointer 初始化完成: "
             f"timeout={config.connect_timeout_seconds}s, "
             f"setup={config.pg_setup}"
@@ -296,6 +305,11 @@ def get_database_status(checkpointer: Any) -> dict[str, Any]:
         return {
             "backend": "memory",
             "status": "active",
+            "reason": getattr(checkpointer, "_dsp_reason", None),
+            "fallback": bool(getattr(checkpointer, "_dsp_fallback", False)),
+            "fallback_from": getattr(checkpointer, "_dsp_fallback_from", None),
+            "fallback_to": getattr(checkpointer, "_dsp_fallback_to", None),
+            "selected_backend": getattr(checkpointer, "_dsp_selected_backend", "memory"),
         }
 
     # PostgreSQL
@@ -303,6 +317,11 @@ def get_database_status(checkpointer: Any) -> dict[str, Any]:
         "backend": "postgres",
         "status": "active",
         "type": type(checkpointer).__name__,
+        "reason": None,
+        "fallback": False,
+        "fallback_from": None,
+        "fallback_to": None,
+        "selected_backend": "postgres",
     }
 
 

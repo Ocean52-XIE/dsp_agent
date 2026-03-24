@@ -222,7 +222,7 @@ class MCPServerConfigLoader:
             self._configs[name] = config
             logger.debug(f"[MCPServerConfigLoader] 加载 Server 配置: {name}")
 
-        logger.info(
+        logger.debug(
             f"[MCPServerConfigLoader] 加载完成, "
             f"servers={len(self._configs)}, "
             f"enabled={sum(1 for c in self._configs.values() if c.enabled)}"

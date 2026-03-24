@@ -21,6 +21,8 @@
 """
 from __future__ import annotations
 
+import contextlib
+import io
 import logging
 import os
 import threading
@@ -75,7 +77,7 @@ def _resolve_model_path(model_name: str, cache_dir: str | None = None) -> str:
         # 方式1: 直接使用模型名
         direct_path = cache_path / model_name
         if direct_path.exists():
-            logger.info(f"[ModelCache] 使用本地模型: {direct_path}")
+            logger.debug(f"[ModelCache] 使用本地模型: {direct_path}")
             return str(direct_path)
 
         # 方式2: HuggingFace 缓存格式 (models--org--model)
@@ -92,7 +94,7 @@ def _resolve_model_path(model_name: str, cache_dir: str | None = None) -> str:
                         reverse=True,
                     )
                     if snapshots:
-                        logger.info(f"[ModelCache] 使用 HuggingFace 缓存模型: {snapshots[0]}")
+                        logger.debug(f"[ModelCache] 使用 HuggingFace 缓存模型: {snapshots[0]}")
                         return str(snapshots[0])
 
         # 方式3: 只使用模型名的最后一部分（去掉组织名）
@@ -100,7 +102,7 @@ def _resolve_model_path(model_name: str, cache_dir: str | None = None) -> str:
             model_basename = model_name.split("/")[-1]
             basename_path = cache_path / model_basename
             if basename_path.exists():
-                logger.info(f"[ModelCache] 使用本地模型 (basename): {basename_path}")
+                logger.debug(f"[ModelCache] 使用本地模型 (basename): {basename_path}")
                 return str(basename_path)
 
     # 未找到本地模型，返回原始名称（将从 Hub 下载）
@@ -150,7 +152,7 @@ def get_embedding_model(
         # 解析模型路径（支持本地路径）
         resolved_model_path = _resolve_model_path(model_name, cache_dir)
 
-        logger.info(
+        logger.debug(
             f"[ModelCache] Embedding 模型加载: {model_name} -> {resolved_model_path} "
             f"(device={device})"
         )
@@ -169,15 +171,16 @@ def get_embedding_model(
                 cache_path = Path.cwd() / cache_path
             hf_cache_folder = str(cache_path)
 
-        model = HuggingFaceEmbeddings(
-            model_name=resolved_model_path,
-            model_kwargs=model_kwargs,
-            encode_kwargs=encode_kwargs or {"normalize_embeddings": True},
-            cache_folder=hf_cache_folder,
-        )
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            model = HuggingFaceEmbeddings(
+                model_name=resolved_model_path,
+                model_kwargs=model_kwargs,
+                encode_kwargs=encode_kwargs or {"normalize_embeddings": True},
+                cache_folder=hf_cache_folder,
+            )
 
         _embedding_cache[cache_key] = model
-        logger.info(
+        logger.debug(
             f"[ModelCache] Embedding 模型已缓存: {model_name} "
             f"(当前缓存数: {len(_embedding_cache)})"
         )
@@ -222,7 +225,7 @@ def get_reranker_model(
         # 解析模型路径（支持本地路径）
         resolved_model_path = _resolve_model_path(model_name, cache_dir)
 
-        logger.info(
+        logger.debug(
             f"[ModelCache] Reranker 模型加载: {model_name} -> {resolved_model_path} "
             f"(device={device})"
         )
@@ -239,14 +242,15 @@ def get_reranker_model(
             # 但在运行时设置可能不生效，所以主要通过 _resolve_model_path 处理
             os.environ.setdefault("SENTENCE_TRANSFORMERS_HOME", str(cache_path))
 
-        model = CrossEncoder(
-            resolved_model_path,
-            max_length=max_length,
-            device=device,
-        )
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            model = CrossEncoder(
+                resolved_model_path,
+                max_length=max_length,
+                device=device,
+            )
 
         _reranker_cache[cache_key] = model
-        logger.info(
+        logger.debug(
             f"[ModelCache] Reranker 模型已缓存: {model_name} "
             f"(当前缓存数: {len(_reranker_cache)})"
         )
