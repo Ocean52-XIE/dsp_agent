@@ -5,7 +5,7 @@
 Test if AgentService can successfully connect to and call MCP Server.
 
 Run:
-    python domain/ad_engine/mcp_servers/test_mcp_integration.py
+    python domain/ad_engine/mcp_servers/ad_metrics/test_mcp_integration.py
 """
 import asyncio
 import json
@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 
 # Add project path - must be before imports
-# test_mcp_integration.py -> mcp_servers -> ad_engine -> domain -> project_root
-project_root = Path(__file__).resolve().parents[3]
+# test_mcp_integration.py -> ad_metrics -> mcp_servers -> ad_engine -> domain -> project_root
+project_root = Path(__file__).resolve().parents[4]
 _src_path = project_root / "src"
 if str(_src_path) not in sys.path:
     sys.path.insert(0, str(_src_path))
@@ -49,7 +49,7 @@ async def test_mcp_client():
                 name="ad_metrics",
                 transport="stdio",
                 command="python",
-                args=[str(domain_root / "mcp_servers" / "ad_metrics_server.py")],
+                args=[str(domain_root / "mcp_servers" / "ad_metrics" / "ad_metrics_server.py")],
                 enabled=True,
                 timeout=30,
             )

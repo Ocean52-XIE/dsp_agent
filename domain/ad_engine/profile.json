@@ -290,7 +290,8 @@
     "skills_root": "domain/ad_engine/skills",
     "primary_skills": [
       "knowledge-qa",
-      "issue-analysis"
+      "issue-analysis",
+      "eval-model-network"
     ],
     "tools": {
       "domain_retrieve": {

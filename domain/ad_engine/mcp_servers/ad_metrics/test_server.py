@@ -5,7 +5,7 @@
 Test the MCP Server directly without going through the full client.
 
 Usage:
-    python domain/ad_engine/mcp_servers/test_server.py
+    python domain/ad_engine/mcp_servers/ad_metrics/test_server.py
 """
 import asyncio
 import json
@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 
 # Add project path - must be before imports
-# test_server.py -> mcp_servers -> ad_engine -> domain -> project_root
-project_root = Path(__file__).resolve().parents[3]
+# test_server.py -> ad_metrics -> mcp_servers -> ad_engine -> domain -> project_root
+project_root = Path(__file__).resolve().parents[4]
 _src_path = project_root / "src"
 if str(_src_path) not in sys.path:
     sys.path.insert(0, str(_src_path))
@@ -30,7 +30,7 @@ async def test_server_tools():
     print("=" * 60)
 
     # Import the FastMCP instance and tool functions
-    from domain.ad_engine.mcp_servers.ad_metrics_server import (
+    from domain.ad_engine.mcp_servers.ad_metrics.ad_metrics_server import (
         mcp,
         query_metrics,
         list_available_metrics,

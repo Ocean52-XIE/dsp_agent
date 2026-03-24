@@ -7,8 +7,20 @@ servers:
     transport: stdio
     command: python
     args:
-      - "${DOMAIN_ROOT}/mcp_servers/ad_metrics_server.py"
+      - "${DOMAIN_ROOT}/mcp_servers/ad_metrics/ad_metrics_server.py"
     description: 广告指标查询服务，支持查询 CTR、CVR、CPM、消耗等关键指标
+    enabled: true
+    timeout: 30
+    env:
+      PYTHONPATH: "${PROJECT_ROOT}/src"
+
+  # 模型网络结构查询服务
+  model_network:
+    transport: stdio
+    command: python
+    args:
+      - "${DOMAIN_ROOT}/mcp_servers/model_network/model_network_server.py"
+    description: 神经网络模型结构查询服务，根据模型 ID 返回 JSON 格式的网络结构描述
     enabled: true
     timeout: 30
     env:

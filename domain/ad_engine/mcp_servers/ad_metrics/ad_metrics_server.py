@@ -10,10 +10,10 @@
 3. get_metric_trend - 获取指标趋势
 
 启动方式：
-    fastmcp run ad_metrics_server.py:mcp
+    fastmcp run domain/ad_engine/mcp_servers/ad_metrics/ad_metrics_server.py:mcp
 
 或者直接运行：
-    python ad_metrics_server.py
+    python domain/ad_engine/mcp_servers/ad_metrics/ad_metrics_server.py
 """
 import hashlib
 import logging
