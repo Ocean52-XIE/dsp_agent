@@ -6,7 +6,7 @@
 
 - **Deep Agents 作为唯一驱动层**
 - **检索能力收敛为 1 个 tool**
-- **路由能力收敛为 1 个 skill**
+- **路由能力收敛为 system prompt 中的内置规则**
 - **知识问答收敛为 1 个 skill**
 - **问题分析收敛为 1 个 skill**
 
@@ -20,13 +20,13 @@
    API 请求进入后，直接交给一个通过 `create_deep_agent(...)` 创建的主代理执行。
 
 2. **Skill 负责方法论**
-   路由、知识问答、问题分析都不是 Python 节点，而是 Skill。
+   知识问答、问题分析都不是 Python 节点，而是 Skill；路由规则直接内置到主代理提示词中。
 
 3. **Tool 负责能力调用**
    检索不再拆成 `query_rewriter / retrieve_wiki / retrieve_code / merge_evidence` 多个节点，而是合并为一个 `domain_retrieve` tool。
 
 4. **代理自己决定执行路径**
-   主代理收到问题后，先命中 `intent-router` skill，决定是：
+   主代理收到问题后，先依据内置路由规则判断是：
    - 知识问答
    - 问题分析
    - 超范围
@@ -47,7 +47,6 @@ FastAPI API
   -> DeepAgentService
       -> create_deep_agent(...)
           -> skills
-             - intent-router
              - knowledge-qa
              - issue-analysis
           -> tools
@@ -63,8 +62,7 @@ FastAPI API
 ```text
 用户问题
   -> 主代理收到请求
-  -> 匹配并读取 intent-router skill
-  -> 判断任务属于 knowledge_qa / issue_analysis / out_of_scope
+  -> 根据 system prompt 中的内置路由规则判断任务属于 knowledge_qa / issue_analysis / out_of_scope
   -> 若 in-scope：
        -> 读取对应 skill
        -> 调用 domain_retrieve tool 获取证据
@@ -86,7 +84,7 @@ FastAPI API
 只有：
 
 - 一个 Deep Agent
-- 三个核心 skills
+- 两个核心 skills
 - 一个核心 retrieval tool
 
 ---
@@ -104,7 +102,7 @@ FastAPI API
 
 主代理不再依赖外部主图做编排。
 
-### 4.2 `intent-router` skill
+### 4.2 内置路由规则
 
 职责：
 
@@ -113,7 +111,7 @@ FastAPI API
 - 给出推荐检索策略
 - 决定后续应该启用哪个 skill
 
-它不是一个 Python 函数，不直接返回最终答案，而是提供一套路由方法和判断标准。
+它不再是独立 skill，而是直接编译进主代理的 system prompt。
 
 ### 4.3 `knowledge-qa` skill
 
@@ -188,10 +186,6 @@ agent = create_deep_agent(
 
 ```text
 domain/ad_engine/skills/
-├── intent-router/
-│   ├── SKILL.md
-│   └── references/
-│       └── routing_rules.md
 ├── knowledge-qa/
 │   ├── SKILL.md
 │   └── references/
@@ -204,25 +198,17 @@ domain/ad_engine/skills/
         └── troubleshooting_patterns.md
 ```
 
-这三个 skill 是核心 skill。
+这两个 skill 是核心 skill。
 
 其他现有技能可以后续决定保留为补充技能，但它们不再是核心驱动结构的一部分。
 
 ---
 
-### 6.2 `intent-router` skill 设计
+### 6.2 内置路由规则设计
 
 #### 定位
 
-`intent-router` 是一个“元技能”，负责决定后续应该使用哪一个业务技能。
-
-#### description 建议
-
-建议写成：
-
-> 用于所有广告引擎领域请求。先判断请求是否属于领域范围，再判断它是知识问答还是问题分析，并给出检索策略建议。
-
-这样主代理在处理所有领域请求时都容易先命中该 skill。
+路由规则不再以独立 skill 形式存在，而是直接编译进 `deep_agent_system.md`，作为主代理的内置判断逻辑。
 
 #### 职责
 
@@ -230,7 +216,7 @@ domain/ad_engine/skills/
 2. 判断是 `knowledge_qa` 还是 `issue_analysis`
 3. 判断问题更偏 wiki 还是更偏 code
 4. 判断是否需要主模块 / 相关模块增强
-5. 告诉代理下一步应该读取哪个 skill
+5. 决定下一步应该启用哪个业务 skill
 
 #### 输入关注点
 
@@ -240,9 +226,9 @@ domain/ad_engine/skills/
 - 是否带“异常/排查/失败/下降/抖动/无量”
 - 是否带符号名/文件名/函数名
 
-#### 输出约定
+#### 内部判断约定
 
-虽然 skill 不强制要求结构化输出，但建议在 skill 说明中要求代理内部形成如下判断：
+建议主代理内部形成如下判断：
 
 ```json
 {
@@ -276,7 +262,7 @@ domain/ad_engine/skills/
 
 #### 核心规则
 
-1. 先依据 `intent-router` 的路由判断执行
+1. 先依据主代理的内置路由判断执行
 2. 证据不足时必须调用 `domain_retrieve`
 3. 回答必须基于证据，不允许编造
 4. 涉及代码定位时优先强调：
@@ -498,7 +484,6 @@ domain_retrieve()
     "system_prompt_path": "prompts/deep_agent_system.md",
     "skills_root": "skills",
     "primary_skills": [
-      "intent-router",
       "knowledge-qa",
       "issue-analysis"
     ],
@@ -614,9 +599,6 @@ dsp_agent/
 │       │   ├── qa_system.md
 │       │   └── issue_system.md
 │       ├── skills/
-│       │   ├── intent-router/
-│       │   │   ├── SKILL.md
-│       │   │   └── references/
 │       │   ├── knowledge-qa/
 │       │   │   ├── SKILL.md
 │       │   │   └── references/
@@ -759,7 +741,6 @@ Deep Agents 会直接消费这个目录。
 | --- | --- |
 | `profile.json` | 全局领域配置 |
 | `prompts/deep_agent_system.md` | 主代理系统提示词 |
-| `skills/intent-router/` | 路由技能 |
 | `skills/knowledge-qa/` | 知识问答技能 |
 | `skills/issue-analysis/` | 问题分析技能 |
 | `wiki/` | 文档知识语料 |
@@ -885,18 +866,7 @@ Deep Agents 驱动后，观测重点从“节点执行”变成“skill / tool �
 
 ## 14. Skill 内容设计建议
 
-### 14.1 `intent-router/SKILL.md`
-
-应包含：
-
-- 使用场景
-- 路由判断规则
-- 问题类型判定标准
-- module 推断规则
-- retrieval bias 判定规则
-- 下一步该调用哪个 skill
-
-### 14.2 `knowledge-qa/SKILL.md`
+### 14.1 `knowledge-qa/SKILL.md`
 
 应包含：
 
@@ -907,7 +877,7 @@ Deep Agents 驱动后，观测重点从“节点执行”变成“skill / tool �
 - 引用格式
 - 证据不足时的回应方式
 
-### 14.3 `issue-analysis/SKILL.md`
+### 14.2 `issue-analysis/SKILL.md`
 
 应包含：
 
@@ -982,13 +952,13 @@ Deep Agents 驱动后，观测重点从“节点执行”变成“skill / tool �
 | MCP 外部调用 | tool |
 | API 响应组装 | service |
 
-### 16.3 为什么路由必须是 skill 而不是 tool
+### 16.3 为什么路由不再单独做成 skill 或 tool
 
-因为你已经明确要求路由能力封装为 skill，这在架构上也成立：
+当前实现选择把路由规则直接放进主代理 system prompt，原因是：
 
 - 路由本质是判断方法论，不是外部调用能力
-- 它更像“如何思考并决定下一步”
-- Skill 比 Tool 更适合承载这种规则和步骤
+- 它属于每次请求都要执行的高频逻辑，放进 prompt 比运行时再读 skill 更快
+- 业务 skill 仍然保留给知识问答和问题分析，扩展性不受影响
 
 ---
 
@@ -1024,13 +994,14 @@ Deep Agents 驱动后，观测重点从“节点执行”变成“skill / tool �
 
 内容：
 
-1. 编写 `intent-router`
+1. 编写内置路由规则
 2. 编写 `knowledge-qa`
 3. 编写 `issue-analysis`
 
 产出：
 
 - 路由、知识问答、问题分析全部 skill 化
+- 路由规则内置化，知识问答与问题分析 skill 化
 
 ### Phase 4：清理旧代码
 
@@ -1079,7 +1050,7 @@ Deep Agents 驱动后，观测重点从“节点执行”变成“skill / tool �
 
 至少满足：
 
-1. Deep Agent 能独立完成路由
+1. Deep Agent 能基于内置路由规则独立完成路由
 2. 主代理能正确读取并使用 skill
 3. `domain_retrieve` 能覆盖当前 wiki/code 检索能力
 4. 输出仍可带引用
@@ -1097,13 +1068,14 @@ Deep Agents 驱动后，观测重点从“节点执行”变成“skill / tool �
 在这个目标下，最合理的抽象就是：
 
 - **路由 = skill**
+- **路由 = system prompt 中的内置规则**
 - **知识问答 = skill**
 - **问题分析 = skill**
 - **检索 = tool**
 
 也就是说，整个系统的业务核心应被压缩成一句话：
 
-**一个主代理，通过 `intent-router` 判断任务类型，通过 `knowledge-qa` 或 `issue-analysis` 决定回答方法，在需要证据时调用唯一的 `domain_retrieve` tool 完成检索。**
+**一个主代理，先依据内置路由规则判断任务类型，再通过 `knowledge-qa` 或 `issue-analysis` 决定回答方法，并在需要证据时调用唯一的 `domain_retrieve` tool 完成检索。**
 
 ---
 

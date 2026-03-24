@@ -210,12 +210,11 @@ def extract_answer(result: Any) -> str:
 
 
 def _infer_skills_used(intent: str | None) -> list[str]:
-    skills = ["intent-router"]
     if intent == "knowledge_qa":
-        skills.append("knowledge-qa")
-    elif intent == "issue_analysis":
-        skills.append("issue-analysis")
-    return skills
+        return ["knowledge-qa"]
+    if intent == "issue_analysis":
+        return ["issue-analysis"]
+    return []
 
 
 def _build_tool_calls(payloads: list[dict[str, Any]]) -> tuple[list[str], list[dict[str, Any]]]:

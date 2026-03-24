@@ -289,7 +289,6 @@
     "enabled": true,
     "skills_root": "domain/ad_engine/skills",
     "primary_skills": [
-      "intent-router",
       "knowledge-qa",
       "issue-analysis"
     ],

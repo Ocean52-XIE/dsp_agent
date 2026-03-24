@@ -139,7 +139,7 @@ def test_parse_agent_result_extracts_debug_metadata() -> None:
     assert parsed.intent == "knowledge_qa"
     assert parsed.analysis["module"] == "rerank-engine"
     assert parsed.analysis["retrieval_bias"] == "code_first"
-    assert parsed.analysis["skills_used"] == ["intent-router", "knowledge-qa"]
+    assert parsed.analysis["skills_used"] == ["knowledge-qa"]
     assert parsed.analysis["citation_scope"] == "all_tool_calls_deduped"
     assert parsed.analysis["llm_model"] == "gpt-4o-mini"
     assert parsed.debug["route"] == "knowledge_qa"

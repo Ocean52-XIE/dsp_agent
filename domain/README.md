@@ -25,7 +25,6 @@ domain/
     prompts/
       deep_agent_system.md
     skills/
-      intent-router/
       knowledge-qa/
       issue-analysis/
     mcp_servers/

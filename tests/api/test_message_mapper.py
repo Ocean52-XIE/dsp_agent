@@ -28,7 +28,7 @@ def test_to_assistant_message_maps_parsed_result() -> None:
         analysis={
             "module": "rerank-engine",
             "retrieval_bias": "code_first",
-            "skills_used": ["intent-router", "knowledge-qa"],
+            "skills_used": ["knowledge-qa"],
         },
         debug={
             "latency_ms": 42,

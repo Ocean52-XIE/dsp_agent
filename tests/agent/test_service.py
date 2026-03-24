@@ -14,7 +14,7 @@ class _StubAgent:
         self.calls: list[tuple[dict, dict]] = []
         self._dsp_runtime_config = {
             "model": "gpt-test",
-            "skills": ["intent-router"],
+            "skills": ["knowledge-qa", "issue-analysis"],
             "tools": ["domain_retrieve", "query_metric"],
         }
 
@@ -103,7 +103,7 @@ async def test_run_user_message_uses_session_thread_and_recent_history(monkeypat
     assert service.runtime_log_status() == {"backend": "deepagents", "llm_model": "gpt-test"}
     assert service.startup_summary() == {
         "llm_model": "gpt-test",
-        "skills": ["intent-router"],
+        "skills": ["knowledge-qa", "issue-analysis"],
         "agent_tools": ["domain_retrieve", "query_metric"],
         "checkpointer_backend": "memory",
         "checkpointer_status": "active",
