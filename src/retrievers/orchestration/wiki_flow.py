@@ -2,45 +2,63 @@
 """Wiki retrieval orchestration for the deep-agent runtime."""
 from __future__ import annotations
 
-"""Wiki 检索节点（支持动态 TopK 与低置信重试）。"""
-
+import json
 import logging
 from typing import Any, Callable
 
-from retrievers.orchestration.retry import dedupe_normalized_queries, run_with_retry
 from common.func_utils import env_float, env_int
+from retrievers.orchestration.retry import dedupe_normalized_queries, run_with_retry
 
 logger = logging.getLogger(__name__)
 
+_NORMALIZED_HIGH_TOP1_THRESHOLD = 0.85
+_NORMALIZED_MEDIUM_TOP1_THRESHOLD = 0.55
+_LEGACY_HIGH_TOP1_THRESHOLD = 6.0
+_LEGACY_MEDIUM_TOP1_THRESHOLD = 3.0
+
+
+def _emit_event(event: str, **payload: Any) -> None:
+    logger.info(
+        "%s | %s",
+        event,
+        json.dumps(payload, ensure_ascii=False, default=str, separators=(",", ":")),
+    )
+
+
+def _uses_normalized_scores(score: float) -> bool:
+    return -0.001 <= float(score) <= 1.001
+
 
 def _grade_wiki_hits(items: list[dict[str, Any]]) -> str:
-    """评估 Wiki 检索结果质量
-
-    Args:
-        items: 检索结果列表
-
-    Returns:
-        质量评级：insufficient/medium/high
-    """
     if not items:
         return "insufficient"
     top1_score = float(items[0].get("score", 0.0))
-    if top1_score >= 6.0 and len(items) >= 2:
+    if _uses_normalized_scores(top1_score):
+        high_threshold = _NORMALIZED_HIGH_TOP1_THRESHOLD
+        medium_threshold = _NORMALIZED_MEDIUM_TOP1_THRESHOLD
+    else:
+        high_threshold = _LEGACY_HIGH_TOP1_THRESHOLD
+        medium_threshold = _LEGACY_MEDIUM_TOP1_THRESHOLD
+    if top1_score >= high_threshold and len(items) >= 2:
         return "high"
-    if top1_score >= 3.0:
+    if top1_score >= medium_threshold:
         return "medium"
     return "low"
 
 
+def _should_retry_wiki(first_grade: str, first_top1: float, configured_retry_min_top1: float) -> bool:
+    if first_grade not in {"insufficient", "low"}:
+        return False
+    if configured_retry_min_top1 >= 0:
+        retry_min_top1 = configured_retry_min_top1
+    elif _uses_normalized_scores(first_top1):
+        retry_min_top1 = _NORMALIZED_MEDIUM_TOP1_THRESHOLD
+    else:
+        retry_min_top1 = _LEGACY_MEDIUM_TOP1_THRESHOLD
+    return float(first_top1) < float(retry_min_top1)
+
+
 def _build_retry_queries(state: dict[str, Any]) -> list[str]:
-    """构建重试查询
-
-    Args:
-        state: 工作流状态
-
-    Returns:
-        去重后的查询列表
-    """
     module_name = str(state.get("module_name", "")).strip()
     user_query = str(state.get("user_query", "")).strip()
     queries = [
@@ -61,42 +79,34 @@ def _log_retrieval_details(
     hits: list[dict[str, Any]],
     grade: str,
 ) -> None:
-    """记录检索的详细日志
-
-    Args:
-        trace_id: 追踪 ID
-        phase: 阶段（input/output）
-        input_queries: 输入查询列表
-        top_k: TopK 配置
-        hits: 检索结果
-        grade: 质量评级
-    """
     if phase == "input":
-        logger.info(
-            f"[retrieve_wiki] INPUT | trace_id={trace_id} | "
-            f"queries={input_queries} | top_k={top_k}"
+        _emit_event(
+            "retrieval.wiki.started",
+            trace_id=trace_id,
+            query_count=len(input_queries),
+            queries=input_queries,
+            top_k=top_k,
         )
-    else:
-        # 输出阶段：记录每个 hit 的详细信息
-        hit_summaries = []
-        for i, hit in enumerate(hits[:5], 1):  # 只记录前 5 个
-            path = hit.get("path", "")
-            section = hit.get("section", "")
-            score = hit.get("score", 0.0)
-            content = str(hit.get("content", ""))[:100].replace("\n", " ")
-            hit_summaries.append(
-                f"[{i}] score={score:.4f} | path={path} | section={section} | content={content}..."
-            )
+        return
 
-        logger.info(
-            f"[retrieve_wiki] OUTPUT | trace_id={trace_id} | "
-            f"hits={len(hits)} | grade={grade} | "
-            f"scores={[round(h.get('score', 0), 4) for h in hits[:5]]}"
+    for i, hit in enumerate(hits[:5], 1):
+        _emit_event(
+            "retrieval.wiki.hit",
+            trace_id=trace_id,
+            rank=i,
+            score=round(float(hit.get("score", 0.0)), 4),
+            path=hit.get("path", ""),
+            section=hit.get("section", ""),
+            excerpt_preview=str(hit.get("excerpt", "") or hit.get("content", ""))[:120].replace("\n", " "),
         )
 
-        # 每个 hit 单独一行详细日志
-        for summary in hit_summaries:
-            logger.info(f"[retrieve_wiki] HIT | trace_id={trace_id} | {summary}")
+    _emit_event(
+        "retrieval.wiki.completed",
+        trace_id=trace_id,
+        hits=len(hits),
+        grade=grade,
+        scores=[round(h.get("score", 0), 4) for h in hits[:5]],
+    )
 
 
 def execute_wiki_retrieval(
@@ -104,30 +114,20 @@ def execute_wiki_retrieval(
     state: dict[str, Any],
     trace_fn: Callable[[dict[str, Any], str, str], list[dict[str, str]]] | None = None,
 ) -> dict[str, Any]:
-    """执行 Wiki 检索（解耦版本）
-
-    直接接收 retriever 参数，不依赖 service 对象。
-    适用于子图内部调用场景。
-
-    Args:
-        retriever: Wiki 检索器实例
-        state: 工作流状态字典
-        trace_fn: 追踪函数（可选），签名为 (state, node_name, summary) -> node_trace
-
-    Returns:
-        状态增量字典
-    """
     trace_id = state.get("trace_id", "")
     retrieval_plan = state.get("retrieval_plan", {})
 
-    # 构建 node_trace 的辅助函数（只返回新增条目，由 merge_lists reducer 合并）
     def build_trace(summary: str) -> list[dict[str, str]]:
         if trace_fn:
             return trace_fn(state, "retrieve_wiki", summary)
         return [{"node": "retrieve_wiki", "summary": summary}]
 
     if not retrieval_plan.get("enable_wiki", True):
-        logger.info(f"[retrieve_wiki] DISABLED | trace_id={trace_id} | reason=disabled_by_plan")
+        _emit_event(
+            "retrieval.wiki.disabled",
+            trace_id=trace_id,
+            reason="disabled_by_plan",
+        )
         return {
             "wiki_hits": [],
             "wiki_retrieval_grade": "disabled",
@@ -144,11 +144,9 @@ def execute_wiki_retrieval(
     top_k = int(retrieval_plan.get("wiki_top_k", 4))
     retry_multiplier = env_int("AGENT_WIKI_RETRY_TOPK_MULTIPLIER", 2, minimum=1)
     retry_max_top_k = env_int("AGENT_WIKI_RETRY_MAX_TOPK", 14, minimum=1)
-    retry_min_top1 = env_float("AGENT_WIKI_RETRY_MIN_TOP1", 3.0, minimum=0.0)
-
+    configured_retry_min_top1 = env_float("AGENT_WIKI_RETRY_MIN_TOP1", -1.0, minimum=-1.0)
     base_queries = list(state.get("retrieval_queries", []))
 
-    # 记录输入日志
     _log_retrieval_details(
         trace_id=trace_id,
         phase="input",
@@ -171,10 +169,13 @@ def execute_wiki_retrieval(
             top_k=current_top_k,
         ),
         grade=_grade_wiki_hits,
-        should_retry=lambda first_grade, first_top1: first_grade in {"insufficient", "low"} or first_top1 < retry_min_top1,
+        should_retry=lambda first_grade, first_top1: _should_retry_wiki(
+            first_grade,
+            first_top1,
+            configured_retry_min_top1,
+        ),
     )
 
-    # 记录输出日志
     _log_retrieval_details(
         trace_id=trace_id,
         phase="output",
@@ -184,13 +185,15 @@ def execute_wiki_retrieval(
         grade=result.final_grade,
     )
 
-    # 记录重试信息
     if result.retried:
-        logger.info(
-            f"[retrieve_wiki] RETRY | trace_id={trace_id} | "
-            f"initial_top_k={result.initial_top_k} -> final_top_k={result.final_top_k} | "
-            f"first_grade={result.first_grade} -> final_grade={result.final_grade} | "
-            f"first_top1={result.first_top1:.4f}"
+        _emit_event(
+            "retrieval.wiki.retry",
+            trace_id=trace_id,
+            initial_top_k=result.initial_top_k,
+            final_top_k=result.final_top_k,
+            first_grade=result.first_grade,
+            final_grade=result.final_grade,
+            first_top1=round(result.first_top1, 4),
         )
 
     profile = dict(retriever.last_search_profile)

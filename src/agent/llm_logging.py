@@ -12,6 +12,7 @@ from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import LLMResult
 
+from common.func_utils import env_bool
 from log import get_file_logger
 
 
@@ -22,12 +23,16 @@ class LLMCallLoggingCallback(AsyncCallbackHandler):
         self,
         *,
         project_root: Path,
-        preview_chars: int = 160,
-        max_logged_messages: int = 6,
+        preview_chars: int = 96,
+        max_logged_messages: int = 4,
+        include_message_previews: bool | None = None,
     ) -> None:
         self._logger = get_file_logger(project_root=project_root)
         self._preview_chars = max(32, int(preview_chars))
         self._max_logged_messages = max(1, int(max_logged_messages))
+        if include_message_previews is None:
+            include_message_previews = env_bool("AGENT_LLM_LOG_INCLUDE_MESSAGE_PREVIEWS", False)
+        self._include_message_previews = bool(include_message_previews)
         self._active_runs: dict[str, dict[str, Any]] = {}
         self._trace_call_counters: dict[str, int] = defaultdict(int)
 
@@ -147,20 +152,24 @@ class LLMCallLoggingCallback(AsyncCallbackHandler):
         return {
             "message_count": len(flat_messages),
             "role_counts": dict(role_counts),
+            "logged_message_count": len(tail_messages),
             "messages": [self._summarize_message(message) for message in tail_messages],
         }
 
     def _summarize_message(self, message: BaseMessage) -> dict[str, Any]:
-        item = {
-            "role": self._message_role(message),
-            "content_preview": self._preview_message_content(message),
-        }
+        role = self._message_role(message)
+        item = {"role": role}
         name = self._as_text(getattr(message, "name", ""))
         if name:
             item["name"] = name
         tool_call_count = len(getattr(message, "tool_calls", []) or [])
         if tool_call_count > 0:
             item["tool_call_count"] = tool_call_count
+        content_preview = self._preview_message_content(message)
+        if content_preview:
+            item["content_chars"] = len(content_preview)
+            if self._include_message_previews and role in {"human", "ai", "assistant"}:
+                item["content_preview"] = content_preview
         return item
 
     def _extract_invocation_params(self, kwargs: dict[str, Any]) -> dict[str, Any]:

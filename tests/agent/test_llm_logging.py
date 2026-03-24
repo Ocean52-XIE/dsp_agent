@@ -72,6 +72,9 @@ async def test_llm_logging_callback_records_start_and_end(monkeypatch: pytest.Mo
     assert runtime_logger.records[0][2]["call_index"] == 1
     assert runtime_logger.records[0][2]["input_summary"]["message_count"] == 2
     assert runtime_logger.records[0][2]["input_summary"]["role_counts"] == {"human": 1, "tool": 1}
+    assert runtime_logger.records[0][2]["input_summary"]["logged_message_count"] == 2
+    assert runtime_logger.records[0][2]["input_summary"]["messages"][0]["content_chars"] > 0
+    assert "content_preview" not in runtime_logger.records[0][2]["input_summary"]["messages"][1]
 
     assert runtime_logger.records[1][0] == "info"
     assert runtime_logger.records[1][1] == "llm.call.completed"

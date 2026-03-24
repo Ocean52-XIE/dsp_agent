@@ -9,6 +9,7 @@ from typing import Any
 
 from agent.factory import create_agent
 from agent.result_parser import DeepAgentTurnResult, parse_agent_result
+from common.request_context import reset_request_context, set_request_context
 from init import get_database_status, init_database_async
 from log import get_file_logger
 from session.conversation_memory import render_conversation_memory
@@ -125,19 +126,26 @@ class DeepAgentService:
             user_query_preview=self._preview_text(user_query),
         )
         try:
-            result = await self._agent.ainvoke(
-                {"messages": messages},
-                config={
-                    "configurable": {"thread_id": session_id},
-                    "metadata": {
-                        "session_id": session_id,
-                        "trace_id": trace_id,
-                        "llm_model": llm_model,
-                        "agent_backend": self.backend_name,
-                    },
-                    "tags": ["dsp_agent", "deep_agent"],
-                },
+            request_context_token = set_request_context(
+                session_id=session_id,
+                trace_id=trace_id,
             )
+            try:
+                result = await self._agent.ainvoke(
+                    {"messages": messages},
+                    config={
+                        "configurable": {"thread_id": session_id},
+                        "metadata": {
+                            "session_id": session_id,
+                            "trace_id": trace_id,
+                            "llm_model": llm_model,
+                            "agent_backend": self.backend_name,
+                        },
+                        "tags": ["dsp_agent", "deep_agent"],
+                    },
+                )
+            finally:
+                reset_request_context(request_context_token)
         # 仅对上游 LLM 调用异常做降级，避免把业务代码错误静默吞掉。
         except Exception as exc:
             if self._should_degrade_llm_error(exc):
@@ -187,6 +195,7 @@ class DeepAgentService:
                 "llm_model": llm_model,
             },
         )
+        message_trace = parsed.debug.get("message_trace", [])
         self._runtime_logger.info(
             "agent.turn.completed",
             session_id=session_id,
@@ -198,8 +207,9 @@ class DeepAgentService:
             citation_count=len(parsed.citations),
             citation_scope=parsed.debug.get("citation_scope", ""),
             tool_calls=parsed.debug.get("tool_calls", []),
-            message_trace=parsed.debug.get("message_trace", []),
-            answer_preview=self._preview_text(parsed.answer, max_chars=200),
+            message_trace_count=len(message_trace),
+            message_trace_tail=self._summarize_message_trace_for_logging(message_trace),
+            answer_preview=self._preview_text(parsed.answer, max_chars=120),
         )
         return parsed
 
@@ -236,6 +246,38 @@ class DeepAgentService:
         if len(text) <= max_chars:
             return text
         return f"{text[:max_chars]}..."
+
+    def _summarize_message_trace_for_logging(self, trace: Any) -> list[dict[str, Any]]:
+        if not isinstance(trace, list):
+            return []
+        summarized: list[dict[str, Any]] = []
+        for item in trace[-4:]:
+            if not isinstance(item, dict):
+                continue
+            summary: dict[str, Any] = {
+                "index": item.get("index"),
+                "role": item.get("role"),
+            }
+            for field_name in (
+                "name",
+                "tool_name",
+                "citation_count",
+                "evidence_count",
+                "retrieval_strategy",
+                "requested_top_k",
+                "returned_citation_count",
+                "wiki_hits",
+                "code_hits",
+                "latency_ms",
+            ):
+                value = item.get(field_name)
+                if value not in (None, "", []):
+                    summary[field_name] = value
+            content_preview = str(item.get("content_preview", "") or "").strip()
+            if content_preview:
+                summary["content_preview"] = self._preview_text(content_preview, max_chars=80)
+            summarized.append(summary)
+        return summarized
 
     def _build_degraded_result(
         self,

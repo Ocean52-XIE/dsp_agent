@@ -499,6 +499,7 @@ async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
 
     使用 DeepAgentService 处理用户消息。
     """
+    request_started_at = perf_counter()
     APP_LOGGER.info(
         'api.message.create.requested',
         session_id=request.session_id,
@@ -537,6 +538,7 @@ async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
             session_id=session.get('id', ''),
             trace_id=trace_id,
             error_type=type(exc).__name__,
+            latency_ms=int((perf_counter() - request_started_at) * 1000),
         )
         raise
 
@@ -570,6 +572,7 @@ async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
         assistant_status=assistant_message.get('status', 'unknown'),
         citation_count=len(assistant_message.get('citations', []) or []),
         session_message_count=len(session.get('messages', []) or []),
+        latency_ms=int((perf_counter() - request_started_at) * 1000),
     )
     return {
         'session': serialize_session(session),

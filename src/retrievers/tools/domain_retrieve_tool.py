@@ -10,6 +10,7 @@ from typing import Any, Literal
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 
+from common.request_context import get_request_context
 from domain_profile import get_domain_profile
 from retrievers.orchestration.fusion import run as merge_evidence_run
 from retrievers.orchestration.code_flow import execute_code_retrieval
@@ -124,7 +125,12 @@ def _build_retrieval_plan(*, bias: str, top_k: int, related_modules: list[str]) 
     }
 
 
-def _build_state(payload: DomainRetrieveInput) -> dict[str, Any]:
+def _build_state(
+    payload: DomainRetrieveInput,
+    *,
+    session_id: str = "",
+    trace_id: str = "",
+) -> dict[str, Any]:
     module_name, inferred_related_modules = _resolve_module_name(payload.query, payload.module_name)
     explicit_related_modules = [str(item).strip() for item in (payload.related_modules or []) if str(item).strip()]
     related_modules = list(dict.fromkeys([*explicit_related_modules, *inferred_related_modules]))
@@ -146,8 +152,8 @@ def _build_state(payload: DomainRetrieveInput) -> dict[str, Any]:
     retrieval_plan["intent_profile"]["is_issue_analysis"] = payload.intent == "issue_analysis"
 
     return {
-        "trace_id": "deep_agent_retrieve",
-        "session_id": "deep_agent_retrieve",
+        "trace_id": trace_id or "deep_agent_retrieve",
+        "session_id": session_id or "deep_agent_retrieve",
         "user_query": payload.query,
         "module_name": module_name,
         "module_hint": module_hint,
@@ -162,7 +168,12 @@ def _build_state(payload: DomainRetrieveInput) -> dict[str, Any]:
 
 def _run_domain_retrieve_from_payload(payload: DomainRetrieveInput) -> dict[str, Any]:
     started_at = perf_counter()
-    state = _build_state(payload)
+    request_context = get_request_context()
+    state = _build_state(
+        payload,
+        session_id=str(request_context.get("session_id", "") or ""),
+        trace_id=str(request_context.get("trace_id", "") or ""),
+    )
     profile = get_domain_profile()
 
     wiki_retriever = get_wiki_retriever()

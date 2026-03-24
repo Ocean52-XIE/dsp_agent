@@ -2,28 +2,25 @@
 """Code retrieval orchestration for the deep-agent runtime."""
 from __future__ import annotations
 
-"""代码检索节点（支持动态 TopK 与低置信重试）。"""
-
+import json
 import logging
 from typing import Any, Callable
 
-from retrievers.orchestration.retry import dedupe_normalized_queries, run_with_retry
 from common.func_utils import env_int
+from retrievers.orchestration.retry import dedupe_normalized_queries, run_with_retry
 
 logger = logging.getLogger(__name__)
 
 
+def _emit_event(event: str, **payload: Any) -> None:
+    logger.info(
+        "%s | %s",
+        event,
+        json.dumps(payload, ensure_ascii=False, default=str, separators=(",", ":")),
+    )
+
+
 def _grade_code_hits(items: list[dict[str, Any]], *, high_threshold: float, medium_threshold: float) -> str:
-    """评估代码检索结果质量
-
-    Args:
-        items: 检索结果列表
-        high_threshold: 高质量阈值
-        medium_threshold: 中等质量阈值
-
-    Returns:
-        质量评级：insufficient/medium/high
-    """
     if not items:
         return "insufficient"
     top1_score = float(items[0].get("score", 0.0))
@@ -35,14 +32,6 @@ def _grade_code_hits(items: list[dict[str, Any]], *, high_threshold: float, medi
 
 
 def _build_retry_queries(state: dict[str, Any]) -> list[str]:
-    """构建重试查询
-
-    Args:
-        state: 工作流状态
-
-    Returns:
-        去重后的查询列表
-    """
     module_name = str(state.get("module_name", "")).strip()
     user_query = str(state.get("user_query", "")).strip()
     queries = [
@@ -54,33 +43,46 @@ def _build_retry_queries(state: dict[str, Any]) -> list[str]:
     return dedupe_normalized_queries(queries)
 
 
+def _line_range(hit: dict[str, Any]) -> str:
+    explicit = str(hit.get("line_range", "") or "").strip()
+    if explicit:
+        return explicit
+    start_line = hit.get("start_line")
+    end_line = hit.get("end_line")
+    if isinstance(start_line, int) and isinstance(end_line, int):
+        return f"{start_line}-{end_line}" if start_line != end_line else str(start_line)
+    return ""
+
+
 def _log_retrieval_input(trace_id: str, queries: list[str], top_k: int) -> None:
-    """记录检索输入的日志"""
-    logger.info(
-        f"[retrieve_code] INPUT | trace_id={trace_id} | "
-        f"queries={queries} | top_k={top_k}"
+    _emit_event(
+        "retrieval.code.started",
+        trace_id=trace_id,
+        query_count=len(queries),
+        queries=queries,
+        top_k=top_k,
     )
 
 
 def _log_retrieval_output(trace_id: str, hits: list[dict[str, Any]], grade: str) -> None:
-    """记录检索输出的日志"""
-    # 输出阶段：记录分数汇总
-    logger.info(
-        f"[retrieve_code] OUTPUT | trace_id={trace_id} | "
-        f"hits={len(hits)} | grade={grade} | "
-        f"scores={[round(h.get('score', 0), 4) for h in hits[:5]]}"
+    _emit_event(
+        "retrieval.code.completed",
+        trace_id=trace_id,
+        hits=len(hits),
+        grade=grade,
+        scores=[round(h.get("score", 0), 4) for h in hits[:5]],
     )
 
-    # 每个 hit 单独一行详细日志
-    for i, hit in enumerate(hits[:5], 1):  # 只记录前 5 个
-        path = hit.get("path", "")
-        symbol = hit.get("symbol_name", "")
-        line_range = hit.get("line_range", "")
-        score = hit.get("score", 0.0)
-        content = str(hit.get("content", ""))[:80].replace("\n", " ")
-        logger.info(
-            f"[retrieve_code] HIT | trace_id={trace_id} | "
-            f"[{i}] score={score:.4f} | path={path} | symbol={symbol} | lines={line_range} | code={content}..."
+    for i, hit in enumerate(hits[:5], 1):
+        _emit_event(
+            "retrieval.code.hit",
+            trace_id=trace_id,
+            rank=i,
+            score=round(float(hit.get("score", 0.0)), 4),
+            path=hit.get("path", ""),
+            symbol_name=hit.get("symbol_name", ""),
+            line_range=_line_range(hit),
+            code_preview=str(hit.get("content", ""))[:80].replace("\n", " "),
         )
 
 
@@ -89,30 +91,20 @@ def execute_code_retrieval(
     state: dict[str, Any],
     trace_fn: Callable[[dict[str, Any], str, str], list[dict[str, str]]] | None = None,
 ) -> dict[str, Any]:
-    """执行代码检索（解耦版本）
-
-    直接接收 retriever 参数，不依赖 service 对象。
-    适用于子图内部调用场景。
-
-    Args:
-        retriever: 代码检索器实例
-        state: 工作流状态字典
-        trace_fn: 追踪函数（可选），签名为 (state, node_name, summary) -> node_trace
-
-    Returns:
-        状态增量字典
-    """
     trace_id = state.get("trace_id", "")
     retrieval_plan = state.get("retrieval_plan", {})
 
-    # 构建 node_trace 的辅助函数（只返回新增条目，由 merge_lists reducer 合并）
     def build_trace(summary: str) -> list[dict[str, str]]:
         if trace_fn:
             return trace_fn(state, "retrieve_code", summary)
         return [{"node": "retrieve_code", "summary": summary}]
 
     if not retrieval_plan.get("enable_code", True):
-        logger.info(f"[retrieve_code] DISABLED | trace_id={trace_id} | reason=disabled_by_plan")
+        _emit_event(
+            "retrieval.code.disabled",
+            trace_id=trace_id,
+            reason="disabled_by_plan",
+        )
         return {
             "code_hits": [],
             "code_retrieval_grade": "disabled",
@@ -130,10 +122,8 @@ def execute_code_retrieval(
     top_k = int(retrieval_plan.get("code_top_k", 4))
     retry_multiplier = env_int("AGENT_CODE_RETRY_TOPK_MULTIPLIER", 2, minimum=1)
     retry_max_top_k = env_int("AGENT_CODE_RETRY_MAX_TOPK", 14, minimum=1)
-
     base_queries = list(state.get("retrieval_queries", []))
 
-    # 记录输入日志
     _log_retrieval_input(trace_id, base_queries, top_k)
 
     result = run_with_retry(
@@ -156,16 +146,17 @@ def execute_code_retrieval(
         should_retry=lambda first_grade, _: first_grade in {"insufficient", "low"},
     )
 
-    # 记录输出日志
     _log_retrieval_output(trace_id, result.final_items, result.final_grade)
 
-    # 记录重试信息
     if result.retried:
-        logger.info(
-            f"[retrieve_code] RETRY | trace_id={trace_id} | "
-            f"initial_top_k={result.initial_top_k} -> final_top_k={result.final_top_k} | "
-            f"first_grade={result.first_grade} -> final_grade={result.final_grade} | "
-            f"first_top1={result.first_top1:.4f}"
+        _emit_event(
+            "retrieval.code.retry",
+            trace_id=trace_id,
+            initial_top_k=result.initial_top_k,
+            final_top_k=result.final_top_k,
+            first_grade=result.first_grade,
+            final_grade=result.final_grade,
+            first_top1=round(result.first_top1, 4),
         )
 
     profile = dict(retriever.last_search_profile)
