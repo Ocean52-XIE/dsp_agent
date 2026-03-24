@@ -45,20 +45,8 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 
 def _build_prompts(payload: dict[str, Any], *, domain_dir: Path) -> dict[str, str]:
-    """
-    读取领域提示词配置。
-
-    说明：
-    1. 支持直接在 profile.json 内内联提示词；
-    2. 同时支持通过 `*_path` 引用文件，便于长提示词版本化管理；
-    3. 目前约定加载 qa_system 与 issue_system 两类系统提示词。
-    """
-    prompts = {_as_str(k): _as_str(v) for k, v in _as_dict(payload).items()}
-    prompt_path_pairs = (
-        ("deep_agent_system", "deep_agent_system_path"),
-        ("qa_system", "qa_system_path"),
-        ("issue_system", "issue_system_path"),
-    )
+    prompts = {_as_str(key): _as_str(value) for key, value in _as_dict(payload).items()}
+    prompt_path_pairs = (("deep_agent_system", "deep_agent_system_path"),)
     for prompt_key, prompt_path_key in prompt_path_pairs:
         prompt_path = _as_str(prompts.get(prompt_path_key))
         if not prompt_path:
@@ -98,54 +86,7 @@ class ModuleProfile:
 
 
 @dataclass(frozen=True)
-class DomainGateProfile:
-    threshold: float = 0.5
-    weak_in_scope_min_score: float = 0.62
-    weak_code_hint_min_score: float = 0.58
-    history_memory_bonus: float = 0.18
-    offtopic_penalty: float = 0.45
-    short_query_penalty: float = 0.25
-    short_query_max_len: int = 4
-    code_hint_regex: str = r"[A-Za-z_][A-Za-z0-9_]{2,}\s*(\(|\.py\b|/)"
-    laugh_like_regex: str = r"^[鍝堝搱鍛靛懙鍢诲樆鍟婂棷鍝﹀棬~\s!锛?锛?锛屻€傗€+$"
-    domain_terms: tuple[str, ...] = ()
-    small_talk_exact: tuple[str, ...] = ()
-    small_talk_substr: tuple[str, ...] = ()
-    offtopic_terms: tuple[str, ...] = ()
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "DomainGateProfile":
-        return cls(
-            threshold=_as_float(payload.get("threshold"), 0.5),
-            weak_in_scope_min_score=_as_float(payload.get("weak_in_scope_min_score"), 0.62),
-            weak_code_hint_min_score=_as_float(payload.get("weak_code_hint_min_score"), 0.58),
-            history_memory_bonus=_as_float(payload.get("history_memory_bonus"), 0.18),
-            offtopic_penalty=_as_float(payload.get("offtopic_penalty"), 0.45),
-            short_query_penalty=_as_float(payload.get("short_query_penalty"), 0.25),
-            short_query_max_len=_as_int(payload.get("short_query_max_len"), 4),
-            code_hint_regex=_as_str(payload.get("code_hint_regex"), r"[A-Za-z_][A-Za-z0-9_]{2,}\s*(\(|\.py\b|/)"),
-            laugh_like_regex=_as_str(payload.get("laugh_like_regex"), r"^[鍝堝搱鍛靛懙鍢诲樆鍟婂棷鍝﹀棬~\s!锛?锛?锛屻€傗€+$"),
-            domain_terms=_as_tuple(payload.get("domain_terms")),
-            small_talk_exact=_as_tuple(payload.get("small_talk_exact")),
-            small_talk_substr=_as_tuple(payload.get("small_talk_substr")),
-            offtopic_terms=_as_tuple(payload.get("offtopic_terms")),
-        )
-
-
-@dataclass(frozen=True)
 class EmbeddingProfile:
-    """向量检索配置，定义 Embedding 模型和检索参数
-
-    属性:
-        enabled: 是否启用向量检索
-        model: Embedding 模型名称（Hub ID 或本地路径）
-        device: 运行设备，cpu 或 cuda
-        top_k: 默认返回结果数量
-        persist_root: 向量存储持久化根目录
-        cache_dir: 模型缓存目录，用于离线加载或指定本地模型路径
-            - 为 None 时使用 HuggingFace 默认缓存 (~/.cache/huggingface)
-            - 指定路径时，优先从该目录加载模型
-    """
     enabled: bool = True
     model: str = "BAAI/bge-base-zh-v1.5"
     device: str = "cpu"
@@ -167,20 +108,6 @@ class EmbeddingProfile:
 
 @dataclass(frozen=True)
 class RerankerProfile:
-    """Cross-Encoder 重排器配置，用于对检索候选集进行精排。
-
-    属性:
-        enabled: 是否启用重排器，默认关闭
-        model: Cross-Encoder 模型名称（Hub ID 或本地路径）
-        device: 运行设备，cpu 或 cuda
-        top_k: 重排后返回的结果数量
-        candidate_top_k: 参与重排的候选集大小，建议 15-30
-        batch_size: 批处理大小，影响重排性能
-        max_length: 最大序列长度，超过会被截断
-        cache_dir: 模型缓存目录，用于离线加载或指定本地模型路径
-            - 为 None 时使用 HuggingFace 默认缓存 (~/.cache/huggingface)
-            - 指定路径时，优先从该目录加载模型
-    """
     enabled: bool = False
     model: str = "BAAI/bge-reranker-base"
     device: str = "cpu"
@@ -192,14 +119,6 @@ class RerankerProfile:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "RerankerProfile":
-        """从字典解析重排器配置。
-
-        参数:
-            payload: 配置字典，通常来自 profile.json 的 retrieval.reranker 节
-
-        返回:
-            RerankerProfile 实例
-        """
         return cls(
             enabled=bool(payload.get("enabled", False)),
             model=_as_str(payload.get("model"), "BAAI/bge-reranker-base"),
@@ -214,19 +133,6 @@ class RerankerProfile:
 
 @dataclass(frozen=True)
 class RetrievalProfile:
-    """检索配置，包含召回、融合和重排参数。
-
-    属性:
-        presets: 预设策略配置，如 hybrid/wiki_first/code_first
-        source_weights: 各数据源权重
-        max_per_source: 各数据源最大返回数
-        enable_wiki: 是否启用 wiki 检索
-        enable_code: 是否启用代码检索
-        embedding: 向量检索配置
-        reranker: Cross-Encoder 重排器配置
-        hybrid_weights: 混合检索权重（bm25/embedding/lexical）
-        module_prior_boost: 模块先验提升因子
-    """
     presets: dict[str, dict[str, int]] = field(default_factory=dict)
     source_weights: dict[str, float] = field(default_factory=dict)
     max_per_source: dict[str, int] = field(default_factory=dict)
@@ -239,14 +145,6 @@ class RetrievalProfile:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "RetrievalProfile":
-        """从字典解析检索配置。
-
-        参数:
-            payload: 配置字典，通常来自 profile.json 的 retrieval 节
-
-        返回:
-            RetrievalProfile 实例
-        """
         presets_raw = _as_dict(payload.get("presets"))
         presets: dict[str, dict[str, int]] = {}
         for key, value in presets_raw.items():
@@ -256,12 +154,10 @@ class RetrievalProfile:
                 "code_top_k": _as_int(row.get("code_top_k"), 4),
                 "final_top_k": _as_int(row.get("final_top_k"), 6),
             }
+
         weights_raw = _as_dict(payload.get("source_weights"))
         max_raw = _as_dict(payload.get("max_per_source"))
-        embedding_raw = _as_dict(payload.get("embedding"))
-        reranker_raw = _as_dict(payload.get("reranker"))
         hybrid_weights_raw = _as_dict(payload.get("hybrid_weights"))
-        module_prior_boost_raw = payload.get("module_prior_boost")
         return cls(
             presets=presets,
             source_weights={
@@ -274,43 +170,20 @@ class RetrievalProfile:
             },
             enable_wiki=bool(payload.get("enable_wiki", True)),
             enable_code=bool(payload.get("enable_code", True)),
-            embedding=EmbeddingProfile.from_dict(embedding_raw),
-            reranker=RerankerProfile.from_dict(reranker_raw),
+            embedding=EmbeddingProfile.from_dict(_as_dict(payload.get("embedding"))),
+            reranker=RerankerProfile.from_dict(_as_dict(payload.get("reranker"))),
             hybrid_weights={
                 "bm25": _as_float(hybrid_weights_raw.get("bm25"), 0.30),
                 "embedding": _as_float(hybrid_weights_raw.get("embedding"), 0.50),
                 "lexical": _as_float(hybrid_weights_raw.get("lexical"), 0.20),
             },
-            module_prior_boost=_as_float(module_prior_boost_raw, 0.25),
+            module_prior_boost=_as_float(payload.get("module_prior_boost"), 0.25),
         )
 
     def preset(self, strategy: str) -> dict[str, int]:
         if strategy in self.presets:
             return dict(self.presets[strategy])
         return dict(self.presets.get("hybrid", {"wiki_top_k": 4, "code_top_k": 4, "final_top_k": 6}))
-
-
-@dataclass(frozen=True)
-class QueryRewriteProfile:
-    synonyms: dict[str, tuple[str, ...]] = field(default_factory=dict)
-    abbreviations: dict[str, str] = field(default_factory=dict)
-    symbol_aliases: dict[str, tuple[str, ...]] = field(default_factory=dict)
-    intent_terms: dict[str, tuple[str, ...]] = field(default_factory=dict)
-    query_templates: tuple[dict[str, Any], ...] = ()
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "QueryRewriteProfile":
-        synonyms_raw = _as_dict(payload.get("synonyms"))
-        abbr_raw = _as_dict(payload.get("abbreviations"))
-        symbols_raw = _as_dict(payload.get("symbol_aliases"))
-        intent_terms_raw = _as_dict(payload.get("intent_terms"))
-        return cls(
-            synonyms={_as_str(k): _as_tuple(v) for k, v in synonyms_raw.items()},
-            abbreviations={_as_str(k): _as_str(v) for k, v in abbr_raw.items()},
-            symbol_aliases={_as_str(k): _as_tuple(v) for k, v in symbols_raw.items()},
-            intent_terms={_as_str(k): _as_tuple(v) for k, v in intent_terms_raw.items()},
-            query_templates=tuple(_as_dict(item) for item in payload.get("query_templates", []) if isinstance(item, dict)),
-        )
 
 
 @dataclass(frozen=True)
@@ -331,60 +204,6 @@ class AnsweringProfile:
 
 
 @dataclass(frozen=True)
-class RoutingProfile:
-    """路由配置，包含模块推断和 LLM 兜底策略。
-
-    属性:
-        default_module: 默认模块名
-        module_infer_strategy: 模块推断策略
-        prefer_symbol_match: 是否优先符号匹配
-        llm_fallback_enabled: 是否启用 LLM 兜底路由
-        llm_fallback_confidence_threshold: 触发 LLM 兜底的置信度阈值
-        llm_fallback_relevance_range: 触发 LLM 兜底的相关性范围
-        llm_routing_timeout_seconds: LLM 路由超时时间
-        llm_routing_max_retries: LLM 路由最大重试次数
-        high_confidence_threshold: 高置信度阈值（高于此值直接走规则路由）
-    """
-    default_module: str = ""
-    module_infer_strategy: str = "keyword_then_symbol"
-    prefer_symbol_match: bool = True
-    llm_fallback_enabled: bool = True
-    llm_fallback_confidence_threshold: float = 0.65
-    llm_fallback_relevance_range: tuple[float, float] = (0.5, 0.75)
-    llm_routing_timeout_seconds: int = 5
-    llm_routing_max_retries: int = 1
-    high_confidence_threshold: float = 0.85
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, Any]) -> "RoutingProfile":
-        """从字典解析路由配置。
-
-        参数:
-            payload: 配置字典，通常来自 profile.json 的 routing 节
-
-        返回:
-            RoutingProfile 实例
-        """
-        range_raw = payload.get("llm_fallback_relevance_range", [0.5, 0.75])
-        if isinstance(range_raw, (list, tuple)) and len(range_raw) >= 2:
-            relevance_range = (float(range_raw[0]), float(range_raw[1]))
-        else:
-            relevance_range = (0.5, 0.75)
-
-        return cls(
-            default_module=_as_str(payload.get("default_module")),
-            module_infer_strategy=_as_str(payload.get("module_infer_strategy"), "keyword_then_symbol"),
-            prefer_symbol_match=bool(payload.get("prefer_symbol_match", True)),
-            llm_fallback_enabled=bool(payload.get("llm_fallback_enabled", True)),
-            llm_fallback_confidence_threshold=_as_float(payload.get("llm_fallback_confidence_threshold"), 0.65),
-            llm_fallback_relevance_range=relevance_range,
-            llm_routing_timeout_seconds=_as_int(payload.get("llm_routing_timeout_seconds"), 5),
-            llm_routing_max_retries=_as_int(payload.get("llm_routing_max_retries"), 1),
-            high_confidence_threshold=_as_float(payload.get("high_confidence_threshold"), 0.85),
-        )
-
-
-@dataclass(frozen=True)
 class DomainProfile:
     profile_id: str
     display_name: str
@@ -392,15 +211,10 @@ class DomainProfile:
     schema_version: int
     sources: dict[str, Any]
     routing: dict[str, Any]
-    routing_profile: RoutingProfile
     modules: tuple[ModuleProfile, ...]
-    domain_gate: DomainGateProfile
-    query_rewrite: QueryRewriteProfile
     retrieval: RetrievalProfile
     answering: AnsweringProfile
     prompts: dict[str, str]
-    code_generation: dict[str, Any]
-    eval: dict[str, str]
     domain_dir: Path
     raw: dict[str, Any]
 
@@ -419,16 +233,11 @@ class DomainProfile:
             language=_as_str(payload.get("language"), "zh-CN"),
             schema_version=_as_int(payload.get("schema_version"), 1),
             sources=_as_dict(payload.get("sources")),
-            routing=_as_dict(payload.get("routing")),
-            routing_profile=RoutingProfile.from_dict(_as_dict(payload.get("routing"))),
+            routing={"default_module": _as_str(_as_dict(payload.get("routing")).get("default_module"))},
             modules=modules,
-            domain_gate=DomainGateProfile.from_dict(_as_dict(payload.get("domain_gate"))),
-            query_rewrite=QueryRewriteProfile.from_dict(_as_dict(payload.get("query_rewrite"))),
             retrieval=RetrievalProfile.from_dict(_as_dict(payload.get("retrieval"))),
             answering=AnsweringProfile.from_dict(_as_dict(payload.get("answering"))),
             prompts=_build_prompts(_as_dict(payload.get("prompts")), domain_dir=domain_dir),
-            code_generation=_as_dict(payload.get("code_generation")),
-            eval={_as_str(k): _as_str(v) for k, v in _as_dict(payload.get("eval")).items()},
             domain_dir=domain_dir,
             raw=dict(payload),
         )
@@ -454,92 +263,18 @@ class DomainProfile:
         return item.hint if item else ""
 
     def normalize_query_text(self, text: str) -> str:
-        """
-        统一归一化用户查询文本。
-
-        说明：
-            节点侧对短问句、追问和意图词的判断都依赖同一份标准化文本，
-            因此这里统一做小写化与空白折叠，避免不同节点因为预处理不一致
-            造成同一句话在不同阶段命中不同规则。
-        """
         return " ".join(str(text or "").strip().lower().split())
-
-    def query_intent_terms(self, intent_name: str) -> tuple[str, ...]:
-        """
-        返回指定意图对应的配置词表。
-
-        说明：
-            节点不应直接读取 `query_rewrite.intent_terms`，
-            而是通过该实例方法访问，保证意图判定入口统一。
-        """
-        return self.query_rewrite.intent_terms.get(str(intent_name or "").strip(), ())
-
-    def has_query_intent(self, text: str, intent_name: str) -> bool:
-        """
-        判断查询文本是否命中指定意图词。
-
-        说明：
-            该方法统一封装“文本归一化 + 词表命中”逻辑，
-            供 load_context、query_rewriter、knowledge_answer 等节点共用。
-        """
-        normalized = self.normalize_query_text(text)
-        if not normalized:
-            return False
-        terms = self.query_intent_terms(intent_name)
-        return any(term and term.lower() in normalized for term in terms)
-
-    def infer_query_flags(self, text: str) -> dict[str, bool]:
-        """
-        统一推断查询文本的基础意图标记。
-
-        说明：
-            当前主要用于检索改写与回答阶段的策略判断。
-            其中 `code_location` 显式复用 `is_code_location_query`，
-            保证代码定位问题在不同节点拥有完全一致的判定结果。
-        """
-        return {
-            "metric": self.has_query_intent(text, "metric"),
-            "pipeline": self.has_query_intent(text, "pipeline"),
-            "architecture": self.has_query_intent(text, "architecture"),
-            "troubleshoot": self.has_query_intent(text, "troubleshoot"),
-            "code": self.has_query_intent(text, "code"),
-            "code_location": self.is_code_location_query(text),
-        }
-
-    def is_code_location_query(self, text: str) -> bool:
-        """
-        判断查询是否属于“代码定位”类问题。
-
-        说明：
-            这是跨节点共用的统一判定入口。优先读取 domain profile 中配置的
-            `intent_terms.code_location`，只保留极少量英文兜底表达，防止配置
-            缺项时基础能力完全失效。
-        """
-        normalized = self.normalize_query_text(text)
-        if not normalized:
-            return False
-
-        if self.has_query_intent(normalized, "code_location"):
-            return True
-
-        fallback_terms = (
-            "code location",
-            "line",
-            "where is the code",
-            "where is code",
-        )
-        return any(token in normalized for token in fallback_terms)
 
     def is_pronoun_followup(self, text: str) -> bool:
         pronouns = (
-            "\u5b83",  # 它
-            "\u8fd9\u4e2a",  # 这个
-            "\u8fd9\u4e2a\u95ee\u9898",  # 这个问题
-            "\u90a3\u4e2a",  # 那个
-            "\u90a3\u8fd9\u4e2a",  # 那这个
-            "\u8fd9\u5757",  # 这块
-            "\u8fd9\u91cc",  # 这里
-            "\u4e0a\u9762\u8fd9\u4e2a",  # 上面这个
+            "它",
+            "这个",
+            "这个问题",
+            "那个",
+            "那这个",
+            "这块",
+            "这里",
+            "上面这个",
             "it",
             "that",
             "this",
@@ -548,7 +283,6 @@ class DomainProfile:
         return any(token in normalized for token in pronouns)
 
     def infer_module(self, text: str) -> tuple[str, str]:
-        """Infer target module name and hint from query text."""
         default_module = self.default_module
         default_hint = self.module_hint(default_module)
         if not text:
@@ -557,7 +291,6 @@ class DomainProfile:
         lowered = text.lower()
         modules = sorted(self.modules, key=lambda item: item.route_priority)
 
-        # Symbol-level routing takes precedence for code-location style queries.
         for module in modules:
             if module.symbol_keywords and any(token.lower() in lowered for token in module.symbol_keywords):
                 return module.name, module.hint
@@ -587,13 +320,6 @@ class DomainProfile:
         primary_module_name: str = "",
         limit: int = 2,
     ) -> list[dict[str, str]]:
-        """
-        推断与当前问题相关的辅助模块列表。
-
-        说明：
-            该方法用于识别“跨模块问题”，例如同时提到两率预估与出价。
-            返回结果不替代主模块，只作为补充上下文提供给检索改写和最终回答。
-        """
         normalized = str(text or "").strip().lower()
         primary_normalized = str(primary_module_name or "").strip().lower()
         if not normalized or limit <= 0:
@@ -605,8 +331,6 @@ class DomainProfile:
             if not module_normalized or module_normalized == primary_normalized:
                 continue
 
-            # 相关模块使用“宽松召回”策略：
-            # 只要关键词、别名或符号关键词在用户问题中命中，就认为该模块可以作为辅助上下文。
             keyword_score = sum(1 for token in module.keywords if token and token.lower() in normalized)
             alias_score = sum(1 for token in module.aliases if token and token.lower() in normalized)
             symbol_score = sum(2 for token in module.symbol_keywords if token and token.lower() in normalized)
@@ -619,38 +343,8 @@ class DomainProfile:
         scored_modules.sort(key=lambda item: (-item[0], item[1], item[2].name))
         rows: list[dict[str, str]] = []
         for _, _, module in scored_modules[:limit]:
-            rows.append(
-                {
-                    "module_name": module.name,
-                    "module_hint": module.hint,
-                }
-            )
+            rows.append({"module_name": module.name, "module_hint": module.hint})
         return rows
-
-    def looks_like_code_location_query(self, text: str) -> bool:
-        normalized = " ".join((text or "").strip().lower().split())
-        if not normalized:
-            return False
-
-        code_location_terms = self.query_rewrite.intent_terms.get("code_location", ())
-        if any(token and token.lower() in normalized for token in code_location_terms):
-            return True
-
-        fallback_terms = (
-            "代码在哪儿",
-            "代码在哪",
-            "代码位置",
-            "实现在哪",
-            "入口在哪",
-            "哪个文件",
-            "在哪个文件",
-            "路径在哪",
-            "哪一行",
-            "line",
-            "where is the code",
-            "where is code",
-        )
-        return any(token in normalized for token in fallback_terms)
 
     def module_alias_queries(self, module_name: str) -> list[str]:
         item = self.module_by_name(module_name)
@@ -693,47 +387,12 @@ class DomainProfile:
                 resolved.append(path)
         return resolved
 
-    def resolve_eval_path(self, key: str, project_root: Path) -> Path | None:
-        raw_path = _as_str(self.eval.get(key))
-        if not raw_path:
-            return None
-        return self._resolve_path(raw_path, project_root=project_root, must_exist=False)
-
-    def build_code_context_paths(self, module_name: str) -> list[str]:
-        templates = _as_tuple(self.code_generation.get("file_templates"))
-        if not templates:
-            templates = (
-                "services/{profile_id}/{module_name}/handler.py",
-                "tests/{profile_id}/{module_name}/test_handler.py",
-            )
-        rows: list[str] = []
-        for template in templates:
-            try:
-                rendered = template.format(module_name=module_name, profile_id=self.profile_id)
-            except Exception:
-                rendered = template
-            rows.append(rendered)
-        return rows
-
-    def system_prompt(self) -> str:
-        """
-        返回知识问答场景（knowledge_answer）系统提示词。
-        """
-        return _as_str(self.prompts.get("qa_system"))
-
-    def issue_system_prompt(self) -> str:
-        """
-        返回问题分析场景（issue_analysis）系统提示词。
-        """
-        return _as_str(self.prompts.get("issue_system"))
-
-
 def _load_json_file(path: Path) -> dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         raise
-    except Exception as exc:  # pragma: no cover - defensive fallback
+    except Exception as exc:  # pragma: no cover
         raise ValueError(f"Invalid profile JSON: {path}") from exc
 
 
@@ -769,13 +428,6 @@ def load_domain_profile(*, project_root: Path) -> DomainProfile:
 
 
 def _default_project_root() -> Path:
-    """获取默认项目根目录
-
-    profile.py 位于 src/domain_profile/profile.py
-    - parents[0] = src/domain_profile
-    - parents[1] = src
-    - parents[2] = <project_root>
-    """
     return Path(__file__).resolve().parents[2]
 
 
@@ -798,29 +450,19 @@ def get_domain_profile(*, project_root: Path | None = None, force_reload: bool =
 
 
 def set_domain_profile(profile: "DomainProfile") -> None:
-    """设置全局 DomainProfile 单例（启动时初始化使用）
-
-    Args:
-        profile: DomainProfile 实例
-
-    说明：
-        该函数由 init 模块在启动时调用，设置全局单例。
-        如果单例已存在，会发出警告但不覆盖。
-    """
     global _PROFILE_SINGLETON, _PROFILE_SINGLETON_ROOT
 
     with _PROFILE_SINGLETON_LOCK:
         if _PROFILE_SINGLETON is not None:
-            # 单例已存在，发出警告
             import logging
+
             logging.getLogger(__name__).warning(
-                f"[DomainProfile] 单例已存在，跳过设置: "
+                "[DomainProfile] 单例已存在，跳过设置: "
                 f"existing={_PROFILE_SINGLETON.profile_id}, "
                 f"new={profile.profile_id}"
             )
             return
         _PROFILE_SINGLETON = profile
-        # 从 profile 的 domain_dir 推断 project_root (domain_dir 是 domain/<domain_id>)
         _PROFILE_SINGLETON_ROOT = profile.domain_dir.parent.parent if profile.domain_dir else None
 
 
