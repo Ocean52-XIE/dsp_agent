@@ -11,6 +11,7 @@ from agent.factory import create_agent
 from agent.result_parser import DeepAgentTurnResult, parse_agent_result
 from init import get_database_status, init_database_async
 from log import get_file_logger
+from session.conversation_memory import render_conversation_memory
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class DeepAgentService:
     """Thin async-first service wrapper around a single Deep Agent instance."""
 
     backend_name: str = "deepagents"
+    max_context_messages: int = 6
 
     def __init__(
         self,
@@ -54,10 +56,17 @@ class DeepAgentService:
         trace_id: str,
         user_query: str,
         history: list[dict[str, Any]],
+        conversation_summary: str = "",
+        conversation_memory: dict[str, Any] | None = None,
     ) -> DeepAgentTurnResult:
         """Run the deep agent and return a normalized execution result."""
         started_at = perf_counter()
-        messages = self._build_messages(user_query=user_query)
+        messages = self._build_messages(
+            user_query=user_query,
+            history=history,
+            conversation_summary=conversation_summary,
+            conversation_memory=conversation_memory,
+        )
         llm_model = self._agent_model_name()
         logger.info(
             "Running deep agent: session_id=%s trace_id=%s history_size=%s",
@@ -292,5 +301,53 @@ class DeepAgentService:
         self,
         *,
         user_query: str,
+        history: list[dict[str, Any]],
+        conversation_summary: str = "",
+        conversation_memory: dict[str, Any] | None = None,
     ) -> list[dict[str, str]]:
-        return [{"role": "user", "content": user_query.strip()}]
+        normalized_history: list[dict[str, str]] = []
+        latest_query = user_query.strip()
+        summary = str(conversation_summary or "").strip()
+        structured_memory = render_conversation_memory(conversation_memory)
+
+        for item in history:
+            if not isinstance(item, dict):
+                continue
+            role = str(item.get("role", "") or "").strip().lower()
+            if role not in {"user", "assistant"}:
+                continue
+            content = str(item.get("content", "") or "").strip()
+            if not content:
+                continue
+            normalized_history.append({"role": role, "content": content})
+
+        if normalized_history:
+            recent_messages = normalized_history[-self.max_context_messages :]
+            if latest_query:
+                last_message = recent_messages[-1]
+                if not (
+                    last_message["role"] == "user"
+                    and last_message["content"] == latest_query
+                ):
+                    recent_messages.append({"role": "user", "content": latest_query})
+            messages = recent_messages[-self.max_context_messages :]
+            context_messages: list[dict[str, str]] = []
+            if summary:
+                context_messages.append({"role": "system", "content": f"会话摘要:\n{summary}"})
+            if structured_memory:
+                context_messages.append({"role": "system", "content": f"结构化记忆:\n{structured_memory}"})
+            if context_messages:
+                return [*context_messages, *messages]
+            return messages
+
+        if latest_query:
+            messages = [{"role": "user", "content": latest_query}]
+            context_messages = []
+            if summary:
+                context_messages.append({"role": "system", "content": f"会话摘要:\n{summary}"})
+            if structured_memory:
+                context_messages.append({"role": "system", "content": f"结构化记忆:\n{structured_memory}"})
+            if context_messages:
+                return [*context_messages, *messages]
+            return messages
+        return []

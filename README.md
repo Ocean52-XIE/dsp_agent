@@ -1,21 +1,49 @@
-# DSP Agent - 领域智能问答与代码助手
+# DSP Agent
 
-基于 LangGraph 的领域智能问答系统，支持知识问答、问题分析、代码生成等场景。
+面向垂直领域知识问答与问题分析的 Deep Agent 服务。当前版本已经统一到单一运行时架构：`Deep Agent + skills + domain_retrieve + MCP tools`，不再使用旧的多 workflow 编排链路。
 
-## 特性
+## 当前架构
 
-- **多路由分发**：自动识别用户意图，路由至知识问答、问题分析、代码生成或通用 Agent 处理
-- **多源检索融合**：Wiki 文档、案例库、代码库统一检索与加权融合
-- **通用 Agent 能力**：集成 LLM、MCP 工具、Skill 技能，支持复杂任务自动编排
-- **可观测性**：完整的交互记录、反馈收集与告警机制
-- **多领域支持**：通过 `domain/` 目录隔离不同业务领域的配置与知识
+主链路如下：
+
+```text
+启动: src/api/main.py
+  -> lifespan()
+  -> init.initialize_async()
+  -> DeepAgentService.create_async()
+
+请求: /api/messages
+  -> DeepAgentService.run_user_message_async()
+  -> agent.factory.create_agent()
+
+工具: domain_retrieve + MCP tools
+检索: wiki/code retrieval -> fusion -> citations
+持久化: session + observability + checkpointer(memory/postgres)
+```
+
+当前真实入口：
+
+- `src/api/main.py`: FastAPI 接口与生命周期管理
+- `src/init/initializer.py`: DomainProfile、MCP、Retriever、Checkpointer 初始化
+- `src/agent/service.py`: Deep Agent 服务编排
+- `src/agent/factory.py`: 模型、skills、tools 装配
+- `src/retrievers/tools/domain_retrieve_tool.py`: 统一检索工具
+- `src/domain_profile/profile.py`: 领域配置解析与模块推断
+
+## 核心能力
+
+- 统一承载领域问答、问题分析和代码定位类请求
+- 基于领域 wiki 和代码语料做混合检索
+- 通过 citations 返回证据路径、分数和摘要片段
+- 支持 skill 驱动的工具调用与 MCP 扩展
+- 提供 session、feedback 和 observability 接口
 
 ## 快速开始
 
 ### 环境要求
 
 - Python 3.11+
-- PostgreSQL 14+ (可选，用于持久化)
+- PostgreSQL 14+（可选；用于 session、observability、postgres checkpointer）
 
 ### 安装依赖
 
@@ -23,288 +51,172 @@
 pip install -r requirements.txt
 ```
 
-### 启动服务
+### 启动方式
 
-Windows:
+Windows 下推荐直接使用启动脚本：
+
 ```powershell
 .\start_agent.ps1
 ```
 
-或指定参数：
+指定端口和领域目录：
+
 ```powershell
 .\start_agent.ps1 -Port 8080 -DomainDir "domain/ad_engine"
 ```
 
-服务启动后访问 http://127.0.0.1:8000
+也可以手动启动：
 
-### 环境变量
+```powershell
+$env:AGENT_DOMAIN_DIR = "domain/ad_engine"
+$env:PYTHONPATH = "src"
+python -m uvicorn api.main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-主要配置项（详见 `start_agent.ps1`）：
+服务启动后访问 `http://127.0.0.1:8000`。
+
+### 关键环境变量
+
+常用运行参数如下：
 
 | 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `WORKFLOW_QA_LLM_BASE_URL` | LLM API 地址 | - |
-| `WORKFLOW_QA_LLM_API_KEY` | LLM API 密钥 | - |
-| `WORKFLOW_QA_LLM_MODEL` | 模型名称 | `deepseek-chat` |
-| `WORKFLOW_DOMAIN_DIR` | 领域目录 | `domain/ad_engine` |
-| `WORKFLOW_MCP_ENABLED` | 是否启用 MCP | `true` |
-| `WORKFLOW_CHECKPOINTER_BACKEND` | Checkpointer 后端 | `postgres` |
+| --- | --- | --- |
+| `AGENT_DOMAIN_DIR` | 领域目录 | `domain/ad_engine` |
+| `AGENT_DOMAIN_PROFILE_PATH` | 直接指定 `profile.json` 路径 | 空 |
+| `AGENT_LLM_MODEL` | LLM 模型名 | `gpt-4o-mini` |
+| `AGENT_LLM_BASE_URL` | LLM API 地址 | 空 |
+| `AGENT_LLM_API_KEY` | LLM API Key | 空 |
+| `AGENT_LLM_TEMPERATURE` | 温度参数 | `0.1` |
+| `AGENT_LLM_MAX_TOKENS` | 最大输出 token | `4096` |
+| `AGENT_LLM_TIMEOUT_SECONDS` | LLM 超时秒数 | `60` |
+| `AGENT_MCP_ENABLED` | 是否启用 MCP | 由启动脚本设置 |
+| `AGENT_CHECKPOINTER_BACKEND` | Checkpointer 后端 | 由启动脚本设置 |
+| `AGENT_OBS_PG_DSN` | Observability PostgreSQL DSN | 空 |
 
-## 架构概览
+说明：
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      FastAPI Layer                          │
-│  /api/messages  /api/sessions  /api/health  /api/feedback   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Workflow Engine (LangGraph)               │
-│                                                             │
-│  load_context → intent_routing → [分支] → finalize_response │
-│                                     │                        │
-│              ┌──────────────────────┼──────────────────────┐│
-│              │        │        │    │    │          │      ││
-│              ▼        ▼        ▼    ▼    ▼          ▼      ││
-│         knowledge  issue   code  default  out_of   agent   ││
-│            _qa    analysis generation query   scope   loop  ││
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       Agent Layer                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-│  │LLMClient │  │MCPClient │  │SkillRegistry│ │ToolRegistry│  │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Retrieval Layer                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐     │
-│  │WikiRetriever│  │CodeRetriever│  │WeightedFusion   │     │
-│  └─────────────┘  └─────────────┘  └─────────────────┘     │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Storage Layer                           │
-│  ┌────────────┐  ┌────────────┐  ┌─────────────────┐       │
-│  │PostgreSQL  │  │SessionStore│  │ObservabilityStore│      │
-│  │Checkpointer│  │            │  │                  │      │
-│  └────────────┘  └────────────┘  └─────────────────┘       │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## 工作流拓扑
-
-```mermaid
-flowchart TD
-    START --> load_context --> intent_routing
-
-    intent_routing -->|knowledge_qa| knowledge_answer
-    intent_routing -->|issue_analysis| issue_analysis
-    intent_routing -->|code_generation| load_code_context
-    intent_routing -->|default_query| default_query
-    intent_routing -->|out_of_scope| out_of_scope_response
-
-    load_code_context --> retrieve_code_context --> code_generation
-
-    knowledge_answer --> finalize_response
-    issue_analysis --> finalize_response
-    code_generation --> finalize_response
-    default_query --> finalize_response
-    out_of_scope_response --> finalize_response
-
-    finalize_response --> END
-```
+- 不要在 README、脚本或代码中提交明文密钥。
+- 如果需要生产部署，建议通过环境变量或安全配置中心注入敏感信息。
 
 ## 目录结构
 
-```
+```text
 .
-├── src/                        # 生产代码
-│   ├── api/                    # FastAPI 接口层
-│   ├── init/                   # 组件初始化入口
-│   ├── agent/                  # 通用 Agent 能力
-│   │   ├── core/               # AgentLoop 核心
-│   │   ├── llm/                # LLM 客户端
-│   │   ├── mcp/                # MCP 客户端
-│   │   ├── skills/             # 技能系统
-│   │   └── tools/              # 工具注册中心
-│   ├── workflow/               # 业务流程编排
-│   │   ├── engine.py           # 主工作流
-│   │   ├── state.py            # 状态定义
-│   │   ├── nodes/              # 节点实现
-│   │   ├── subgraph/           # 子图（knowledge_qa, issue_analysis）
-│   │   └── common/             # 公共工具
-│   ├── domain_profile/         # 领域配置管理
-│   ├── retrievers/             # 检索器（向量、重排、融合）
-│   ├── session/                # 会话存储
-│   ├── observability/          # 可观测性
-│   └── eval/                   # 离线评测
-├── domain/                     # 领域数据
-│   └── ad_engine/              # 广告引擎领域示例
-│       ├── profile.json        # 领域配置（路由、检索、阈值）
-│       ├── wiki/               # 知识文档
-│       ├── codes/              # 代码检索语料
-│       ├── skills/             # 技能配置
-│       ├── mcp_servers/        # MCP Server 配置
-│       ├── prompts/            # 提示词模板
-│       └── eval/               # 评测数据集
-├── tests/                      # 自动化测试
-├── docs/                       # 设计文档
-├── logs/                       # 运行日志
-└── start_agent.ps1             # 启动脚本
+├── src/
+│   ├── api/                  # FastAPI 接口与协议映射
+│   ├── init/                 # 初始化入口
+│   ├── agent/                # Deep Agent 运行时封装
+│   ├── retrievers/           # Wiki/Code 检索与融合
+│   ├── domain_profile/       # profile.json 解析与模块推断
+│   ├── session/              # 会话存储
+│   ├── observability/        # 观测、反馈、告警
+│   ├── log/                  # 日志初始化
+│   └── web/                  # 前端静态资源
+├── domain/
+│   ├── README.md             # 领域目录说明
+│   └── ad_engine/            # 当前示例领域
+│       ├── profile.json
+│       ├── wiki/
+│       ├── codes/
+│       ├── prompts/
+│       ├── skills/
+│       └── mcp_servers/
+├── docs/                     # 设计与检索说明
+├── tests/                    # pytest 测试
+└── start_agent.ps1           # Windows 启动脚本
 ```
 
-## API 接口
+## 领域配置
+
+当前系统通过 `domain/<domain_id>/profile.json` 配置领域行为。现阶段真正参与主链路的字段主要有：
+
+- `profile_id`
+- `sources.wiki.root`
+- `sources.code.roots`
+- `routing.default_module`
+- `modules`
+- `retrieval`
+- `prompts.deep_agent_system_path`
+- `deep_agents.skills_root`
+
+其中：
+
+- `modules` 仍然是当前模块推断和 wiki 文档提示的核心配置
+- `routing` 目前只保留 `default_module` 作为兜底
+- `prompts` 现在只使用 `deep_agent_system_path`
+
+领域目录的详细约束见 [domain/README.md](/d:/codes/dsp_agent/domain/README.md)。
+
+## API 概览
+
+当前主接口如下：
 
 | 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/messages` | POST | 发送用户消息，触发工作流 |
-| `/api/sessions` | GET/POST | 会话管理 |
-| `/api/sessions/{id}` | GET | 获取会话详情 |
-| `/api/references/{trace_id}` | GET | 查询引用证据 |
-| `/api/messages/{id}/feedback` | POST | 提交反馈 |
+| --- | --- | --- |
+| `/` | GET | 返回前端首页 |
 | `/api/health` | GET | 健康检查 |
-| `/api/observability/summary` | GET | 观测摘要 |
-| `/api/observability/alerts` | GET | 告警列表 |
+| `/api/sessions` | GET | 列出会话 |
+| `/api/sessions` | POST | 创建会话 |
+| `/api/sessions/{session_id}` | GET | 获取会话详情 |
+| `/api/messages` | POST | 发送用户消息并触发 Deep Agent |
+| `/api/references/{trace_id}` | GET | 获取本次回答引用证据 |
+| `/api/messages/{message_id}/feedback` | POST | 提交消息反馈 |
+| `/api/config` | GET | 获取前端所需配置信息 |
+| `/api/observability/summary` | GET | 获取观测摘要 |
+| `/api/observability/alerts` | GET | 获取告警列表 |
 
-### 消息请求示例
+示例请求：
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/messages \
   -H "Content-Type: application/json" \
-  -d '{"session_id": "sess_xxx", "content": "出价胜率下降怎么排查？"}'
+  -d '{"session_id":"sess_demo","content":"出价胜率下降怎么排查？"}'
 ```
 
-## 初始化流程
+## 工作机制
 
-系统启动时按以下顺序初始化组件：
+一次典型请求会经历以下阶段：
 
-```
-DomainProfile → LLMClient → SkillRegistry → MCPClient → Retrievers → ToolRegistry
-```
+1. API 接收消息并创建或读取 session
+2. `DeepAgentService` 组装本轮输入并调用 Deep Agent
+3. Agent 根据 `deep_agent_system` 和 skills 选择是否调用 `domain_retrieve` 或 MCP 工具
+4. `domain_retrieve` 基于领域 profile 做模块推断，执行 wiki/code 检索和融合
+5. 服务层解析 agent 输出，返回 assistant message、trace 信息和 citations
+6. session、feedback、observability 数据按配置写入存储
 
-所有组件通过全局单例访问：
-```python
-from domain_profile import get_domain_profile
-from agent.llm.client import get_llm_client
-from agent.skills import get_skill_registry
-from agent.tools.registry import get_tool_registry
-from agent.mcp import get_mcp_client
-```
 
-## 路由类型
-
-| 路由 | 说明 | 处理流程 |
-|------|------|----------|
-| `knowledge_qa` | 知识问答 | 查询改写 → 多源检索 → 融合 → 生成回答 |
-| `issue_analysis` | 问题分析 | 查询改写 → 检索 → 问题定位 → 分析建议 |
-| `code_generation` | 代码生成 | 加载代码上下文 → 检索相关代码 → 生成代码 |
-| `default_query` | 通用查询 | AgentLoop 自动编排工具调用 |
-| `out_of_scope` | 领域外输入 | 返回兜底响应 |
-
-## 领域配置
-
-每个领域通过 `domain/<domain_id>/profile.json` 配置：
-
-```json
-{
-  "profile_id": "ad_engine",
-  "display_name": "广告引擎",
-  "routing": {
-    "default_module": "ad-serving-orchestrator",
-    "modules": [...]
-  },
-  "retrieval": {
-    "presets": { "hybrid": { "wiki_top_k": 4, "code_top_k": 4 } },
-    "embedding": { "model": "BAAI/bge-base-zh-v1.5" },
-    "reranker": { "model": "BAAI/bge-reranker-base" }
-  },
-  "domain_gate": {
-    "domain_terms": ["广告", "投放", "召回", ...],
-    "offtopic_terms": ["天气", "股票", ...]
-  }
-}
-```
-
-## 添加新领域
-
-1. 创建目录 `domain/<new_domain>/`
-2. 配置 `profile.json`（可参考 `domain/ad_engine/`）
-3. 添加 `wiki/` 知识文档
-4. 添加 `codes/` 代码语料（可选）
-5. 配置 `prompts/` 提示词模板
-6. 启动时指定 `WORKFLOW_DOMAIN_DIR=domain/<new_domain>`
-
-## 检索配置
-
-系统支持多源检索融合：
-
-- **Wiki 检索**：文档语义检索 + BM25 + 重排
-- **Code 检索**：代码语义检索 + 符号匹配
-- **融合策略**：加权融合 + 意图偏向调整
-
-关键参数（`profile.json` 中配置）：
-```json
-{
-  "retrieval": {
-    "hybrid_weights": { "bm25": 0.30, "embedding": 0.50, "lexical": 0.20 },
-    "source_weights": { "wiki": 1.0, "code": 1.0 }
-  }
-}
-```
-
-## Checkpointer 持久化
-
-支持两种 Checkpointer 后端：
-
-| 后端 | 配置 | 说明 |
-|------|------|------|
-| `memory` | `WORKFLOW_CHECKPOINTER_BACKEND=memory` | 内存存储，重启丢失 |
-| `postgres` | `WORKFLOW_CHECKPOINTER_BACKEND=postgres` | PostgreSQL 持久化 |
-
-PostgreSQL 相关环境变量：
-- `WORKFLOW_CHECKPOINTER_PG_DSN`: 数据库连接串
-- `WORKFLOW_CHECKPOINTER_PG_SETUP`: 是否自动建表
-
-## 测试与评测
+## 测试
 
 ```bash
-# 运行测试
 pytest tests/
-
-# Wiki 检索评测
-python -m src.eval.run_wiki_retrieval_eval
-
-# 代码检索评测
-python -m src.eval.run_code_retrieval_eval
-
-# 回答质量评测
-python -m src.eval.run_answer_eval
 ```
 
-## 文档索引
+如果只验证本次架构相关改动，通常至少应覆盖：
 
-- [节点说明](src/workflow/NODES.md)
-- [总体设计](docs/智能问答问题分析系统整体设计.md)
-- [Wiki 检索](docs/wiki_retrieve.md)
-- [代码检索](docs/code_retrieve.md)
-- [检索融合](docs/retrieve_merge.md)
-- [Agent Loop](docs/agent_loop.md)
-- [Agent 操作指南](docs/agent_loop_op.md)
+```bash
+python -m pytest tests/domain_profile/test_profile.py
+python -m pytest tests/agent/test_factory.py tests/agent/test_config.py
+```
 
-## 开发规范
+## 相关文档
 
-详见 [CLAUDE.md](CLAUDE.md)，核心要点：
+- [领域目录说明](/d:/codes/dsp_agent/domain/README.md)
+- [Deep Agents 说明](/d:/codes/dsp_agent/docs/deep_agents.md)
+- [Wiki Retrieval Doc](/d:/codes/dsp_agent/docs/wiki_retrieve.md)
+- [Code Retrieval Doc](/d:/codes/dsp_agent/docs/code_retrieve.md)
+- [Fusion Doc](/d:/codes/dsp_agent/docs/retrieve_merge.md)
+- [仓库约束](/d:/codes/dsp_agent/AGENTS.md)
 
-1. **分层架构**：API 层不写业务推理，节点层不处理 HTTP
-2. **配置优先**：阈值、TopK 放 `profile.json`，密钥放环境变量
-3. **单例访问**：通过全局单例获取组件
-4. **测试覆盖**：代码覆盖率 ≥ 85%
+## 开发约束
+
+提交改动前，建议至少检查以下几点：
+
+- 是否仍然沿用当前 Deep Agent 架构
+- 初始化逻辑是否集中在 `src/init/`
+- 新工具是否在 `src/agent/factory.py` 显式装配
+- 新配置是否优先放在 `profile.json` 或环境变量
+- API 响应结构是否保持兼容
+- 是否补了对应 pytest 用例
 
 ## License
 

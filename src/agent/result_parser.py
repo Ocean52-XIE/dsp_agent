@@ -230,6 +230,7 @@ def _build_tool_calls(payloads: list[dict[str, Any]]) -> tuple[list[str], list[d
         for field_name in (
             "intent",
             "module_name",
+            "related_modules",
             "retrieval_bias",
             "latency_ms",
             "wiki_hits",

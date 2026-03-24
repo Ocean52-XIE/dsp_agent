@@ -941,6 +941,10 @@ function buildInlineDebugPanel(message) {
   const skillsUsed = Array.isArray(debug.skills_used) ? debug.skills_used : [];
   const toolsUsed = Array.isArray(debug.tools_used) ? debug.tools_used : [];
   const toolCalls = Array.isArray(debug.tool_calls) ? debug.tool_calls : [];
+  const confirmedFacts = Array.isArray(debug.confirmed_facts) ? debug.confirmed_facts : [];
+  const openQuestions = Array.isArray(debug.open_questions) ? debug.open_questions : [];
+  const currentTopic = String(debug.current_topic || "").trim();
+  const activeIssue = String(debug.active_issue || "").trim();
   const gridItems = [
     renderDebugCard("message_id", message.id || "--"),
     renderDebugCard("trace_id", message.trace_id || "--"),
@@ -949,6 +953,10 @@ function buildInlineDebugPanel(message) {
     renderDebugCard("skills_used", formatDebugList(skillsUsed)),
     renderDebugCard("tools_used", formatDebugList(toolsUsed)),
     renderDebugCard("module", debug.module_name || message.analysis?.module || "--"),
+    renderDebugCard("current_topic", currentTopic || "--"),
+    renderDebugCard("active_issue", activeIssue || "--"),
+    renderDebugCard("confirmed_facts", formatDebugList(confirmedFacts)),
+    renderDebugCard("open_questions", formatDebugList(openQuestions)),
     renderDebugCard("latency", latencyValue),
     renderDebugCard("checkpointer", debug.checkpointer_backend || "--"),
   ];
@@ -972,6 +980,10 @@ function buildInlineDebugPanel(message) {
     skillsUsed.length > 0 ||
     toolsUsed.length > 0 ||
     toolCalls.length > 0 ||
+    Boolean(currentTopic) ||
+    Boolean(activeIssue) ||
+    confirmedFacts.length > 0 ||
+    openQuestions.length > 0 ||
     Boolean(debug.module_name) ||
     Boolean(message.analysis?.module) ||
     Boolean(debug.checkpointer_backend) ||

@@ -52,7 +52,7 @@ async def _create_service(monkeypatch: pytest.MonkeyPatch, agent: object) -> Dee
 
 
 @pytest.mark.asyncio
-async def test_run_user_message_uses_session_thread_and_current_message_only(monkeypatch) -> None:
+async def test_run_user_message_uses_session_thread_and_recent_history(monkeypatch) -> None:
     stub_agent = _StubAgent()
     service = await _create_service(monkeypatch, stub_agent)
     result = await service.run_user_message_async(
@@ -69,7 +69,13 @@ async def test_run_user_message_uses_session_thread_and_current_message_only(mon
 
     assert stub_agent.calls == [
         (
-            {"messages": [{"role": "user", "content": "latest question"}]},
+            {
+                "messages": [
+                    {"role": "user", "content": "history question"},
+                    {"role": "assistant", "content": "history answer"},
+                    {"role": "user", "content": "latest question"},
+                ]
+            },
             {
                 "configurable": {"thread_id": "session-1"},
                 "metadata": {
@@ -90,6 +96,160 @@ async def test_run_user_message_uses_session_thread_and_current_message_only(mon
     assert result.debug["llm_model"] == "gpt-test"
     assert service.checkpointer_status() == {"backend": "memory", "status": "active"}
     assert service.runtime_log_status() == {"backend": "deepagents", "llm_model": "gpt-test"}
+
+
+@pytest.mark.asyncio
+async def test_run_user_message_limits_context_and_avoids_duplicate_latest_query(monkeypatch) -> None:
+    stub_agent = _StubAgent()
+    service = await _create_service(monkeypatch, stub_agent)
+
+    await service.run_user_message_async(
+        session_id="session-ctx",
+        trace_id="trace-ctx",
+        user_query="latest question",
+        history=[
+            {"role": "user", "content": "u1"},
+            {"role": "assistant", "content": "a1"},
+            {"role": "user", "content": "u2"},
+            {"role": "assistant", "content": "a2"},
+            {"role": "user", "content": "u3"},
+            {"role": "assistant", "content": "a3"},
+            {"role": "user", "content": "latest question"},
+        ],
+    )
+
+    assert stub_agent.calls == [
+        (
+            {
+                "messages": [
+                    {"role": "assistant", "content": "a1"},
+                    {"role": "user", "content": "u2"},
+                    {"role": "assistant", "content": "a2"},
+                    {"role": "user", "content": "u3"},
+                    {"role": "assistant", "content": "a3"},
+                    {"role": "user", "content": "latest question"},
+                ]
+            },
+            {
+                "configurable": {"thread_id": "session-ctx"},
+                "metadata": {
+                    "session_id": "session-ctx",
+                    "trace_id": "trace-ctx",
+                    "llm_model": "gpt-test",
+                    "agent_backend": "deepagents",
+                },
+                "tags": ["dsp_agent", "deep_agent"],
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_user_message_includes_conversation_summary(monkeypatch) -> None:
+    stub_agent = _StubAgent()
+    service = await _create_service(monkeypatch, stub_agent)
+
+    await service.run_user_message_async(
+        session_id="session-summary",
+        trace_id="trace-summary",
+        user_query="latest question",
+        history=[
+            {"role": "user", "content": "history question"},
+            {"role": "assistant", "content": "history answer"},
+        ],
+        conversation_summary="用户正在排查出价胜率下降，当前重点关注 bid-optimizer 模块。",
+    )
+
+    assert stub_agent.calls == [
+        (
+            {
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "会话摘要:\n"
+                            "用户正在排查出价胜率下降，当前重点关注 bid-optimizer 模块。"
+                        ),
+                    },
+                    {"role": "user", "content": "history question"},
+                    {"role": "assistant", "content": "history answer"},
+                    {"role": "user", "content": "latest question"},
+                ]
+            },
+            {
+                "configurable": {"thread_id": "session-summary"},
+                "metadata": {
+                    "session_id": "session-summary",
+                    "trace_id": "trace-summary",
+                    "llm_model": "gpt-test",
+                    "agent_backend": "deepagents",
+                },
+                "tags": ["dsp_agent", "deep_agent"],
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_run_user_message_includes_structured_memory(monkeypatch) -> None:
+    stub_agent = _StubAgent()
+    service = await _create_service(monkeypatch, stub_agent)
+
+    await service.run_user_message_async(
+        session_id="session-memory",
+        trace_id="trace-memory",
+        user_query="继续看这个问题",
+        history=[
+            {"role": "user", "content": "history question"},
+            {"role": "assistant", "content": "history answer"},
+        ],
+        conversation_memory={
+            "current_topic": "排查出价胜率下降",
+            "module_name": "bid-optimizer",
+            "related_modules": ["bid-optimizer", "rerank-engine"],
+            "entities": ["compute_bid_for_request", "target_cpa"],
+            "active_issue": "出价胜率下降",
+            "referenced_paths": ["domain/ad_engine/codes/bid/bid_optimizer.py"],
+            "referenced_symbols": ["compute_bid_for_request"],
+            "last_intent": "issue_analysis",
+        },
+    )
+
+    assert stub_agent.calls == [
+        (
+            {
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "结构化记忆:\n"
+                            "- 当前主题: 排查出价胜率下降\n"
+                            "- 当前模块: bid-optimizer\n"
+                            "- 当前问题: 出价胜率下降\n"
+                            "- 最近意图: issue_analysis\n"
+                            "- 相关模块: bid-optimizer, rerank-engine\n"
+                            "- 关键实体: compute_bid_for_request, target_cpa\n"
+                            "- 最近符号: compute_bid_for_request\n"
+                            "- 最近路径: domain/ad_engine/codes/bid/bid_optimizer.py"
+                        ),
+                    },
+                    {"role": "user", "content": "history question"},
+                    {"role": "assistant", "content": "history answer"},
+                    {"role": "user", "content": "继续看这个问题"},
+                ]
+            },
+            {
+                "configurable": {"thread_id": "session-memory"},
+                "metadata": {
+                    "session_id": "session-memory",
+                    "trace_id": "trace-memory",
+                    "llm_model": "gpt-test",
+                    "agent_backend": "deepagents",
+                },
+                "tags": ["dsp_agent", "deep_agent"],
+            },
+        )
+    ]
 
 
 @pytest.mark.asyncio

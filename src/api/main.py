@@ -17,7 +17,13 @@ from agent import DeepAgentService
 from api.message_mapper import to_assistant_message
 from observability import PostgresObservabilityStore
 from log import get_file_logger, setup_global_logging
-from session import PostgresSessionStore
+from session import (
+    ConversationSummarizer,
+    PostgresSessionStore,
+    build_conversation_memory,
+    default_conversation_memory,
+    merge_summary_memory_updates,
+)
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 SOURCE_DIR = BASE_DIR / 'src'
@@ -33,6 +39,7 @@ APP_LOGGER = get_file_logger(project_root=BASE_DIR)
 AGENT_SERVICE: DeepAgentService
 OBS_STORE: PostgresObservabilityStore
 SESSION_STORE: PostgresSessionStore
+SESSION_SUMMARIZER: ConversationSummarizer
 SESSIONS: dict[str, dict[str, Any]] = {}
 TRACE_REFERENCES: dict[str, list[dict[str, Any]]] = {}
 
@@ -45,7 +52,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     2. 创建 DeepAgentService
     3. 关闭时：清理资源
     """
-    global AGENT_SERVICE, OBS_STORE, SESSION_STORE
+    global AGENT_SERVICE, OBS_STORE, SESSION_STORE, SESSION_SUMMARIZER
 
     # 启动时初始化
     APP_LOGGER.info('api.lifespan.startup.begin')
@@ -56,6 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await initialize_async(project_root=BASE_DIR, enable_mcp=True, enable_retrievers=True)
 
     AGENT_SERVICE = await DeepAgentService.create_async(project_root=BASE_DIR)
+    SESSION_SUMMARIZER = ConversationSummarizer.create(project_root=BASE_DIR)
 
     # 初始化存储
     OBS_STORE = await PostgresObservabilityStore.create_from_env()
@@ -64,6 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         'api.service.initialized',
         checkpointer=AGENT_SERVICE.checkpointer_status(),
         session_store=SESSION_STORE.status(),
+        conversation_summary=SESSION_SUMMARIZER.status(),
         observability=OBS_STORE.status(),
         runtime_logging=APP_LOGGER.status(),
     )
@@ -156,7 +165,11 @@ async def create_session_record(title: str | None = None) -> dict[str, Any]:
         'created_at': created_at,
         'updated_at': created_at,
         'status': 'idle',
-        'messages': []
+        'messages': [],
+        'conversation_summary': '',
+        'conversation_summary_updated_at': None,
+        'conversation_memory': default_conversation_memory(),
+        'conversation_memory_updated_at': None,
     }
     await persist_session_record(session)
     APP_LOGGER.info('api.session.created', session_id=session_id, title=text_preview(session['title'], max_chars=80))
@@ -195,13 +208,22 @@ def summarize_session(session: dict[str, Any]) -> dict[str, Any]:
         if message['role'] == 'user':
             preview = message['content'][:72]
             break
+    conversation_memory = session.get('conversation_memory')
+    has_conversation_memory = False
+    if isinstance(conversation_memory, dict):
+        has_conversation_memory = any(
+            bool(value)
+            for value in conversation_memory.values()
+        )
     return {
         'id': session['id'],
         'title': session['title'],
         'updated_at': session['updated_at'],
         'status': session['status'],
         'last_user_preview': preview,
-        'message_count': len(session['messages'])
+        'message_count': len(session['messages']),
+        'has_conversation_summary': bool(str(session.get('conversation_summary', '') or '').strip()),
+        'has_conversation_memory': has_conversation_memory,
     }
 
 
@@ -212,7 +234,11 @@ def serialize_session(session: dict[str, Any]) -> dict[str, Any]:
         'created_at': session['created_at'],
         'updated_at': session['updated_at'],
         'status': session['status'],
-        'messages': session['messages']
+        'messages': session['messages'],
+        'conversation_summary': str(session.get('conversation_summary', '') or ''),
+        'conversation_summary_updated_at': session.get('conversation_summary_updated_at'),
+        'conversation_memory': session.get('conversation_memory') or default_conversation_memory(),
+        'conversation_memory_updated_at': session.get('conversation_memory_updated_at'),
     }
 
 
@@ -267,6 +293,79 @@ async def persist_observability_turn(
         return
 
 
+async def refresh_conversation_summary(session: dict[str, Any]) -> None:
+    previous_summary = str(session.get('conversation_summary', '') or '').strip()
+    summary_update = await SESSION_SUMMARIZER.refresh_summary(
+        messages=session.get('messages', []) or [],
+        previous_summary=previous_summary,
+        conversation_memory=session.get('conversation_memory'),
+    )
+    next_summary = summary_update.summary
+    if next_summary == previous_summary:
+        summary_changed = False
+    else:
+        session['conversation_summary'] = next_summary
+        session['conversation_summary_updated_at'] = now_iso()
+        summary_changed = True
+
+    previous_memory = session.get('conversation_memory')
+    next_memory = merge_summary_memory_updates(previous_memory, summary_update.memory_updates)
+    memory_changed = next_memory != previous_memory
+    if memory_changed:
+        session['conversation_memory'] = next_memory
+        session['conversation_memory_updated_at'] = now_iso()
+
+    if summary_changed or memory_changed:
+        APP_LOGGER.info(
+            'api.session.summary.updated',
+            session_id=session.get('id', ''),
+            summary_chars=len(next_summary),
+            confirmed_fact_count=len(next_memory.get('confirmed_facts', []) or []),
+            open_question_count=len(next_memory.get('open_questions', []) or []),
+        )
+
+
+def refresh_conversation_memory(
+    *,
+    session: dict[str, Any],
+    user_query: str,
+    assistant_message: dict[str, Any],
+) -> None:
+    previous_memory = session.get('conversation_memory')
+    next_memory = build_conversation_memory(
+        previous_memory=previous_memory if isinstance(previous_memory, dict) else None,
+        user_query=user_query,
+        assistant_message=assistant_message,
+    )
+    if next_memory == previous_memory:
+        return
+    session['conversation_memory'] = next_memory
+    session['conversation_memory_updated_at'] = now_iso()
+    APP_LOGGER.info(
+        'api.session.memory.updated',
+        session_id=session.get('id', ''),
+        module_name=next_memory.get('module_name', ''),
+        entity_count=len(next_memory.get('entities', []) or []),
+    )
+
+
+def attach_memory_debug_snapshot(
+    *,
+    assistant_message: dict[str, Any],
+    session: dict[str, Any],
+) -> None:
+    debug = dict(assistant_message.get('debug') or {})
+    memory = session.get('conversation_memory')
+    if not isinstance(memory, dict):
+        assistant_message['debug'] = debug
+        return
+    debug['current_topic'] = str(memory.get('current_topic', '') or '').strip()
+    debug['active_issue'] = str(memory.get('active_issue', '') or '').strip()
+    debug['confirmed_facts'] = list(memory.get('confirmed_facts', []) or [])
+    debug['open_questions'] = list(memory.get('open_questions', []) or [])
+    assistant_message['debug'] = debug
+
+
 async def find_message(message_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     if SESSION_STORE.is_active:
         result = await SESSION_STORE.find_message(message_id)
@@ -296,6 +395,7 @@ def health() -> dict[str, Any]:
         'runtime_logging': AGENT_SERVICE.runtime_log_status(),
         'observability': OBS_STORE.status(),
         'session_store': SESSION_STORE.status(),
+        'conversation_summary': SESSION_SUMMARIZER.status(),
     }
 
 
@@ -360,6 +460,8 @@ async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
             trace_id=trace_id,
             user_query=request.content,
             history=session['messages'],
+            conversation_summary=str(session.get('conversation_summary', '') or ''),
+            conversation_memory=session.get('conversation_memory'),
         )
     except Exception as exc:
         APP_LOGGER.exception(
@@ -375,6 +477,16 @@ async def create_message(request: MessageCreateRequest) -> dict[str, Any]:
     session['messages'].append(assistant_message)
     session['status'] = assistant_message['status']
     session['updated_at'] = now_iso()
+    refresh_conversation_memory(
+        session=session,
+        user_query=request.content,
+        assistant_message=assistant_message,
+    )
+    await refresh_conversation_summary(session)
+    attach_memory_debug_snapshot(
+        assistant_message=assistant_message,
+        session=session,
+    )
     await persist_session_record(session)
     await persist_observability_turn(
         turn_type='message',
@@ -456,6 +568,7 @@ def get_api_config_info() -> dict[str, Any]:
         'backend': 'deepagents',
         'checkpointer': AGENT_SERVICE.checkpointer_status(),
         'session_store': SESSION_STORE.status(),
+        'conversation_summary': SESSION_SUMMARIZER.status(),
         'observability': OBS_STORE.status(),
     }
 

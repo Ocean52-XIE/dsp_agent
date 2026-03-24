@@ -104,6 +104,7 @@ def test_parse_agent_result_extracts_debug_metadata() -> None:
             "domain_id": "ad_engine",
             "intent": "knowledge_qa",
             "module_name": "rerank-engine",
+            "related_modules": ["rerank-engine", "ad-serving-orchestrator"],
             "retrieval_bias": "code_first",
             "citations": [
                 {
@@ -149,6 +150,7 @@ def test_parse_agent_result_extracts_debug_metadata() -> None:
     assert parsed.debug["citation_scope"] == "all_tool_calls_deduped"
     assert parsed.debug["llm_model"] == "gpt-4o-mini"
     assert parsed.debug["last_tool_call_citation_count"] == 1
+    assert parsed.debug["tool_calls"][0]["related_modules"] == ["rerank-engine", "ad-serving-orchestrator"]
     assert parsed.debug["message_trace"] == [
         {
             "index": 0,
