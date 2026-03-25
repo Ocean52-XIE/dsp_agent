@@ -1,0 +1,37 @@
+schema: spec-driven
+
+# Project context - AI 创建 artifacts 时会参考此信息
+context: |
+  Tech stack: Python 3.11+, FastAPI, LangGraph, PostgreSQL
+  LLM: Claude (claude-sonnet-4-6), OpenAI compatible
+  Architecture: Deep Agent with MCP tools, Wiki/Code retrieval
+
+  关键目录:
+  - src/api/ - FastAPI 接口
+  - src/agent/ - Deep Agent 运行时封装
+  - src/retrievers/ - Wiki/Code 检索
+  - src/init/ - 全局初始化
+  - domain/<id>/ - 领域配置、技能、语料
+
+  约定:
+  - 中文注释和日志
+  - UTF-8 编码
+  - 类型标注必须保留
+  - citation 必须包含: source, source_type, path, score, excerpt
+  - 敏感配置走环境变量
+  - 新增 Agent tool 在 src/agent/factory.py 装配
+  - 检索改动在 src/retrievers/orchestration/
+
+# Per-artifact rules
+rules:
+  proposal:
+    - 必须明确说明改动涉及哪些文件
+    - 需要评估对现有 API 兼容性的影响
+    - 如涉及检索策略，需说明对 citation 结构的影响
+  design:
+    - 必须包含数据流图或架构图
+    - 如新增 tool，需说明与现有 domain_retrieve_tool 的关系
+  tasks:
+    - 每个任务控制在 2 小时内
+    - 必须标注优先级 (P0/P1/P2)
+    - 涉及测试的单独列出
